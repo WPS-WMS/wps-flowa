@@ -1,0 +1,217 @@
+import { Request, Router } from "express";
+import { prisma } from "../lib/prisma.js";
+import { authMiddleware } from "../lib/auth.js";
+import { writeFile, mkdir, unlink } from "fs/promises";
+import { join } from "path";
+import { existsSync } from "fs";
+
+export const ticketAttachmentsRouter = Router();
+ticketAttachmentsRouter.use(authMiddleware);
+
+// Criar diretório de uploads se não existir
+const uploadsDir = join(process.cwd(), "uploads", "tickets");
+if (!existsSync(uploadsDir)) {
+  mkdir(uploadsDir, { recursive: true }).catch(console.error);
+}
+
+// GET /api/ticket-attachments?ticketId=xxx - Lista anexos de uma tarefa
+ticketAttachmentsRouter.get("/", async (req, res) => {
+  try {
+    const user = (req as Request & { user: { id: string; role: string; tenantId: string } }).user;
+    const { ticketId } = req.query;
+
+    if (!ticketId || typeof ticketId !== "string") {
+      res.status(400).json({ error: "ticketId é obrigatório" });
+      return;
+    }
+
+    // Verifica se o ticket pertence ao tenant
+    const ticket = await prisma.ticket.findFirst({
+      where: {
+        id: ticketId,
+        project: { client: { tenantId: user.tenantId } },
+      },
+      select: { id: true },
+    });
+
+    if (!ticket) {
+      res.status(404).json({ error: "Tarefa não encontrada" });
+      return;
+    }
+
+    const attachments = await prisma.ticketAttachment.findMany({
+      where: { ticketId },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    res.json(attachments);
+  } catch (error) {
+    console.error("Erro ao buscar anexos:", error);
+    res.status(500).json({ error: "Erro ao buscar anexos" });
+  }
+});
+
+// POST /api/ticket-attachments - Faz upload de um anexo
+ticketAttachmentsRouter.post("/", async (req, res) => {
+  try {
+    const user = (req as Request & { user: { id: string; tenantId: string; role: string } }).user;
+    const { ticketId, fileName, fileData, fileType, fileSize } = req.body;
+
+    if (!ticketId || !fileName || !fileData) {
+      res.status(400).json({ error: "ticketId, fileName e fileData são obrigatórios" });
+      return;
+    }
+
+    // Validar tipo de arquivo: apenas imagens e PDF
+    const allowedMimeTypes = new Set([
+      "application/pdf",
+      "image/png",
+      "image/jpeg",
+      "image/webp",
+      "image/gif",
+    ]);
+    const allowedExtensions = new Set([".pdf", ".png", ".jpg", ".jpeg", ".webp", ".gif"]);
+    const fileExtension = String(fileName).toLowerCase().substring(String(fileName).lastIndexOf("."));
+    if (!allowedExtensions.has(fileExtension)) {
+      res.status(400).json({ error: "Tipo de arquivo não permitido. Envie imagens ou PDF." });
+      return;
+    }
+    const mimeFromDataUrl = typeof fileData === "string" ? (fileData.match(/^data:([^;]+);base64,/)?.[1] ?? "") : "";
+    const effectiveType = String(fileType || mimeFromDataUrl || "");
+    if (effectiveType && !allowedMimeTypes.has(effectiveType)) {
+      res.status(400).json({ error: "Tipo de arquivo não permitido. Envie imagens ou PDF." });
+      return;
+    }
+
+    // Verifica se o ticket pertence ao tenant
+    const ticket = await prisma.ticket.findFirst({
+      where: {
+        id: ticketId,
+        project: { client: { tenantId: user.tenantId } },
+      },
+      select: { id: true },
+    });
+
+    if (!ticket) {
+      res.status(404).json({ error: "Tarefa não encontrada" });
+      return;
+    }
+
+    // Converter base64 para buffer
+    const base64Data = fileData.replace(/^data:.*,/, "");
+    const buffer = Buffer.from(base64Data, "base64");
+
+    // Validar tamanho do arquivo (máximo 10MB)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (buffer.length > maxSize) {
+      res.status(400).json({ error: "Arquivo muito grande. Tamanho máximo: 10MB" });
+      return;
+    }
+
+    // Gerar nome único para o arquivo
+    const timestamp = Date.now();
+    const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const uniqueFileName = `${ticketId}-${timestamp}-${sanitizedFileName}`;
+    const filePath = join(uploadsDir, uniqueFileName);
+
+    // Salvar arquivo
+    await writeFile(filePath, buffer);
+
+    // Salvar registro no banco
+    const attachment = await prisma.ticketAttachment.create({
+      data: {
+        ticketId,
+        userId: user.id,
+        filename: fileName,
+        fileUrl: `/uploads/tickets/${uniqueFileName}`,
+        fileType: effectiveType || "application/octet-stream",
+        fileSize: fileSize || buffer.length,
+      },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+      },
+    });
+
+    // Registrar no histórico
+    await prisma.ticketHistory.create({
+      data: {
+        ticketId,
+        userId: user.id,
+        action: "ATTACHMENT_ADDED",
+        field: null,
+        oldValue: null,
+        newValue: fileName,
+        details: `Anexo "${fileName}" adicionado`,
+      },
+    });
+
+    res.status(201).json(attachment);
+  } catch (error) {
+    console.error("Erro ao fazer upload do anexo:", error);
+    res.status(500).json({ error: "Erro ao fazer upload do anexo" });
+  }
+});
+
+// DELETE /api/ticket-attachments/:id - Remove um anexo
+ticketAttachmentsRouter.delete("/:id", async (req, res) => {
+  try {
+    const user = (req as Request & { user: { id: string; tenantId: string; role: string } }).user;
+    const { id } = req.params;
+
+    const attachment = await prisma.ticketAttachment.findFirst({
+      where: {
+        id,
+        ticket: { project: { client: { tenantId: user.tenantId } } },
+      },
+      include: {
+        ticket: { select: { id: true } },
+      },
+    });
+
+    if (!attachment) {
+      res.status(404).json({ error: "Anexo não encontrado" });
+      return;
+    }
+
+    // Apenas o autor ou admin/gestor pode deletar
+    const canDelete =
+      attachment.userId === user.id || user.role === "ADMIN" || user.role === "GESTOR_PROJETOS";
+    if (!canDelete) {
+      res.status(403).json({ error: "Sem permissão para excluir este anexo" });
+      return;
+    }
+
+    // Remover arquivo do sistema de arquivos
+    const relativePath = attachment.fileUrl.replace(/^[\\/]+/, "");
+    const filePath = join(process.cwd(), relativePath);
+    if (existsSync(filePath)) {
+      await unlink(filePath).catch(console.error);
+    }
+
+    // Registrar no histórico antes de deletar
+    await prisma.ticketHistory.create({
+      data: {
+        ticketId: attachment.ticketId,
+        userId: user.id,
+        action: "ATTACHMENT_DELETED",
+        field: null,
+        oldValue: attachment.filename,
+        newValue: null,
+        details: `Anexo "${attachment.filename}" removido`,
+      },
+    });
+
+    // Remover registro do banco
+    await prisma.ticketAttachment.delete({
+      where: { id },
+    });
+
+    res.status(204).send();
+  } catch (error) {
+    console.error("Erro ao excluir anexo:", error);
+    res.status(500).json({ error: "Erro ao excluir anexo" });
+  }
+});

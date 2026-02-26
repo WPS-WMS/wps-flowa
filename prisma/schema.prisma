@@ -1,0 +1,234 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                    String   @id @default(cuid())
+  email                 String   @unique
+  name                  String
+  passwordHash          String
+  role                  String   // ADMIN, CONSULTOR, GERENTE, CLIENTE
+  cargo                 String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  // Configurações de apontamento
+  cargaHorariaSemanal   Float?   @default(40) // horas
+  permitirMaisHoras     Boolean  @default(false)
+  permitirFimDeSemana   Boolean  @default(false)
+  permitirOutroPeriodo  Boolean  @default(false)
+  diasPermitidos        String?  // JSON array: ["seg","ter","qua","qui","sex"]
+
+  // Relações
+  createdProjects       Project[]     @relation("ProjectCreator")
+  timeEntries           TimeEntry[]
+  assignedTickets       Ticket[]      @relation("AssignedConsultant")
+  createdTickets        Ticket[]      @relation("TicketCreator")
+  hourBankRecords       HourBankRecord[]
+  clientAccess          ClientUser[]  @relation("ClientUser")
+  timeEntryPermissionRequests TimeEntryPermissionRequest[] @relation("TimeEntryPermissionRequestUser")
+  @@map("users")
+}
+
+model TimeEntryPermissionRequest {
+  id              String   @id @default(cuid())
+  userId          String
+  status          String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  justification   String
+  date            DateTime
+  horaInicio      String
+  horaFim         String
+  intervaloInicio String?
+  intervaloFim    String?
+  totalHoras      Float
+  description     String?
+  projectId       String
+  ticketId        String?
+  activityId      String?
+  createdAt       DateTime @default(now())
+  reviewedAt      DateTime?
+  reviewedById    String?
+  rejectionReason String?
+
+  user      User   @relation("TimeEntryPermissionRequestUser", fields: [userId], references: [id], onDelete: Cascade)
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  ticket    Ticket? @relation(fields: [ticketId], references: [id])
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?
+  telefone  String?
+  cep       String?
+  endereco  String?
+  numero    String?
+  complemento String?
+  bairro    String?
+  cidade    String?
+  estado    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projects  Project[]
+  users     ClientUser[]
+  contacts  ClientContact[]
+}
+
+model ClientContact {
+  id        String   @id @default(cuid())
+  clientId  String
+  name      String
+  email     String?
+  telefone  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+model ClientUser {
+  id       String @id @default(cuid())
+  userId   String
+  clientId String
+  user     User   @relation("ClientUser", fields: [userId], references: [id], onDelete: Cascade)
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, clientId])
+}
+
+enum TipoProjeto {
+  INTERNO
+  FIXED_PRICE
+  AMS
+  TIME_MATERIAL
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  clientId    String
+  createdAt   DateTime @default(now())
+  createdById String
+  createdBy   User     @relation("ProjectCreator", fields: [createdById], references: [id])
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  // Tipo e configurações do projeto
+  tipoProjeto TipoProjeto? @default(INTERNO)
+  
+  // Configurações Fixed Price
+  valorContrato Float?
+  escopoInicial String?
+  limiteHorasEscopo Float?
+  changeRequestsAtivo Boolean? @default(false)
+  
+  // Configurações AMS
+  tipoContratoAMS String? // MENSAL_FIXO, BANCO_HORAS
+  horasMensaisAMS Float?
+  bancoHorasInicial Float?
+  slaAMS Int? // dias
+  
+  // Configurações Time & Material
+  periodoAprovacaoTM String? // MENSAL, QUINZENAL
+  aprovacaoAutomaticaTM Boolean? @default(false)
+  estimativaInicialTM Float?
+  
+  // Anexo de proposta comercial e escopo
+  anexoNomeArquivo String?
+  anexoUrl String? // URL ou path do arquivo
+  anexoTipo String? // application/pdf, application/vnd.openxmlformats-officedocument.wordprocessingml.document
+  anexoTamanho Int? // tamanho em bytes
+
+  // Status de arquivamento
+  arquivado Boolean @default(false)
+  arquivadoEm DateTime?
+
+  tickets     Ticket[]
+  timeEntries TimeEntry[]
+  timeEntryPermissionRequests TimeEntryPermissionRequest[]
+}
+
+model Ticket {
+  id          String   @id @default(cuid())
+  code        String   // 338, 339, etc
+  title       String
+  description String?
+  type        String   // Suporte PRD, melhoria, dúvida, SUBPROJETO
+  criticidade String?  // Baixa, Média, Alta
+  status      String   @default("ABERTO") // ABERTO, EM_ANALISE, APROVADO, EXECUCAO, TESTE, ENCERRADO
+  projectId   String
+  parentTicketId String? // ID do subprojeto pai (se esta tarefa pertence a um subprojeto)
+  createdById String?
+  assignedToId String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parentTicket Ticket? @relation("TicketHierarchy", fields: [parentTicketId], references: [id], onDelete: Cascade)
+  childTickets Ticket[] @relation("TicketHierarchy")
+  createdBy   User?    @relation("TicketCreator", fields: [createdById], references: [id])
+  assignedTo  User?    @relation("AssignedConsultant", fields: [assignedToId], references: [id])
+  timeEntries TimeEntry[]
+  timeEntryPermissionRequests TimeEntryPermissionRequest[]
+}
+
+model Activity {
+  id   String @id @default(cuid())
+  name String
+
+  timeEntries TimeEntry[]
+}
+
+model TimeEntry {
+  id            String   @id @default(cuid())
+  date          DateTime
+  horaInicio    String
+  horaFim       String
+  intervaloInicio String?
+  intervaloFim  String?
+  totalHoras    Float
+  description   String?
+  userId        String
+  projectId     String
+  ticketId      String?
+  activityId    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  ticket   Ticket?  @relation(fields: [ticketId], references: [id])
+  activity Activity? @relation(fields: [activityId], references: [id])
+}
+
+model HourBankRecord {
+  id                  String   @id @default(cuid())
+  month               Int
+  year                Int
+  horasPrevistas      Float
+  horasTrabalhadas    Float
+  horasComplementares Float?
+  observacao          String?
+  userId              String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, month, year])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
