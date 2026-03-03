@@ -69,7 +69,7 @@ export default function TopicoKanbanAdminPage({ params }: PageProps) {
       .then((projectTickets: PackageTicket[]) => {
         const foundTicket = projectTickets.find((t) => t.id === ticketId);
         if (!foundTicket) {
-          setError("Subtarefa não encontrada");
+          setError("Tópico não encontrado");
           setLoading(false);
           return;
         }
@@ -78,7 +78,7 @@ export default function TopicoKanbanAdminPage({ params }: PageProps) {
         setLoading(false);
       })
       .catch((err) => {
-        setError(err?.message ?? "Erro ao carregar subtarefa");
+        setError(err?.message ?? "Erro ao carregar tópico");
         setLoading(false);
       });
   }, [projectId, ticketId]);
@@ -107,7 +107,7 @@ export default function TopicoKanbanAdminPage({ params }: PageProps) {
         >
           ← Voltar
         </button>
-        <p className="text-sm text-red-600">{error ?? "Subtarefa não encontrada"}</p>
+        <p className="text-sm text-red-600">{error ?? "Tópico não encontrado"}</p>
       </div>
     );
   }

@@ -33,6 +33,9 @@ export function EditSubprojectModal({
 }: EditSubprojectModalProps) {
   const [users, setUsers] = useState<UserOption[]>([]);
   const [name, setName] = useState(ticket.title || "");
+  const [budget, setBudget] = useState(
+    ticket.estimativaHoras != null ? String(ticket.estimativaHoras) : "",
+  );
   const [responsibleIds, setResponsibleIds] = useState<string[]>(
     ticket.responsibles?.map((r) => r.user.id) || []
   );
@@ -64,10 +67,14 @@ export function EditSubprojectModal({
       setError("Nome do tópico é obrigatório.");
       return;
     }
+    const trimmedBudget = budget.trim();
+    const estimativa =
+      trimmedBudget === "" ? null : Number.isNaN(Number(trimmedBudget)) ? null : Number(trimmedBudget);
     setSaving(true);
     try {
       const body = {
         title: name.trim(),
+        estimativaHoras: estimativa,
         responsibleIds: responsibleIds.length > 0 ? responsibleIds : undefined,
       };
       const res = await apiFetch(`/api/tickets/${ticket.id}`, {
@@ -116,6 +123,21 @@ export function EditSubprojectModal({
               placeholder="Ex: Módulo de relatórios"
               required
             />
+          </div>
+          <div>
+            <label className={labelClass}>Orçado (horas)</label>
+            <input
+              type="number"
+              min="0"
+              step="0.5"
+              value={budget}
+              onChange={(e) => setBudget(e.target.value)}
+              className={inputClass}
+              placeholder="Ex: 40"
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              Opcional. Estimativa total de horas para este tópico.
+            </p>
           </div>
           <div>
             <label className={labelClass}>Projeto</label>

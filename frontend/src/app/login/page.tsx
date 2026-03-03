@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { apiFetch, setToken } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:4000";
+const BACKEND_URL =
+  process.env.NEXT_PUBLIC_API_URL ?? "https://wps-flowa-production.up.railway.app";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,7 +15,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [backendOk, setBackendOk] = useState<boolean | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
   const [showForgot, setShowForgot] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
@@ -22,29 +22,26 @@ export default function LoginPage() {
   const [forgotError, setForgotError] = useState("");
   const [forgotLoading, setForgotLoading] = useState(false);
 
-  const isLocalBackend = /localhost|127\.0\.0\.1/.test(BACKEND_URL);
-
-  useEffect(() => {
-    const base = BACKEND_URL.replace(/\/$/, "");
-    fetch(`${base}/health`)
-      .then((r) => setBackendOk(r.ok))
-      .catch(() => setBackendOk(false));
-  }, []);
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setFieldErrors({});
 
-    const nextFieldErrors: { email?: string; password?: string } = {};
-    if (!email.trim()) {
-      nextFieldErrors.email = "Preencha o e-mail.";
+    const missingEmail = !email.trim();
+    const missingPassword = !password.trim();
+    if (missingEmail || missingPassword) {
+      setFieldErrors({
+        email: missingEmail ? "missing" : undefined,
+        password: missingPassword ? "missing" : undefined,
+      });
+      setError("O campo deve ser preenchido");
+      return;
     }
-    if (!password.trim()) {
-      nextFieldErrors.password = "Preencha a senha.";
-    }
-    if (nextFieldErrors.email || nextFieldErrors.password) {
-      setFieldErrors(nextFieldErrors);
+
+    // Validação simples de formato de e-mail para evitar tooltip nativo do navegador
+    const emailPattern = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+    if (!emailPattern.test(email.trim())) {
+      setFieldErrors({ email: "invalid" });
       setError("Dados inválidos.");
       return;
     }
@@ -64,10 +61,10 @@ export default function LoginPage() {
       }
       if (!res.ok) {
         setFieldErrors({
-          email: "E-mail ou senha inválidos.",
-          password: "E-mail ou senha inválidos.",
+          email: "invalid",
+          password: "invalid",
         });
-        setError(data.error || "Dados inválidos.");
+        setError(data.error || "E-mail ou senha inválidos.");
         return;
       }
       setToken(data.token);
@@ -82,7 +79,7 @@ export default function LoginPage() {
       }
       router.refresh();
     } catch {
-      setError("Erro de conexão. Verifique se o backend está rodando.");
+      setError("Erro de conexão. Tente novamente em instantes.");
     } finally {
       setLoading(false);
     }
@@ -131,12 +128,17 @@ export default function LoginPage() {
           <p className="text-gray-500 mt-1 text-sm">Gestão de projetos e apontamento de horas</p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <p className="text-red-600 text-sm mb-1 rounded-lg border border-red-300 bg-red-50 px-3 py-2">
+              {error}
+            </p>
+          )}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Usuário (E-mail)
+              E-mail
             </label>
             <input
-              type="email"
+              type="text"
               value={email}
               onChange={(e) => {
                 setEmail(e.target.value);
@@ -148,9 +150,7 @@ export default function LoginPage() {
               }`}
               placeholder="seu@email.com"
             />
-            {fieldErrors.email && (
-              <p className="mt-1 text-xs text-red-600">{fieldErrors.email}</p>
-            )}
+            {/* Erro de preenchimento é exibido apenas no topo */}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -171,9 +171,7 @@ export default function LoginPage() {
               }`}
               placeholder="••••••••"
             />
-            {fieldErrors.password && (
-              <p className="mt-1 text-xs text-red-600">{fieldErrors.password}</p>
-            )}
+            {/* Erro de preenchimento é exibido apenas no topo */}
           </div>
           <div className="flex items-center justify-between text-xs mt-1">
             <div className="text-gray-400" />
@@ -190,46 +188,14 @@ export default function LoginPage() {
               Esqueci minha senha
             </button>
           </div>
-          {error && <p className="text-red-600 text-sm mt-1">{error}</p>}
-          {backendOk === false && (
-            <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-900">
-              <p className="font-medium">
-                {isLocalBackend ? "API não está rodando (porta 4000)" : "Não foi possível conectar ao servidor"}
-              </p>
-              {isLocalBackend ? (
-                <>
-                  <p className="mt-1 text-amber-800">
-                    Abra outro terminal na <strong>raiz do projeto</strong> e execute:
-                  </p>
-                  <code className="mt-2 block bg-amber-100 px-2 py-1.5 rounded text-xs font-mono">
-                    npm run backend
-                  </code>
-                  <p className="mt-2 text-amber-700 text-xs">
-                    Se der erro de permissão (tsx/esbuild), use: <code className="bg-amber-100 px-1 rounded">npm run backend:node</code>
-                  </p>
-                </>
-              ) : (
-                <p className="mt-1 text-amber-800 text-xs">
-                  Tente novamente em alguns instantes. Se o problema continuar, verifique o status do backend.
-                </p>
-              )}
-              <p className="mt-1 text-xs text-amber-600">Backend: {BACKEND_URL}</p>
-            </div>
-          )}
-          {backendOk === true && (
-            <p className="text-green-600 text-sm">Backend conectado</p>
-          )}
           <button
             type="submit"
-            disabled={loading || backendOk === false}
+            disabled={loading}
             className="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold disabled:opacity-50 transition shadow-sm"
           >
             {loading ? "Entrando..." : "Entrar"}
           </button>
         </form>
-        <p className="text-gray-400 text-xs mt-4 text-center">
-          Backend: {BACKEND_URL}
-        </p>
       </div>
 
       {showForgot && (

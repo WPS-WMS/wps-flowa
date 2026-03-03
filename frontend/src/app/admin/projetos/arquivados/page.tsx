@@ -13,17 +13,24 @@ export default function ProjetosArquivadosPage() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  useEffect(() => {
+  async function refreshArchived() {
     setApiError(null);
     setLoading(true);
-    apiFetch("/api/projects?arquivado=true")
-      .then((r) => {
-        if (!r.ok) throw new Error("Erro ao carregar projetos arquivados");
-        return r.json();
-      })
-      .then(setProjects)
-      .catch((err) => setApiError(err?.message || "Erro ao carregar projetos arquivados"))
-      .finally(() => setLoading(false));
+    try {
+      const r = await apiFetch("/api/projects?arquivado=true");
+      if (!r.ok) throw new Error("Erro ao carregar projetos arquivados");
+      const data = await r.json();
+      setProjects(data);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Erro ao carregar projetos arquivados";
+      setApiError(message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    refreshArchived();
   }, []);
 
   const filteredProjects = projects.filter((p) => {
@@ -100,26 +107,20 @@ export default function ProjetosArquivadosPage() {
                   project={p}
                   onDelete={async (proj) => {
                     const res = await apiFetch(`/api/projects/${proj.id}`, { method: "DELETE" });
-                    if (res.ok) setProjects((prev) => prev.filter((x) => x.id !== proj.id));
+                    if (res.ok) await refreshArchived();
                   }}
                   onDeleteSubproject={async (ticket) => {
                     try {
                       const res = await apiFetch(`/api/tickets/${ticket.id}`, { method: "DELETE" });
                       if (res.ok || res.status === 204) {
-                        const updatedProjects = await apiFetch("/api/projects?arquivado=true")
-                          .then((r) => (r.ok ? r.json() : []))
-                          .catch(() => projects);
-                        setProjects(updatedProjects);
+                        await refreshArchived();
                       }
                     } catch (err) {
                       console.error("Erro ao excluir:", err);
                     }
                   }}
                   onSubprojectCreated={async () => {
-                    const updatedProjects = await apiFetch("/api/projects?arquivado=true")
-                      .then((r) => (r.ok ? r.json() : []))
-                      .catch(() => projects);
-                    setProjects(updatedProjects);
+                    await refreshArchived();
                   }}
                 />
               ))}

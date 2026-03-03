@@ -17,7 +17,7 @@ type CreateTaskModalFullProps = {
   onSaved: () => void;
 };
 
-type Tab = "descricao" | "horas" | "historico" | "subtarefas" | "anexos";
+type Tab = "descricao" | "horas" | "historico" | "anexos";
 
 const PRIORIDADES = [
   { value: "Baixa", label: "Baixa", color: "bg-green-100 text-green-700 border-green-300" },
@@ -414,7 +414,6 @@ export function CreateTaskModalFull({
     { id: "descricao", label: "Descrição" },
     { id: "horas", label: "Horas" },
     { id: "historico", label: "Histórico" },
-    { id: "subtarefas", label: "Subtarefas" },
     { id: "anexos", label: "Anexos" },
   ];
 
@@ -861,18 +860,6 @@ export function CreateTaskModalFull({
             {activeTab === "historico" && (
               <div className="text-center py-12">
                 <p className="text-slate-500">Histórico será exibido aqui após a criação da tarefa.</p>
-              </div>
-            )}
-
-            {activeTab === "subtarefas" && (
-              <div className="text-center py-12">
-                <p className="text-slate-500">Subtarefas serão gerenciadas aqui após a criação da tarefa.</p>
-              </div>
-            )}
-
-            {activeTab === "anexos" && (
-              <div className="text-center py-12">
-                <p className="text-slate-500">Anexos serão gerenciados aqui após a criação da tarefa.</p>
               </div>
             )}
 

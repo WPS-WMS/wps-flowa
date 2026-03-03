@@ -13,9 +13,10 @@ type PageProps = {
 };
 
 export default function ProjetoKanbanConsultorPage({ params }: PageProps) {
-  const { projectId } = use(params);
-  const router = useRouter();
+  const routeParams = use(params);
   const searchParams = useSearchParams();
+  const projectId = searchParams.get("projectId") ?? routeParams.projectId;
+  const router = useRouter();
   const [project, setProject] = useState<ProjectForCard | null>(null);
   const [tickets, setTickets] = useState<PackageTicket[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -26,11 +27,14 @@ export default function ProjetoKanbanConsultorPage({ params }: PageProps) {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    
-    // Buscar projeto e todas as tarefas
+
+    // Buscar projeto específico (inclusive arquivado) e suas tarefas
     Promise.all([
-      apiFetch("/api/projects").then((r) => {
-        if (!r.ok) throw new Error("Erro ao carregar projetos");
+      apiFetch(`/api/projects/${projectId}`).then(async (r) => {
+        if (!r.ok) {
+          const data = await r.json().catch(() => ({}));
+          throw new Error(data?.error || "Projeto não encontrado");
+        }
         return r.json();
       }),
       apiFetch(`/api/tickets?projectId=${projectId}`).then((r) => {
@@ -38,16 +42,11 @@ export default function ProjetoKanbanConsultorPage({ params }: PageProps) {
         return r.json();
       }),
     ])
-      .then(([projects, projectTickets]: [ProjectForCard[], PackageTicket[]]) => {
-        const found = projects.find((p) => p.id === projectId) ?? null;
-        if (!found) {
-          setError("Projeto não encontrado");
-          setLoading(false);
-          return;
-        }
-        setProject(found);
-        // Filtra apenas tarefas, excluindo tópicos (SUBPROJETO) e subtarefas (SUBTAREFA)
-        const tasksOnly = projectTickets.filter((t) => t.type !== "SUBPROJETO" && t.type !== "SUBTAREFA");
+      .then(([projectData, projectTickets]: [ProjectForCard, PackageTicket[]]) => {
+        setProject(projectData);
+        const tasksOnly = projectTickets.filter(
+          (t) => t.type !== "SUBPROJETO" && t.type !== "SUBTAREFA",
+        );
         setTickets(tasksOnly);
         setLoading(false);
       })

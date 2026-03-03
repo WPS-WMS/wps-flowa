@@ -78,8 +78,14 @@ export function SubprojectCardHorizontal({ ticket, allTickets = [], onClick, onE
     (t) => t.parentTicketId === ticket.id && t.type !== "SUBPROJETO" && t.type !== "SUBTAREFA",
   );
   const totalTarefas = tarefasDoTopico.length;
-  // Orçado = soma das estimativas de todas as tarefas do tópico
-  const horasEstimadas = tarefasDoTopico.reduce((acc, t) => acc + (t.estimativaHoras ?? 0), 0);
+  // Orçado do tópico: se o próprio tópico tiver estimativaHoras, usa esse valor;
+  // caso contrário, soma as estimativas das tarefas filhas (comportamento antigo).
+  const horasEstimadasDiretas = ticket.estimativaHoras ?? null;
+  const horasEstimadasTarefas = tarefasDoTopico.reduce(
+    (acc, t) => acc + (t.estimativaHoras ?? 0),
+    0,
+  );
+  const horasEstimadas = horasEstimadasDiretas ?? horasEstimadasTarefas;
   // Executado = soma das horas apontadas de todas as tarefas do tópico
   const horasExecutadas = tarefasDoTopico.reduce((acc, t) => acc + (t.totalHorasApontadas ?? 0), 0);
 

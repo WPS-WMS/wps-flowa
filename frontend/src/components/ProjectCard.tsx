@@ -126,9 +126,19 @@ export function ProjectCard({ project, onNavigate, onDelete, onDeleteSubproject,
   const actionsRef = useRef<HTMLDivElement | null>(null);
   const menuButtonRef = useRef<HTMLButtonElement | null>(null);
   const statusInfo = getProjectStatus(project);
-  // Filtrar tópicos e tarefas (exclui subtarefas para não aparecerem no Kanban/contagem)
-  const topicos = project.tickets?.filter((t) => t.type === "SUBPROJETO") ?? [];
-  const tarefas = project.tickets?.filter((t) => t.type !== "SUBPROJETO" && t.type !== "SUBTAREFA") ?? [];
+  // Filtrar tópicos e tarefas:
+  // - Tópicos: type === "SUBPROJETO"
+  // - Tarefas para andamento: tickets que NÃO são tópico/subtarefa e cujo parentTicketId aponta para um tópico
+  const allTickets = project.tickets ?? [];
+  const topicos = allTickets.filter((t) => t.type === "SUBPROJETO");
+  const topicIds = new Set(topicos.map((t) => t.id));
+  const tarefas = allTickets.filter(
+    (t) =>
+      t.type !== "SUBPROJETO" &&
+      t.type !== "SUBTAREFA" &&
+      t.parentTicketId &&
+      topicIds.has(t.parentTicketId),
+  );
   const totalTopicos = topicos.length;
   const totalTarefas = tarefas.length;
   const finalizadas = tarefas.filter((t) => t.status === "ENCERRADO").length;
@@ -153,7 +163,8 @@ export function ProjectCard({ project, onNavigate, onDelete, onDeleteSubproject,
     if (typeof window !== "undefined") {
       const isAdmin = window.location.pathname.includes("/admin/");
       const basePath = isAdmin ? "/admin/projetos" : "/consultor/projetos";
-      router.push(`${basePath}/${project.id}/kanban?from=op1`);
+      // Em produção estático, a rota física é sempre "_", e o ID real vai na query.
+      router.push(`${basePath}/_/kanban?from=op1&projectId=${project.id}`);
     }
   };
 

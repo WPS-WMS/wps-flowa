@@ -30,6 +30,7 @@ export function CreateSubprojectModal({
 }: CreateSubprojectModalProps) {
   const [users, setUsers] = useState<UserOption[]>([]);
   const [name, setName] = useState("");
+  const [budget, setBudget] = useState("");
   const [responsibleIds, setResponsibleIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -59,6 +60,9 @@ export function CreateSubprojectModal({
       setError("Nome do tópico é obrigatório.");
       return;
     }
+    const trimmedBudget = budget.trim();
+    const estimativa =
+      trimmedBudget === "" ? null : Number.isNaN(Number(trimmedBudget)) ? null : Number(trimmedBudget);
     setSaving(true);
     try {
       const body = {
@@ -67,6 +71,7 @@ export function CreateSubprojectModal({
         // Mantém o tipo técnico SUBPROJETO para compatibilidade com o backend,
         // mas a interface exibe como "Tópico".
         type: "SUBPROJETO",
+        estimativaHoras: estimativa,
         responsibleIds: responsibleIds.length > 0 ? responsibleIds : undefined,
       };
       const res = await apiFetch("/api/tickets", {
@@ -115,6 +120,21 @@ export function CreateSubprojectModal({
               placeholder="Ex: Módulo de relatórios"
               required
             />
+          </div>
+          <div>
+            <label className={labelClass}>Orçado (horas)</label>
+            <input
+              type="number"
+              min="0"
+              step="0.5"
+              value={budget}
+              onChange={(e) => setBudget(e.target.value)}
+              className={inputClass}
+              placeholder="Ex: 40"
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              Opcional. Estimativa total de horas para este tópico.
+            </p>
           </div>
           <div>
             <label className={labelClass}>Projeto</label>

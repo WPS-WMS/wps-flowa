@@ -1,5 +1,6 @@
-// Sempre usa a URL do backend (deploy estático = Firebase Hosting; em dev o backend deve ter CORS).
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:4000";
+// Sempre usa a URL do backend. Se a env não estiver definida, cai no backend de produção.
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ?? "https://wps-flowa-production.up.railway.app";
 
 export function getToken(): string | null {
   if (typeof window === "undefined") return null;

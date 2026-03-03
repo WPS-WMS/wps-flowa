@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   Plus,
   Search,
@@ -25,25 +24,27 @@ export default function AdminProjetosPage() {
   const [showNewModal, setShowNewModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [arquivadosCount, setArquivadosCount] = useState(0);
-  const router = useRouter();
+
+  async function refreshProjects() {
+    setApiError(null);
+    try {
+      const [projetosRes, arquivadosRes] = await Promise.all([
+        apiFetch("/api/projects"),
+        apiFetch("/api/projects?arquivado=true"),
+      ]);
+      if (!projetosRes.ok) throw new Error("Erro ao carregar projetos");
+      const projetos = await projetosRes.json();
+      const arquivados = arquivadosRes.ok ? await arquivadosRes.json() : [];
+      setProjects(projetos);
+      setArquivadosCount(Array.isArray(arquivados) ? arquivados.length : 0);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Erro ao carregar projetos";
+      setApiError(message);
+    }
+  }
 
   useEffect(() => {
-    setApiError(null);
-    Promise.all([
-      apiFetch("/api/projects").then((r) => {
-        if (!r.ok) throw new Error("Erro ao carregar projetos");
-        return r.json();
-      }),
-      apiFetch("/api/projects?arquivado=true").then((r) => {
-        if (r.ok) return r.json();
-        return [];
-      }),
-    ])
-      .then(([projetos, arquivados]) => {
-        setProjects(projetos);
-        setArquivadosCount(arquivados.length);
-      })
-      .catch((err) => setApiError(err?.message || "Erro ao carregar projetos"));
+    refreshProjects();
   }, []);
 
   const filteredProjects = useMemo(() => {
@@ -207,7 +208,7 @@ export default function AdminProjetosPage() {
                     project={p}
                     onDelete={async (proj) => {
                       const res = await apiFetch(`/api/projects/${proj.id}`, { method: "DELETE" });
-                      if (res.ok) setProjects((prev) => prev.filter((x) => x.id !== proj.id));
+                      if (res.ok) await refreshProjects();
                     }}
                     onDeleteSubproject={async (ticket) => {
                       try {
@@ -215,11 +216,7 @@ export default function AdminProjetosPage() {
                           method: "DELETE",
                         });
                         if (res.ok || res.status === 204) {
-                          // Atualiza a lista de projetos para refletir a exclusão
-                          const updatedProjects = await apiFetch("/api/projects")
-                            .then((r) => (r.ok ? r.json() : []))
-                            .catch(() => projects);
-                          setProjects(updatedProjects);
+                          await refreshProjects();
                         } else {
                           // Tenta ler o erro apenas se houver conteúdo
                           const contentType = res.headers.get("content-type");
@@ -236,11 +233,7 @@ export default function AdminProjetosPage() {
                       }
                     }}
                     onSubprojectCreated={async () => {
-                      // Atualiza a lista de projetos após criar subprojeto
-                      const updatedProjects = await apiFetch("/api/projects")
-                        .then((r) => (r.ok ? r.json() : []))
-                        .catch(() => projects);
-                      setProjects(updatedProjects);
+                      await refreshProjects();
                     }}
                   />
                 ))
@@ -253,9 +246,7 @@ export default function AdminProjetosPage() {
             onClose={() => setShowNewModal(false)}
             onSaved={() => {
               setShowNewModal(false);
-              apiFetch("/api/projects")
-                .then((r) => (r.ok ? r.json() : []))
-                .then(setProjects);
+              refreshProjects();
             }}
           />
         )}

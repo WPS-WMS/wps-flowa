@@ -51,9 +51,7 @@ export function SubprojectCard({ ticket, projectId, projectName, onDelete, onCli
       onClick(ticket);
       return;
     }
-    
-    // Redirecionar para a página de kanban da subtarefa
-    // Tenta determinar o caminho base baseado no userRole ou usa /consultor como padrão
+    // Redirecionar para a página de kanban do tópico
     const basePath = userRole === "ADMIN" ? "/admin" : "/consultor";
     router.push(`${basePath}/projetos/${projectId}/subprojetos/${ticket.id}`);
   };
