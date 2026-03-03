@@ -110,8 +110,8 @@ projectsRouter.get("/:id", async (req, res) => {
   const projectId = req.params.id;
   const canSeeAll = user.role === "ADMIN" || user.role === "GESTOR_PROJETOS";
   const tenantFilter = { client: { tenantId: user.tenantId } };
-  
-  const project = await prisma.project.findFirst({
+
+  const baseProject = await prisma.project.findFirst({
     where: {
       id: projectId,
       ...tenantFilter,
@@ -141,14 +141,67 @@ projectsRouter.get("/:id", async (req, res) => {
       client: true,
       createdBy: { select: { id: true, name: true, email: true } },
       responsibles: { include: { user: { select: { id: true, name: true } } } },
+      _count: { select: { tickets: true, timeEntries: true } },
+      tickets: {
+        select: {
+          id: true,
+          code: true,
+          title: true,
+          description: true,
+          type: true,
+          criticidade: true,
+          status: true,
+          parentTicketId: true,
+          dataInicio: true,
+          dataFimPrevista: true,
+          estimativaHoras: true,
+          progresso: true,
+          createdAt: true,
+          assignedTo: { select: { id: true, name: true } },
+          createdBy: { select: { id: true, name: true } },
+          responsibles: { include: { user: { select: { id: true, name: true } } } },
+          _count: { select: { timeEntries: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      },
     },
   });
-  
-  if (!project) {
+
+  if (!baseProject) {
     res.status(404).json({ error: "Projeto não encontrado" });
     return;
   }
-  
+
+  // Adiciona total de horas apontadas por ticket, com o mesmo formato da lista
+  let ticketsToProcess = baseProject.tickets;
+  if (user.role === "CONSULTOR") {
+    const uid = user.id;
+    ticketsToProcess = baseProject.tickets.filter(
+      (t) =>
+        (t.assignedTo && t.assignedTo.id === uid) ||
+        (t.createdBy && t.createdBy.id === uid) ||
+        (Array.isArray(t.responsibles) && t.responsibles.some((r) => r.user.id === uid)),
+    );
+  }
+
+  const ticketsWithHours = await Promise.all(
+    ticketsToProcess.map(async (ticket) => {
+      const hoursAgg = await prisma.timeEntry.aggregate({
+        where: { ticketId: ticket.id },
+        _sum: { totalHoras: true },
+      });
+      return {
+        ...ticket,
+        totalHorasApontadas: hoursAgg._sum.totalHoras ?? 0,
+      };
+    }),
+  );
+
+  const project = {
+    ...baseProject,
+    tickets: ticketsWithHours,
+  };
+
   res.json(project);
 });
 

@@ -30,6 +30,9 @@ export type ProjectForCard = {
   totalHorasPlanejadas?: number | null;
   statusInicial?: string | null;
   tipoProjeto?: string | null;
+  // Configurações AMS (usadas em detalhes/relatórios)
+  horasMensaisAMS?: number | null;
+  bancoHorasInicial?: number | null;
   arquivado?: boolean;
   _count: { tickets: number; timeEntries: number };
   tickets: PackageTicket[];
@@ -75,10 +78,6 @@ function getTipoProjetoLabel(tipo: string | null | undefined): string {
   return map[tipo] || tipo;
 }
 
-// Status do projeto baseado nos tópicos:
-// - Planejado: projeto criado, sem nenhum tópico
-// - Em andamento: tem pelo menos um tópico e nem todos concluídos
-// - Finalizado: todos os tópicos concluídos
 function getProjectStatus(project: ProjectForCard): { label: string; color: string } {
   const topicos = project.tickets?.filter((t) => t.type === "SUBPROJETO") ?? [];
 
@@ -92,6 +91,22 @@ function getProjectStatus(project: ProjectForCard): { label: string; color: stri
 
   if (todosConcluidos) {
     return { label: "Finalizado", color: "bg-emerald-500" };
+  }
+
+  // Atrasado: dataFimPrevista passada (comparação só por data) e ainda existem tarefas não encerradas
+  if (project.dataFimPrevista) {
+    const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD de hoje
+    const fimStr = String(project.dataFimPrevista).slice(0, 10); // YYYY-MM-DD da data prevista
+
+    const tarefas = (project.tickets ?? []).filter(
+      (t) => t.type !== "SUBPROJETO" && t.type !== "SUBTAREFA",
+    );
+    const todasTarefasConcluidas =
+      tarefas.length > 0 && tarefas.every((t) => t.status === "ENCERRADO");
+
+    if (fimStr < todayStr && !todasTarefasConcluidas) {
+      return { label: "Atrasado", color: "bg-rose-500" };
+    }
   }
 
   return { label: "Em andamento", color: "bg-blue-500" };
@@ -503,7 +518,7 @@ export function ProjectCard({ project, onNavigate, onDelete, onDeleteSubproject,
                             <div className="bg-blue-50 rounded-lg p-4">
                               <div className="flex items-center justify-between mb-3">
                                 <h5 className="text-sm font-semibold text-slate-800">
-                                  Tarefas - {selectedPackage.code}: {selectedPackage.title}
+                                  Tarefas - {selectedPackage.title}
                                 </h5>
                                 <button
                                   type="button"

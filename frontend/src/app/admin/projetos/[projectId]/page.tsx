@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { type ProjectForCard } from "@/components/ProjectCard";
@@ -47,24 +47,123 @@ export default function ProjetoDetalheAdminPage({ params }: PageProps) {
   const [project, setProject] = useState<ProjectForCard | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [amsLoading, setAmsLoading] = useState(false);
+  const [amsError, setAmsError] = useState<string | null>(null);
+  const [amsEntries, setAmsEntries] = useState<
+    Array<{ date: string; totalHoras: number }>
+  >([]);
   const fromTab = searchParams.get("from") ?? "op2";
 
   useEffect(() => {
     setLoading(true);
     setError(null);
-    apiFetch("/api/projects")
-      .then((r) => {
-        if (!r.ok) throw new Error("Erro ao carregar projetos");
+    apiFetch(`/api/projects/${projectId}`)
+      .then(async (r) => {
+        if (!r.ok) {
+          const data = await r.json().catch(() => ({}));
+          throw new Error(data?.error ?? "Erro ao carregar projeto");
+        }
         return r.json();
       })
-      .then((list: ProjectForCard[]) => {
-        const found = list.find((p) => p.id === projectId) ?? null;
-        if (!found) setError("Projeto não encontrado");
-        setProject(found);
+      .then((p: ProjectForCard) => {
+        setProject(p);
       })
       .catch((err) => setError(err?.message ?? "Erro ao carregar projeto"))
       .finally(() => setLoading(false));
   }, [projectId]);
+
+  useEffect(() => {
+    if (!project || project.tipoProjeto !== "AMS") return;
+    setAmsLoading(true);
+    setAmsError(null);
+    apiFetch(`/api/time-entries?projectId=${project.id}&view=project`)
+      .then(async (r) => {
+        if (!r.ok) {
+          const data = await r.json().catch(() => ({}));
+          throw new Error(data?.error ?? "Erro ao carregar horas AMS");
+        }
+        return r.json();
+      })
+      .then((entries: Array<{ date: string; totalHoras: number }>) => {
+        setAmsEntries(
+          entries.map((e) => ({
+            date: e.date,
+            totalHoras: e.totalHoras,
+          })),
+        );
+      })
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : "Erro ao carregar horas AMS";
+        setAmsError(msg);
+      })
+      .finally(() => setAmsLoading(false));
+  }, [project]);
+
+  const amsResumo = useMemo(() => {
+    if (!project || project.tipoProjeto !== "AMS" || amsEntries.length === 0) return [];
+
+    const horasMensais = project.horasMensaisAMS ?? 0;
+    let bancoAnterior = project.bancoHorasInicial ?? 0;
+
+    // Agrupa por ano-mês
+    const porMes = new Map<string, number>();
+    for (const entry of amsEntries) {
+      const d = new Date(entry.date);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      porMes.set(key, (porMes.get(key) ?? 0) + (entry.totalHoras ?? 0));
+    }
+
+    const keysOrdenadas = Array.from(porMes.keys()).sort();
+    const resumo: Array<{
+      key: string;
+      label: string;
+      contratadas: number;
+      bancoInicial: number;
+      consumidas: number;
+      saldoBanco: number;
+      excedentes: number;
+    }> = [];
+
+    for (const key of keysOrdenadas) {
+      const [anoStr, mesStr] = key.split("-");
+      const ano = Number(anoStr);
+      const mes = Number(mesStr);
+      const consumidas = porMes.get(key) ?? 0;
+      const contratadas = horasMensais;
+      const bancoInicial = bancoAnterior;
+      const totalDisponivel = contratadas + bancoInicial;
+
+      let excedentes = 0;
+      let saldoBanco = 0;
+      if (consumidas <= totalDisponivel) {
+        excedentes = 0;
+        saldoBanco = totalDisponivel - consumidas;
+      } else {
+        excedentes = consumidas - totalDisponivel;
+        saldoBanco = 0;
+      }
+
+      const dataRef = new Date(ano, mes - 1, 1);
+      const label = dataRef.toLocaleDateString("pt-BR", {
+        month: "long",
+        year: "numeric",
+      });
+
+      resumo.push({
+        key,
+        label,
+        contratadas,
+        bancoInicial,
+        consumidas,
+        saldoBanco,
+        excedentes,
+      });
+
+      bancoAnterior = saldoBanco;
+    }
+
+    return resumo;
+  }, [project, amsEntries]);
 
   if (loading) {
     return (
@@ -222,6 +321,88 @@ export default function ProjetoDetalheAdminPage({ params }: PageProps) {
             </div>
           </div>
         </section>
+
+        {project.tipoProjeto === "AMS" && (
+          <section className="rounded-xl border border-slate-200 bg-white p-4 md:p-5 space-y-4 w-full">
+            <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">
+              Resumo AMS – Horas Mensais
+            </h2>
+            <p className="text-xs text-slate-500">
+              Controle de horas contratadas, banco de horas e excedentes por mês para este
+              projeto AMS.
+            </p>
+            {amsError && (
+              <p className="text-xs text-red-600">
+                {amsError}
+              </p>
+            )}
+            {amsLoading && !amsError && (
+              <p className="text-xs text-slate-500">Carregando resumo de horas...</p>
+            )}
+            {!amsLoading && !amsError && amsResumo.length === 0 && (
+              <p className="text-xs text-slate-500">
+                Ainda não há apontamentos de horas para este projeto.
+              </p>
+            )}
+            {!amsLoading && !amsError && amsResumo.length > 0 && (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-xs border border-slate-200 rounded-lg overflow-hidden">
+                  <thead className="bg-slate-50">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-semibold text-slate-600">
+                        Mês / Ano
+                      </th>
+                      <th className="px-3 py-2 text-right font-semibold text-slate-600">
+                        Horas contratadas
+                      </th>
+                      <th className="px-3 py-2 text-right font-semibold text-slate-600">
+                        Banco inicial
+                      </th>
+                      <th className="px-3 py-2 text-right font-semibold text-slate-600">
+                        Horas consumidas
+                      </th>
+                      <th className="px-3 py-2 text-right font-semibold text-slate-600">
+                        Saldo banco
+                      </th>
+                      <th className="px-3 py-2 text-right font-semibold text-slate-600">
+                        Excedentes
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {amsResumo.map((mes) => (
+                      <tr
+                        key={mes.key}
+                        className={
+                          mes.excedentes > 0
+                            ? "bg-rose-50/60"
+                            : "hover:bg-slate-50/60"
+                        }
+                      >
+                        <td className="px-3 py-2 text-slate-800">{mes.label}</td>
+                        <td className="px-3 py-2 text-right text-slate-700">
+                          {mes.contratadas.toFixed(1)}h
+                        </td>
+                        <td className="px-3 py-2 text-right text-slate-700">
+                          {mes.bancoInicial.toFixed(1)}h
+                        </td>
+                        <td className="px-3 py-2 text-right text-slate-700">
+                          {mes.consumidas.toFixed(1)}h
+                        </td>
+                        <td className="px-3 py-2 text-right text-slate-700">
+                          {mes.saldoBanco.toFixed(1)}h
+                        </td>
+                        <td className="px-3 py-2 text-right font-semibold text-slate-800">
+                          {mes.excedentes.toFixed(1)}h
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        )}
 
       </main>
     </div>

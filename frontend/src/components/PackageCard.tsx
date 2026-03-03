@@ -71,7 +71,6 @@ export function PackageCard({ ticket, onClick, onDelete }: PackageCardProps) {
         <div className="flex items-start justify-between gap-2 mb-2 pr-8">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-sm font-mono font-semibold text-slate-600">#{ticket.code}</span>
               <span
                 className={`h-2 w-2 rounded-full shrink-0 ${getStatusColor(ticket.status)}`}
                 aria-hidden

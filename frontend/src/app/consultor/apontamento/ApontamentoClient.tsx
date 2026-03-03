@@ -397,11 +397,22 @@ function ApontamentoModal({
 }) {
   const isEdit = !!entry;
   const [clients, setClients] = useState<Array<{ id: string; name: string }>>([]);
-  const [projects, setProjects] = useState<Array<{ id: string; name: string; clientId?: string; client?: { id: string } }>>([]);
-  const [tickets, setTickets] = useState<Array<{ id: string; code: string; title: string; projectId: string }>>([]);
+  const [projects, setProjects] = useState<
+    Array<{ id: string; name: string; clientId?: string; client?: { id: string } }>
+  >([]);
+  type TicketForSelect = {
+    id: string;
+    code: string;
+    title: string;
+    projectId: string;
+    type?: string;
+    parentTicketId?: string | null;
+  };
+  const [tickets, setTickets] = useState<TicketForSelect[]>([]);
   const [activities, setActivities] = useState<Array<{ id: string; name: string }>>([]);
   const [clientId, setClientId] = useState(entry?.project?.clientId ?? entry?.project?.client?.id ?? "");
   const [projectId, setProjectId] = useState(entry?.project?.id ?? "");
+  const [topicId, setTopicId] = useState<string>("");
   const [ticketId, setTicketId] = useState(entry?.ticket?.id ?? "");
   const [activityId, setActivityId] = useState(entry?.activity?.id ?? "");
   const [horaInicio, setHoraInicio] = useState(entry?.horaInicio ?? "09:00");
@@ -447,15 +458,29 @@ function ApontamentoModal({
   useEffect(() => {
     if (!projectId) {
       setTickets([]);
+      setTopicId("");
       setTicketId("");
       return;
     }
     const isEditSameProject = entry && projectId === entry.project?.id;
     apiFetch(`/api/tickets?projectId=${projectId}`)
       .then((r) => r.json())
-      .then(setTickets);
-    if (!isEditSameProject) setTicketId("");
+      .then((list) => {
+        setTickets(Array.isArray(list) ? list : []);
+      });
+    if (!isEditSameProject) {
+      setTopicId("");
+      setTicketId("");
+    }
   }, [projectId, entry?.project?.id]);
+
+  const topics = tickets.filter((t) => t.type === "SUBPROJETO");
+  const taskOptions = tickets.filter(
+    (t) =>
+      t.type !== "SUBPROJETO" &&
+      t.type !== "SUBTAREFA" &&
+      (!topicId || t.parentTicketId === topicId),
+  );
 
   function formatHorasInput(value: string): string {
     const digits = value.replace(/\D/g, "");
@@ -633,11 +658,49 @@ function ApontamentoModal({
                   setProjectId(e.target.value);
                   setFieldErrors((prev) => ({ ...prev, projectId: false }));
                 }}
-                className={`${inputClass} cursor-pointer ${fieldErrors.projectId ? "border-red-500 focus:ring-red-500 focus:border-red-500" : ""}`}
+                className={`${inputClass} cursor-pointer ${
+                  fieldErrors.projectId ? "border-red-500 focus:ring-red-500 focus:border-red-500" : ""
+                }`}
               >
                 <option value="">Selecione o projeto</option>
                 {projects.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={labelClass}>Tópico</label>
+              <select
+                value={topicId}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setTopicId(next);
+                  // Se a tarefa atual não pertence mais ao tópico selecionado, limpa
+                  if (next && ticketId) {
+                    const validTaskIds = new Set(
+                      tickets
+                        .filter(
+                          (t) =>
+                            t.type !== "SUBPROJETO" &&
+                            t.type !== "SUBTAREFA" &&
+                            t.parentTicketId === next,
+                        )
+                        .map((t) => t.id),
+                    );
+                    if (!validTaskIds.has(ticketId)) {
+                      setTicketId("");
+                    }
+                  }
+                }}
+                className={`${inputClass} cursor-pointer`}
+              >
+                <option value="">Todos os tópicos</option>
+                {topics.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.code}: {t.title}
+                  </option>
                 ))}
               </select>
             </div>
@@ -651,11 +714,15 @@ function ApontamentoModal({
                   setTicketId(e.target.value);
                   setFieldErrors((prev) => ({ ...prev, ticketId: false }));
                 }}
-                className={`${inputClass} cursor-pointer ${fieldErrors.ticketId ? "border-red-500 focus:ring-red-500 focus:border-red-500" : ""}`}
+                className={`${inputClass} cursor-pointer ${
+                  fieldErrors.ticketId ? "border-red-500 focus:ring-red-500 focus:border-red-500" : ""
+                }`}
               >
                 <option value="">Selecione a tarefa</option>
-                {tickets.map((t) => (
-                  <option key={t.id} value={t.id}>{t.code}: {t.title}</option>
+                {taskOptions.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.code}: {t.title}
+                  </option>
                 ))}
               </select>
             </div>

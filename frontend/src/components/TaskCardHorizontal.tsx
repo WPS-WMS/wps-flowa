@@ -22,9 +22,21 @@ const STATUS_TO_COLUMN: Record<string, string> = {
   ENCERRADO: "FINALIZADAS",
 };
 
-function getKanbanStatus(ticketStatus: string): { column: string; label: string; color: string } {
+function getKanbanStatus(
+  ticketStatus: string,
+  dataFimPrevista?: string | null,
+): { column: string; label: string; color: string } {
+  // Atrasado: dataFimPrevista passada (comparação só por data) e não encerrado
+  if (dataFimPrevista && ticketStatus !== "ENCERRADO") {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const fimStr = String(dataFimPrevista).slice(0, 10);
+    if (fimStr < todayStr) {
+      return { column: "EM_EXECUCAO", label: "Atrasado", color: "bg-rose-500" };
+    }
+  }
+
   const column = STATUS_TO_COLUMN[ticketStatus] || "BACKLOG";
-  
+
   switch (column) {
     case "BACKLOG":
       return { column: "BACKLOG", label: "Backlog", color: "bg-slate-500" };
@@ -39,7 +51,7 @@ function getKanbanStatus(ticketStatus: string): { column: string; label: string;
 
 export function TaskCardHorizontal({ ticket, onClick, onDelete }: TaskCardHorizontalProps) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const kanbanStatus = getKanbanStatus(ticket.status);
+  const kanbanStatus = getKanbanStatus(ticket.status, ticket.dataFimPrevista);
 
   return (
     <div className="w-full">

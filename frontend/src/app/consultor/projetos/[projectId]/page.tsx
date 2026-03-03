@@ -54,15 +54,16 @@ export default function ProjetoDetalheConsultorPage({ params }: PageProps) {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    apiFetch("/api/projects")
-      .then((r) => {
-        if (!r.ok) throw new Error("Erro ao carregar projetos");
+    apiFetch(`/api/projects/${projectId}`)
+      .then(async (r) => {
+        if (!r.ok) {
+          const data = await r.json().catch(() => ({}));
+          throw new Error(data?.error ?? "Erro ao carregar projeto");
+        }
         return r.json();
       })
-      .then((list: ProjectForCard[]) => {
-        const found = list.find((p) => p.id === projectId) ?? null;
-        if (!found) setError("Projeto não encontrado");
-        setProject(found);
+      .then((p: ProjectForCard) => {
+        setProject(p);
       })
       .catch((err) => setError(err?.message ?? "Erro ao carregar projeto"))
       .finally(() => setLoading(false));

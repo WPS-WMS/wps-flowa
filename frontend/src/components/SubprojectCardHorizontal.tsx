@@ -14,8 +14,11 @@ type SubprojectCardHorizontalProps = {
   isSelected?: boolean;
 };
 
-// Calcula o status do tópico baseado nas tarefas filhas
-function getTopicStatus(topic: PackageTicket, allTickets: PackageTicket[]): "ABERTO" | "EM_ANDAMENTO" | "CONCLUIDO" {
+// Calcula o status do tópico baseado nas tarefas filhas e na data prevista
+function getTopicStatus(
+  topic: PackageTicket,
+  allTickets: PackageTicket[],
+): "ABERTO" | "EM_ANDAMENTO" | "CONCLUIDO" | "ATRASADO" {
   const tarefasDoTopico = allTickets.filter(
     (t) => t.parentTicketId === topic.id && t.type !== "SUBPROJETO" && t.type !== "SUBTAREFA",
   );
@@ -25,6 +28,15 @@ function getTopicStatus(topic: PackageTicket, allTickets: PackageTicket[]): "ABE
   }
 
   const finalizadas = tarefasDoTopico.filter((t) => t.status === "ENCERRADO").length;
+
+  // Verifica atraso: dataFimPrevista passada (comparação só por data) e nem todas tarefas concluídas
+  if (topic.dataFimPrevista) {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const fimStr = String(topic.dataFimPrevista).slice(0, 10);
+    if (fimStr < todayStr && finalizadas < tarefasDoTopico.length) {
+      return "ATRASADO";
+    }
+  }
   // Se todas as tarefas estão finalizadas
   if (finalizadas === tarefasDoTopico.length) {
     return "CONCLUIDO";
@@ -40,12 +52,16 @@ function getTopicStatus(topic: PackageTicket, allTickets: PackageTicket[]): "ABE
   return "EM_ANDAMENTO";
 }
 
-function getStatusColor(status: "ABERTO" | "EM_ANDAMENTO" | "CONCLUIDO"): string {
+function getStatusColor(
+  status: "ABERTO" | "EM_ANDAMENTO" | "CONCLUIDO" | "ATRASADO",
+): string {
   switch (status) {
     case "CONCLUIDO":
       return "bg-emerald-500";
     case "EM_ANDAMENTO":
       return "bg-blue-500";
+    case "ATRASADO":
+      return "bg-rose-500";
     case "ABERTO":
       return "bg-slate-400";
     default:
@@ -53,12 +69,16 @@ function getStatusColor(status: "ABERTO" | "EM_ANDAMENTO" | "CONCLUIDO"): string
   }
 }
 
-function getStatusLabel(status: "ABERTO" | "EM_ANDAMENTO" | "CONCLUIDO"): string {
+function getStatusLabel(
+  status: "ABERTO" | "EM_ANDAMENTO" | "CONCLUIDO" | "ATRASADO",
+): string {
   switch (status) {
     case "CONCLUIDO":
       return "Concluído";
     case "EM_ANDAMENTO":
       return "Em andamento";
+    case "ATRASADO":
+      return "Atrasado";
     case "ABERTO":
       return "Aberto";
     default:

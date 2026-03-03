@@ -51,7 +51,6 @@ type ProjectForEdit = {
   valorContrato?: number | null;
   escopoInicial?: string | null;
   limiteHorasEscopo?: number | null;
-  changeRequestsAtivo?: boolean | null;
   // AMS
   horasMensaisAMS?: number | null;
   bancoHorasInicial?: number | null;
@@ -66,15 +65,12 @@ type ProjectForEdit = {
 
 function formatDateForInput(value?: string | null): string {
   if (!value) return "";
-  try {
-    const d = new Date(value);
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    return `${yyyy}-${mm}-${dd}`;
-  } catch {
-    return "";
-  }
+  // Tratar como data "pura" (YYYY-MM-DD), ignorando fuso horário/local
+  // Ex.: "2026-03-02T00:00:00.000Z" -> "2026-03-02"
+  const iso = String(value);
+  const datePart = iso.slice(0, 10);
+  // Validação simples de formato
+  return /^\d{4}-\d{2}-\d{2}$/.test(datePart) ? datePart : "";
 }
 
 export function NewProjectModal({ onClose, onSaved, mode = "create", projectId }: NewProjectModalProps) {
@@ -92,12 +88,12 @@ export function NewProjectModal({ onClose, onSaved, mode = "create", projectId }
   const [totalHorasPlanejadas, setTotalHorasPlanejadas] = useState("");
   const [obrigatoriosHoras, setObrigatoriosHoras] = useState(false);
   const [obrigatoriosDataEntrega, setObrigatoriosDataEntrega] = useState(false);
-  const [tipoProjeto, setTipoProjeto] = useState<"INTERNO" | "FIXED_PRICE" | "AMS" | "TIME_MATERIAL">("INTERNO");
+  const [tipoProjeto, setTipoProjeto] =
+    useState<"INTERNO" | "FIXED_PRICE" | "AMS" | "TIME_MATERIAL">("INTERNO");
   // Fixed Price
   const [valorContrato, setValorContrato] = useState("");
   const [escopoInicial, setEscopoInicial] = useState("");
   const [limiteHorasEscopo, setLimiteHorasEscopo] = useState("");
-  const [changeRequestsAtivo, setChangeRequestsAtivo] = useState(false);
   // AMS
   const [horasMensaisAMS, setHorasMensaisAMS] = useState("");
   const [bancoHorasInicial, setBancoHorasInicial] = useState("");
@@ -155,8 +151,9 @@ export function NewProjectModal({ onClose, onSaved, mode = "create", projectId }
         // Fixed Price
         setValorContrato(p.valorContrato != null ? String(p.valorContrato) : "");
         setEscopoInicial(p.escopoInicial ?? "");
-        setLimiteHorasEscopo(p.limiteHorasEscopo != null ? String(p.limiteHorasEscopo) : "");
-        setChangeRequestsAtivo(!!p.changeRequestsAtivo);
+        setLimiteHorasEscopo(
+          p.limiteHorasEscopo != null ? String(p.limiteHorasEscopo) : "",
+        );
 
         // AMS
         setHorasMensaisAMS(p.horasMensaisAMS != null ? String(p.horasMensaisAMS) : "");
@@ -338,20 +335,29 @@ export function NewProjectModal({ onClose, onSaved, mode = "create", projectId }
         name: name.trim(),
         clientId,
         responsibleIds,
-        dataInicio: new Date(dataInicio).toISOString(),
+        // Enviar datas como YYYY-MM-DD; o backend converte para Date
+        dataInicio,
         statusInicial,
         description: description.trim() || undefined,
-        dataFimPrevista: dataFimPrevista ? new Date(dataFimPrevista).toISOString() : undefined,
+        dataFimPrevista: dataFimPrevista || undefined,
         prioridade: prioridade || undefined,
         totalHorasPlanejadas: totalHorasPlanejadas ? Number(totalHorasPlanejadas) : undefined,
         obrigatoriosHoras,
         obrigatoriosDataEntrega,
         tipoProjeto,
         // Fixed Price
-        valorContrato: tipoProjeto === "FIXED_PRICE" && valorContrato ? Number(valorContrato) : undefined,
-        escopoInicial: tipoProjeto === "FIXED_PRICE" && escopoInicial ? escopoInicial.trim() : undefined,
-        limiteHorasEscopo: tipoProjeto === "FIXED_PRICE" && limiteHorasEscopo ? Number(limiteHorasEscopo) : undefined,
-        changeRequestsAtivo: tipoProjeto === "FIXED_PRICE" ? changeRequestsAtivo : undefined,
+        valorContrato:
+          tipoProjeto === "FIXED_PRICE" && valorContrato
+            ? Number(valorContrato)
+            : undefined,
+        escopoInicial:
+          tipoProjeto === "FIXED_PRICE" && escopoInicial
+            ? escopoInicial.trim()
+            : undefined,
+        limiteHorasEscopo:
+          tipoProjeto === "FIXED_PRICE" && limiteHorasEscopo
+            ? Number(limiteHorasEscopo)
+            : undefined,
         // AMS
         horasMensaisAMS: tipoProjeto === "AMS" && horasMensaisAMS ? Number(horasMensaisAMS) : undefined,
         bancoHorasInicial: tipoProjeto === "AMS" && bancoHorasInicial ? Number(bancoHorasInicial) : undefined,
@@ -656,7 +662,6 @@ export function NewProjectModal({ onClose, onSaved, mode = "create", projectId }
                     setValorContrato("");
                     setEscopoInicial("");
                     setLimiteHorasEscopo("");
-                    setChangeRequestsAtivo(false);
                     setHorasMensaisAMS("");
                     setBancoHorasInicial("");
                     setSlaAMS("");
@@ -707,15 +712,6 @@ export function NewProjectModal({ onClose, onSaved, mode = "create", projectId }
                     placeholder="Descreva o escopo detalhado do projeto..."
                   />
                 </div>
-                <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg border-2 border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 transition-all">
-                  <input
-                    type="checkbox"
-                    checked={changeRequestsAtivo}
-                    onChange={(e) => setChangeRequestsAtivo(e.target.checked)}
-                    className="w-5 h-5 rounded border-2 border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 cursor-pointer transition-all"
-                  />
-                  <span className="text-sm font-medium text-slate-700">Ativar controle de Change Requests</span>
-                </label>
               </div>
             )}
 
@@ -861,18 +857,18 @@ export function NewProjectModal({ onClose, onSaved, mode = "create", projectId }
             </div>
           </div>
 
-          {/* Anexo de Proposta Comercial e Escopo */}
+          {/* Anexo de Documento de EF */}
           <div className="space-y-4 pt-6 border-t-2 border-slate-200">
             <div className="flex items-center gap-2 mb-1">
               <div className="h-1 w-1 rounded-full bg-blue-600"></div>
               <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
-                Anexo de Proposta Comercial e Escopo
+                Anexo de Documento de EF
               </h3>
             </div>
             <div>
               <label className={labelClass}>
                 <FileText className="inline h-3.5 w-3.5 mr-1.5 text-slate-500" />
-                Arquivo (PDF ou DOCX)
+                Documento de EF (PDF ou DOCX)
               </label>
               <div className="space-y-3">
                 <input

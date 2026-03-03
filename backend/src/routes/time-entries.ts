@@ -43,26 +43,40 @@ timeEntriesRouter.get("/", async (req, res) => {
         ticketId: String(ticketId),
       };
       console.log("Buscando apontamentos para ticketId:", ticketId);
+    } else if (
+      // Visão agregada por projeto (todas as pessoas) para ADMIN / GESTOR
+      projectId &&
+      (user.role === "ADMIN" || user.role === "GESTOR_PROJETOS") &&
+      view === "project"
+    ) {
+      where = { ...tenantFilter, projectId: String(projectId) };
+      console.log("Buscando apontamentos do projeto (visão agregada):", projectId);
     } else if (user.role === "CLIENTE" && view === "client") {
-    const clientIds = (
-      await prisma.clientUser.findMany({
-        where: { userId: user.id },
-        select: { clientId: true },
-      })
-    ).map((c) => c.clientId);
-    const projects = await prisma.project.findMany({
-      where: { clientId: { in: clientIds } },
-      select: { id: true },
-    });
-    where = { ...tenantFilter, projectId: { in: projects.map((p) => p.id) } };
-  } else {
-    const targetUserId = (user.role === "ADMIN" || user.role === "GESTOR_PROJETOS") && userId ? String(userId) : user.id;
-    where = { ...tenantFilter, userId: targetUserId };
-  }
-  if (start && end) {
-    where.date = { gte: new Date(String(start)), lte: new Date(String(end)) };
-  }
-  if (projectId && !ticketId) where.projectId = projectId;
+      const clientIds = (
+        await prisma.clientUser.findMany({
+          where: { userId: user.id },
+          select: { clientId: true },
+        })
+      ).map((c) => c.clientId);
+      const projects = await prisma.project.findMany({
+        where: { clientId: { in: clientIds } },
+        select: { id: true },
+      });
+      where = { ...tenantFilter, projectId: { in: projects.map((p) => p.id) } };
+    } else {
+      const targetUserId =
+        (user.role === "ADMIN" || user.role === "GESTOR_PROJETOS") && userId
+          ? String(userId)
+          : user.id;
+      where = { ...tenantFilter, userId: targetUserId };
+    }
+    if (start && end) {
+      where.date = { gte: new Date(String(start)), lte: new Date(String(end)) };
+    }
+    if (projectId && !ticketId && !(view === "project" && (user.role === "ADMIN" || user.role === "GESTOR_PROJETOS"))) {
+      // Filtro adicional por projeto quando não estamos na visão agregada de projeto
+      where.projectId = projectId;
+    }
 
     const entries = await prisma.timeEntry.findMany({
       where,
