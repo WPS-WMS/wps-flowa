@@ -22,21 +22,23 @@ import { reportsRouter } from "./routes/reports.js";
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-const envOrigins =
-  process.env.CORS_ORIGIN?.split(",").map((o) => o.trim()).filter(Boolean) || [];
-const defaultOrigins = [
+// Normalizar origens: remover aspas que o Railway (ou .env) pode incluir no valor
+function parseOrigins(envValue: string | undefined): string[] {
+  if (!envValue || typeof envValue !== "string") return [];
+  return envValue
+    .split(",")
+    .map((o) => o.trim().replace(/^["']|["']$/g, ""))
+    .filter(Boolean);
+}
+
+const envOrigins = parseOrigins(process.env.CORS_ORIGIN);
+const productionOrigins = [
   "https://wps-flowa.web.app",
   "https://wps-flowa.firebaseapp.com",
   "http://localhost:3000",
 ];
-const allowedOrigins =
-  envOrigins.length > 0 ? envOrigins : defaultOrigins;
-
-if (envOrigins.length === 0) {
-  console.warn(
-    "[CORS] CORS_ORIGIN não definido; usando origens padrão (wps-flowa + localhost). Para restringir, defina CORS_ORIGIN no Railway."
-  );
-}
+// Sempre incluir as origens do Firebase + localhost; unir com as do env (evita erro por aspas/typo no Railway)
+const allowedOrigins = [...new Set([...productionOrigins, ...envOrigins])];
 
 app.use(
   cors({
