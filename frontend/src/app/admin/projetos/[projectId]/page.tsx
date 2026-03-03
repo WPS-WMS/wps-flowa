@@ -41,9 +41,10 @@ function getIniciais(name: string): string {
 }
 
 export default function ProjetoDetalheAdminPage({ params }: PageProps) {
-  const { projectId } = use(params);
-  const router = useRouter();
+  const routeParams = use(params);
   const searchParams = useSearchParams();
+  const projectId = searchParams.get("projectId") ?? routeParams.projectId;
+  const router = useRouter();
   const [project, setProject] = useState<ProjectForCard | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);

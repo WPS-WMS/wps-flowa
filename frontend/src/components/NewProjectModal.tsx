@@ -14,10 +14,6 @@ type NewProjectModalProps = {
   projectId?: string;
 };
 
-const STATUS_OPCOES = [
-  { value: "PLANEJADO", label: "Planejado" },
-  { value: "EM_ANDAMENTO", label: "Em andamento" },
-];
 const PRIORIDADE_OPCOES = [
   { value: "BAIXA", label: "Baixa" },
   { value: "MEDIA", label: "Média" },
@@ -81,7 +77,6 @@ export function NewProjectModal({ onClose, onSaved, mode = "create", projectId }
   const [clientId, setClientId] = useState("");
   const [responsibleIds, setResponsibleIds] = useState<string[]>([]);
   const [dataInicio, setDataInicio] = useState("");
-  const [statusInicial, setStatusInicial] = useState("PLANEJADO");
   const [description, setDescription] = useState("");
   const [dataFimPrevista, setDataFimPrevista] = useState("");
   const [prioridade, setPrioridade] = useState("");
@@ -139,7 +134,6 @@ export function NewProjectModal({ onClose, onSaved, mode = "create", projectId }
         setClientId(p.clientId ?? "");
         setResponsibleIds((p.responsibles ?? []).map((x) => x.user.id));
         setDataInicio(formatDateForInput(p.dataInicio));
-        setStatusInicial(p.statusInicial ?? "PLANEJADO");
         setDescription(p.description ?? "");
         setDataFimPrevista(formatDateForInput(p.dataFimPrevista));
         setPrioridade(p.prioridade ?? "");
@@ -337,7 +331,6 @@ export function NewProjectModal({ onClose, onSaved, mode = "create", projectId }
         responsibleIds,
         // Enviar datas como YYYY-MM-DD; o backend converte para Date
         dataInicio,
-        statusInicial,
         description: description.trim() || undefined,
         dataFimPrevista: dataFimPrevista || undefined,
         prioridade: prioridade || undefined,
@@ -612,29 +605,6 @@ export function NewProjectModal({ onClose, onSaved, mode = "create", projectId }
                   onChange={(e) => setDataFimPrevista(e.target.value)}
                   className={getInputClass(false)}
                 />
-              </div>
-              <div>
-                <label className={labelClass}>
-                  Status inicial <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <select
-                    value={statusInicial}
-                    onChange={(e) => setStatusInicial(e.target.value)}
-                    className={getInputClass(false) + " appearance-none pr-10 cursor-pointer"}
-                  >
-                    {STATUS_OPCOES.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </select>
-                  <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-400">
-                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </span>
-                </div>
               </div>
             </div>
           </div>

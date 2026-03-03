@@ -239,7 +239,8 @@ export function ProjectCard({ project, onNavigate, onDelete, onDeleteSubproject,
     if (typeof window !== "undefined") {
       const isAdmin = window.location.pathname.includes("/admin/");
       const basePath = isAdmin ? "/admin/projetos" : "/consultor/projetos";
-      router.push(`${basePath}/${project.id}?from=op1`);
+      // Em produção estático, a rota física é sempre "_", e o ID real vai na query.
+      router.push(`${basePath}/_?from=op1&projectId=${project.id}`);
     }
   };
 

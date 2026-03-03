@@ -216,7 +216,7 @@ projectsRouter.post("/", async (req, res) => {
     clientId,
     responsibleIds,
     dataInicio,
-    statusInicial,
+    // statusInicial é sempre "PLANEJADO" na criação (default do modelo)
     description,
     dataFimPrevista,
     prioridade,
@@ -240,9 +240,9 @@ projectsRouter.post("/", async (req, res) => {
     anexoTamanho,
   } = req.body;
 
-  if (!name || !clientId || !dataInicio || !statusInicial) {
+  if (!name || !clientId || !dataInicio) {
     res.status(400).json({
-      error: "Nome do projeto, cliente, data de início e status inicial são obrigatórios",
+      error: "Nome do projeto, cliente e data de início são obrigatórios",
     });
     return;
   }
@@ -286,7 +286,7 @@ projectsRouter.post("/", async (req, res) => {
       prioridade: prioridade || null,
       totalHorasPlanejadas:
         totalHorasPlanejadas != null ? Number(totalHorasPlanejadas) : null,
-      statusInicial: String(statusInicial),
+      // statusInicial: usa default do modelo ("PLANEJADO")
       obrigatoriosHoras: obrigatoriosHoras === true,
       obrigatoriosDataEntrega: obrigatoriosDataEntrega === true,
       tipoProjeto: tipoProjeto && ["INTERNO", "FIXED_PRICE", "AMS", "TIME_MATERIAL"].includes(tipoProjeto) ? tipoProjeto : "INTERNO",
@@ -365,7 +365,7 @@ projectsRouter.patch("/:id", async (req, res) => {
     clientId,
     responsibleIds,
     dataInicio,
-    statusInicial,
+    // statusInicial (não editamos mais por aqui; mantido ou alterado por regras internas)
     description,
     dataFimPrevista,
     prioridade,
@@ -389,9 +389,9 @@ projectsRouter.patch("/:id", async (req, res) => {
     anexoTamanho,
   } = req.body;
 
-  if (!name || !clientId || !dataInicio || !statusInicial) {
+  if (!name || !clientId || !dataInicio) {
     res.status(400).json({
-      error: "Nome do projeto, cliente, data de início e status inicial são obrigatórios",
+      error: "Nome do projeto, cliente e data de início são obrigatórios",
     });
     return;
   }
@@ -481,7 +481,7 @@ projectsRouter.patch("/:id", async (req, res) => {
         dataFimPrevista: dataFimPrevistaDate,
         prioridade: prioridade || null,
         totalHorasPlanejadas: totalHorasPlanejadas != null ? Number(totalHorasPlanejadas) : null,
-        statusInicial: String(statusInicial),
+        // statusInicial não é mais editado manualmente via form; mantemos o valor atual
         obrigatoriosHoras: obrigatoriosHoras === true,
         obrigatoriosDataEntrega: obrigatoriosDataEntrega === true,
         tipoProjeto: nextTipo as any,
