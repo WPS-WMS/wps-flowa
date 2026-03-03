@@ -216,7 +216,7 @@ projectsRouter.post("/", async (req, res) => {
     clientId,
     responsibleIds,
     dataInicio,
-    // statusInicial é sempre "PLANEJADO" na criação (default do modelo)
+    statusInicial,
     description,
     dataFimPrevista,
     prioridade,
@@ -240,9 +240,17 @@ projectsRouter.post("/", async (req, res) => {
     anexoTamanho,
   } = req.body;
 
-  if (!name || !clientId || !dataInicio) {
+  if (!name || !clientId || !dataInicio || !statusInicial) {
     res.status(400).json({
-      error: "Nome do projeto, cliente e data de início são obrigatórios",
+      error: "Nome do projeto, cliente, data de início e status inicial são obrigatórios",
+    });
+    return;
+  }
+
+  const allowedStatus = ["PLANEJADO", "EM_ANDAMENTO"];
+  if (!allowedStatus.includes(statusInicial)) {
+    res.status(400).json({
+      error: "Status inicial deve ser PLANEJADO ou EM_ANDAMENTO",
     });
     return;
   }
@@ -286,7 +294,7 @@ projectsRouter.post("/", async (req, res) => {
       prioridade: prioridade || null,
       totalHorasPlanejadas:
         totalHorasPlanejadas != null ? Number(totalHorasPlanejadas) : null,
-      // statusInicial: usa default do modelo ("PLANEJADO")
+      statusInicial,
       obrigatoriosHoras: obrigatoriosHoras === true,
       obrigatoriosDataEntrega: obrigatoriosDataEntrega === true,
       tipoProjeto: tipoProjeto && ["INTERNO", "FIXED_PRICE", "AMS", "TIME_MATERIAL"].includes(tipoProjeto) ? tipoProjeto : "INTERNO",
@@ -365,7 +373,7 @@ projectsRouter.patch("/:id", async (req, res) => {
     clientId,
     responsibleIds,
     dataInicio,
-    // statusInicial (não editamos mais por aqui; mantido ou alterado por regras internas)
+    statusInicial,
     description,
     dataFimPrevista,
     prioridade,
@@ -389,9 +397,17 @@ projectsRouter.patch("/:id", async (req, res) => {
     anexoTamanho,
   } = req.body;
 
-  if (!name || !clientId || !dataInicio) {
+  if (!name || !clientId || !dataInicio || !statusInicial) {
     res.status(400).json({
-      error: "Nome do projeto, cliente e data de início são obrigatórios",
+      error: "Nome do projeto, cliente, data de início e status inicial são obrigatórios",
+    });
+    return;
+  }
+
+  const allowedStatus = ["PLANEJADO", "EM_ANDAMENTO"];
+  if (!allowedStatus.includes(statusInicial)) {
+    res.status(400).json({
+      error: "Status inicial deve ser PLANEJADO ou EM_ANDAMENTO",
     });
     return;
   }
@@ -481,7 +497,7 @@ projectsRouter.patch("/:id", async (req, res) => {
         dataFimPrevista: dataFimPrevistaDate,
         prioridade: prioridade || null,
         totalHorasPlanejadas: totalHorasPlanejadas != null ? Number(totalHorasPlanejadas) : null,
-        // statusInicial não é mais editado manualmente via form; mantemos o valor atual
+        statusInicial,
         obrigatoriosHoras: obrigatoriosHoras === true,
         obrigatoriosDataEntrega: obrigatoriosDataEntrega === true,
         tipoProjeto: nextTipo as any,
