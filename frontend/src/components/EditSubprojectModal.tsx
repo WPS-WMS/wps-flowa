@@ -149,7 +149,7 @@ export function EditSubprojectModal({
             />
           </div>
           <div>
-            <label className={labelClass}>Responsável(is)</label>
+            <label className={labelClass}>Membros</label>
             <div className="flex flex-wrap items-center gap-2">
               {selectedUsers.map((u) => (
                 <div
@@ -162,7 +162,7 @@ export function EditSubprojectModal({
                   >
                     {getIniciais(u.name)}
                   </span>
-                  <span className="text-sm text-slate-700 max-w-[100px] truncate">{u.name}</span>
+                  <span className="text-sm text-slate-700 max-w-[120px] truncate">{u.name}</span>
                   <button
                     type="button"
                     onClick={() => removeResponsible(u.id)}
@@ -177,10 +177,13 @@ export function EditSubprojectModal({
                 <button
                   type="button"
                   onClick={() => setShowUserPicker(!showUserPicker)}
-                  className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-dashed border-slate-300 text-slate-500 hover:border-blue-400 hover:text-blue-600 text-lg"
-                  title="Adicionar responsável"
+                  className="inline-flex items-center gap-1.5 rounded-full border-2 border-dashed border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                  title="Adicionar membro"
                 >
-                  +
+                  <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-100 text-blue-600 text-sm">
+                    +
+                  </span>
+                  <span>Adicionar membro</span>
                 </button>
                 {showUserPicker && (
                   <div className="absolute left-0 top-full mt-1 z-10 w-56 rounded-lg border border-slate-200 bg-white shadow-lg py-1 max-h-48 overflow-y-auto">
@@ -205,7 +208,7 @@ export function EditSubprojectModal({
                 )}
               </div>
             </div>
-            <p className="text-xs text-slate-500 mt-1">Clique em + para adicionar responsáveis (opcional).</p>
+            <p className="text-xs text-slate-500 mt-1">Clique em + para adicionar membros (opcional).</p>
           </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
