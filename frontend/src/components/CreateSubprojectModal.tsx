@@ -139,7 +139,7 @@ export function CreateSubprojectModal({
           <h2 className="text-xl font-semibold text-slate-800">Criar tópico</h2>
           <p className="text-sm text-slate-500 mt-0.5">Preencha os dados do novo tópico.</p>
         </div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5" noValidate>
           {error && (
             <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
               {error}
@@ -164,8 +164,6 @@ export function CreateSubprojectModal({
             <label className={labelClass}>Orçado (horas)</label>
             <input
               type="number"
-              min="0"
-              max="10000"
               step="0.5"
               value={budget}
               onChange={(e) => {
