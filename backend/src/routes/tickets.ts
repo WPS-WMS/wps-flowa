@@ -43,7 +43,19 @@ ticketsRouter.get("/", async (req, res) => {
 
 ticketsRouter.post("/", async (req, res) => {
   const user = (req as Request & { user: { id: string; tenantId: string } }).user;
-  const { projectId, title, description, type, criticidade, responsibleIds, status, parentTicketId } = req.body;
+  const {
+    projectId,
+    title,
+    description,
+    type,
+    criticidade,
+    responsibleIds,
+    status,
+    parentTicketId,
+    estimativaHoras,
+    dataFimPrevista,
+    dataInicio,
+  } = req.body;
   if (!projectId || !title) {
     res.status(400).json({ error: "Projeto e título são obrigatórios" });
     return;
@@ -119,6 +131,12 @@ ticketsRouter.post("/", async (req, res) => {
       parentTicketId: parentTicketId || null,
       createdById: user.id,
       assignedToId: ids.length > 0 ? ids[0] : null,
+      estimativaHoras:
+        estimativaHoras != null && estimativaHoras !== ""
+          ? Number(estimativaHoras)
+          : null,
+      dataFimPrevista: dataFimPrevista ? new Date(dataFimPrevista) : null,
+      dataInicio: dataInicio ? new Date(dataInicio) : null,
     },
     include: {
       project: { include: { client: true } },

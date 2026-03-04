@@ -106,6 +106,7 @@ export function CreateTaskModalFull({
   
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [estimativaError, setEstimativaError] = useState(false);
   const [showUserPicker, setShowUserPicker] = useState(false);
   const [showPrioridadeOpen, setShowPrioridadeOpen] = useState(false);
 
@@ -323,6 +324,7 @@ export function CreateTaskModalFull({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setEstimativaError(false);
     
     if (!title.trim()) {
       setError("O título é obrigatório.");
@@ -335,6 +337,7 @@ export function CreateTaskModalFull({
     }
     
     if (obrigatoriosHoras && !estimativa.trim()) {
+      setEstimativaError(true);
       setError("O número de horas é obrigatório para este projeto.");
       return;
     }
@@ -351,7 +354,16 @@ export function CreateTaskModalFull({
 
     setSaving(true);
     try {
-      const body = {
+      // Converter estimativa (texto) para número de horas
+      let estimativaNum: number | null = null;
+      if (estimativa.trim()) {
+        const parsed = parseFloat(
+          estimativa.replace(/[^0-9,.\s]/g, "").replace(",", ".")
+        );
+        estimativaNum = isNaN(parsed) ? null : parsed;
+      }
+
+      const body: Record<string, unknown> = {
         projectId,
         title: title.trim(),
         description: description.trim() || undefined,
@@ -361,6 +373,12 @@ export function CreateTaskModalFull({
         parentTicketId: selectedTopicId || undefined,
         responsibleIds: responsibleIds.length > 0 ? responsibleIds : undefined,
       };
+      if (estimativaNum !== null) {
+        body.estimativaHoras = estimativaNum;
+      }
+      if (dataEntrega) {
+        body.dataFimPrevista = dataEntrega;
+      }
       
       const res = await apiFetch("/api/tickets", {
         method: "POST",
@@ -543,7 +561,6 @@ export function CreateTaskModalFull({
                           value={dataEntrega}
                           onChange={(e) => setDataEntrega(e.target.value)}
                           className={inputClass}
-                          required={obrigatoriosDataEntrega}
                         />
                       </div>
                     </div>
@@ -623,11 +640,25 @@ export function CreateTaskModalFull({
                       <input
                         type="text"
                         value={estimativa}
-                        onChange={(e) => setEstimativa(e.target.value)}
-                        className={inputClass}
+                        onChange={(e) => {
+                          setEstimativa(e.target.value);
+                          if (estimativaError) {
+                            setEstimativaError(false);
+                          }
+                        }}
+                        className={
+                          inputClass +
+                          (obrigatoriosHoras && estimativaError
+                            ? " border-red-300 focus:ring-red-500 focus:border-red-500 bg-red-50/50"
+                            : "")
+                        }
                         placeholder="Ex: 8h"
-                        required={obrigatoriosHoras}
                       />
+                      {obrigatoriosHoras && estimativaError && (
+                        <p className="mt-1 text-xs text-red-600">
+                          Número de horas é obrigatório na criação da tarefa.
+                        </p>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
