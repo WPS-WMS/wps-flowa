@@ -66,11 +66,24 @@ export function EditSubprojectModal({
         if (data) {
           setName(data.title || "");
           setBudget(data.estimativaHoras != null ? String(data.estimativaHoras) : "");
-          setResponsibleIds(data.responsibles?.map((r: { user: { id: string } }) => r.user.id) || []);
+          if (Array.isArray(data.responsibles)) {
+            setResponsibleIds(data.responsibles.map((r: { user: { id: string } }) => r.user.id));
+          }
         }
       })
       .finally(() => setLoadingTicket(false));
   }, [ticket.id]);
+
+  // Fallback: se após carregar ainda não tiver membros e o ticket (prop) tiver responsibles, usa o prop (ex.: consultor vindo da lista)
+  useEffect(() => {
+    if (loadingTicket || !ticket.id) return;
+    if (Array.isArray(ticket.responsibles) && ticket.responsibles.length > 0) {
+      setResponsibleIds((prev) => {
+        if (prev.length > 0) return prev;
+        return ticket.responsibles!.map((r) => r.user.id);
+      });
+    }
+  }, [ticket.id, ticket.responsibles, loadingTicket]);
 
   const selectedUsers = users.filter((u) => responsibleIds.includes(u.id));
   const availableToAdd = users.filter((u) => !responsibleIds.includes(u.id));
