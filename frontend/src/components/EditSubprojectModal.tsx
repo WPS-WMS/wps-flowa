@@ -65,14 +65,29 @@ export function EditSubprojectModal({
     e.preventDefault();
     setError("");
     setFieldErrors({});
+    const errors: Record<string, boolean> = {};
     if (!name.trim()) {
-      setFieldErrors({ name: true });
-      setError("Por favor, preencha os seguintes campos obrigatórios: Nome do tópico.");
-      return;
+      errors.name = true;
     }
     const trimmedBudget = budget.trim();
-    const estimativa =
+    const budgetNum =
       trimmedBudget === "" ? null : Number.isNaN(Number(trimmedBudget)) ? null : Number(trimmedBudget);
+    if (budgetNum !== null && (budgetNum <= 0 || budgetNum > 10000)) {
+      errors.budget = true;
+    }
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      const msgs: string[] = [];
+      if (errors.name) {
+        msgs.push("Por favor, preencha os seguintes campos obrigatórios: Nome do tópico.");
+      }
+      if (errors.budget) {
+        msgs.push("O valor de Orçado (horas) deve ser maior que 0 e no máximo 10000.");
+      }
+      setError(msgs.join(" "));
+      return;
+    }
+    const estimativa = budgetNum;
     setSaving(true);
     try {
       const body = {
@@ -145,10 +160,14 @@ export function EditSubprojectModal({
             <input
               type="number"
               min="0"
+              max="10000"
               step="0.5"
               value={budget}
-              onChange={(e) => setBudget(e.target.value)}
-              className={getInputClass(false)}
+              onChange={(e) => {
+                setBudget(e.target.value);
+                if (fieldErrors.budget) setFieldErrors((prev) => ({ ...prev, budget: false }));
+              }}
+              className={getInputClass(!!fieldErrors.budget)}
               placeholder="Ex: 40"
             />
             <p className="text-xs text-slate-500 mt-1">

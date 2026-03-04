@@ -67,14 +67,26 @@ export function CreateSubprojectModal({
       missingFields.push("Nome do tópico");
     }
 
+    const trimmedBudget = budget.trim();
+    const budgetNum =
+      trimmedBudget === "" ? null : Number.isNaN(Number(trimmedBudget)) ? null : Number(trimmedBudget);
+    if (budgetNum !== null && (budgetNum <= 0 || budgetNum > 10000)) {
+      errors.budget = true;
+    }
+
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
-      setError(`Por favor, preencha os seguintes campos obrigatórios: ${missingFields.join(", ")}.`);
+      const msgs: string[] = [];
+      if (missingFields.length > 0) {
+        msgs.push(`Por favor, preencha os seguintes campos obrigatórios: ${missingFields.join(", ")}.`);
+      }
+      if (errors.budget) {
+        msgs.push("O valor de Orçado (horas) deve ser maior que 0 e no máximo 10000.");
+      }
+      setError(msgs.join(" "));
       return;
     }
-    const trimmedBudget = budget.trim();
-    const estimativa =
-      trimmedBudget === "" ? null : Number.isNaN(Number(trimmedBudget)) ? null : Number(trimmedBudget);
+    const estimativa = budgetNum;
     setSaving(true);
     try {
       const body = {
@@ -153,10 +165,14 @@ export function CreateSubprojectModal({
             <input
               type="number"
               min="0"
+              max="10000"
               step="0.5"
               value={budget}
-              onChange={(e) => setBudget(e.target.value)}
-              className={getInputClass(false)}
+              onChange={(e) => {
+                setBudget(e.target.value);
+                if (fieldErrors.budget) setFieldErrors((prev) => ({ ...prev, budget: false }));
+              }}
+              className={getInputClass(!!fieldErrors.budget)}
               placeholder="Ex: 40"
             />
             <p className="text-xs text-slate-500 mt-1">
