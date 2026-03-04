@@ -208,6 +208,48 @@ ticketsRouter.post("/", async (req, res) => {
   res.json(ticket);
 });
 
+ticketsRouter.get("/:id", async (req, res) => {
+  const user = (req as Request & { user: { id: string; role: string; tenantId: string } }).user;
+  const ticketId = req.params.id;
+  const ticket = await prisma.ticket.findFirst({
+    where: {
+      id: ticketId,
+      project: { client: { tenantId: user.tenantId } },
+    },
+    include: {
+      project: { include: { client: { include: { users: { select: { userId: true } } } } } },
+      assignedTo: { select: { id: true, name: true } },
+      createdBy: { select: { id: true, name: true } },
+      responsibles: { include: { user: { select: { id: true, name: true } } } },
+    },
+  });
+  if (!ticket) {
+    res.status(404).json({ error: "Tópico/tarefa não encontrado" });
+    return;
+  }
+  const canSeeAll = user.role === "ADMIN" || user.role === "GESTOR_PROJETOS";
+  if (!canSeeAll && user.role === "CONSULTOR") {
+    const uid = user.id;
+    const canSee =
+      (ticket.assignedToId && ticket.assignedTo?.id === uid) ||
+      (ticket.createdById && ticket.createdBy?.id === uid) ||
+      (Array.isArray(ticket.responsibles) && ticket.responsibles.some((r) => r.user.id === uid));
+    if (!canSee) {
+      res.status(403).json({ error: "Sem permissão para visualizar este item" });
+      return;
+    }
+  }
+  if (!canSeeAll && user.role === "CLIENTE") {
+    const clientUsers = ticket.project?.client?.users ?? [];
+    const hasAccess = clientUsers.some((u) => u.userId === user.id);
+    if (!hasAccess) {
+      res.status(403).json({ error: "Sem permissão para visualizar este item" });
+      return;
+    }
+  }
+  res.json(ticket);
+});
+
 ticketsRouter.patch("/:id", async (req, res) => {
   const user = (req as Request & { user: { id: string; role: string; tenantId: string } }).user;
   const ticketId = req.params.id;

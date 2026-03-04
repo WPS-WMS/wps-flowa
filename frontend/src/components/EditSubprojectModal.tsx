@@ -43,12 +43,34 @@ export function EditSubprojectModal({
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, boolean>>({});
   const [showUserPicker, setShowUserPicker] = useState(false);
+  const [loadingTicket, setLoadingTicket] = useState(true);
 
   useEffect(() => {
     apiFetch("/api/users/for-select")
       .then((r) => (r.ok ? r.json() : []))
       .then(setUsers);
   }, []);
+
+  useEffect(() => {
+    if (!ticket.id) {
+      setLoadingTicket(false);
+      return;
+    }
+    setLoadingTicket(true);
+    apiFetch(`/api/tickets/${ticket.id}`)
+      .then((r) => {
+        if (!r.ok) return null;
+        return r.json();
+      })
+      .then((data) => {
+        if (data) {
+          setName(data.title || "");
+          setBudget(data.estimativaHoras != null ? String(data.estimativaHoras) : "");
+          setResponsibleIds(data.responsibles?.map((r: { user: { id: string } }) => r.user.id) || []);
+        }
+      })
+      .finally(() => setLoadingTicket(false));
+  }, [ticket.id]);
 
   const selectedUsers = users.filter((u) => responsibleIds.includes(u.id));
   const availableToAdd = users.filter((u) => !responsibleIds.includes(u.id));
@@ -134,7 +156,9 @@ export function EditSubprojectModal({
       >
         <div className="p-6 border-b border-slate-100">
           <h2 className="text-xl font-semibold text-slate-800">Editar tópico</h2>
-          <p className="text-sm text-slate-500 mt-0.5">Atualize os dados do tópico.</p>
+          <p className="text-sm text-slate-500 mt-0.5">
+            {loadingTicket ? "Carregando..." : "Atualize os dados do tópico."}
+          </p>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-5" noValidate>
           {error && (
@@ -253,7 +277,7 @@ export function EditSubprojectModal({
             </button>
             <button
               type="submit"
-              disabled={saving}
+              disabled={saving || loadingTicket}
               className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-50"
             >
               {saving ? "Salvando..." : "Salvar alterações"}
