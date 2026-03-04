@@ -208,7 +208,6 @@ export function EditSubprojectModal({
                 )}
               </div>
             </div>
-            <p className="text-xs text-slate-500 mt-1">Clique em + para adicionar membros (opcional).</p>
           </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
