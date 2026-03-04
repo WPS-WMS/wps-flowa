@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, API_BASE_URL } from "@/lib/api";
 import { X, Users, Calendar, FileText, Settings, CheckCircle2 } from "lucide-react";
 
 export type UserOption = { id: string; name: string; email?: string };
@@ -107,6 +107,7 @@ export function NewProjectModal({ onClose, onSaved, mode = "create", projectId }
   const [showUserPicker, setShowUserPicker] = useState(false);
   const [loadingProject, setLoadingProject] = useState(false);
   const [anexoRemoved, setAnexoRemoved] = useState(false);
+  const attachmentUrl = anexoUrl ? `${API_BASE_URL}${anexoUrl}` : "";
 
   useEffect(() => {
     apiFetch("/api/clients")
@@ -885,7 +886,7 @@ export function NewProjectModal({ onClose, onSaved, mode = "create", projectId }
                   <div className="text-xs text-slate-600">
                     Arquivo atual:{" "}
                     <a
-                      href={anexoUrl}
+                      href={attachmentUrl}
                       target="_blank"
                       rel="noreferrer"
                       className="text-blue-700 font-semibold hover:underline"

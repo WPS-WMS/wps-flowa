@@ -2,6 +2,9 @@
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "https://wps-flowa-production.up.railway.app";
 
+// Exportar base da API para montar URLs completas (ex.: links de download)
+export const API_BASE_URL = API_URL;
+
 export function getToken(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("wps_token");
