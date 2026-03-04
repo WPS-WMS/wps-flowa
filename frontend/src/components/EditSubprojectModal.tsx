@@ -125,11 +125,11 @@ export function EditSubprojectModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl border border-slate-200 w-full max-w-lg shadow-xl"
+        className="bg-white rounded-2xl border border-slate-200 w-full max-w-lg shadow-xl my-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6 border-b border-slate-100">
@@ -219,7 +219,7 @@ export function EditSubprojectModal({
                   <span>Adicionar membro</span>
                 </button>
                 {showUserPicker && (
-                  <div className="absolute left-0 top-full mt-1 z-10 w-56 rounded-lg border border-slate-200 bg-white shadow-lg py-1 max-h-48 overflow-y-auto">
+                  <div className="absolute left-0 top-full mt-1 z-10 w-56 rounded-lg border border-slate-200 bg-white shadow-lg py-1 max-h-[min(20rem,70vh)] overflow-y-auto overscroll-contain">
                     {availableToAdd.length === 0 ? (
                       <p className="px-3 py-2 text-xs text-slate-500">Todos já adicionados</p>
                     ) : (
