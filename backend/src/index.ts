@@ -46,7 +46,10 @@ app.use(
     credentials: true,
   })
 );
-app.use(express.json());
+
+// Aumentar limite do corpo JSON para permitir upload de anexos em base64
+// 10MB em arquivo viram ~13–14MB em base64, então 20MB é seguro
+app.use(express.json({ limit: "20mb" }));
 
 app.use("/api/auth", authRouter);
 app.use("/api/projects", projectsRouter);
