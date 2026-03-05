@@ -6,6 +6,7 @@ import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { RichTextEditor } from "./RichTextEditor";
 import { TimeEntryPermissionModal, isOutsideAllowedHours, type TimeEntryPermissionPayload } from "./TimeEntryPermissionModal";
+import { ConfirmModal } from "./ConfirmModal";
 import type { PackageTicket } from "./PackageCard";
 
 type UserOption = { id: string; name: string; email?: string };
@@ -171,6 +172,7 @@ export function EditTaskModalFull({
   const [timeEntryFieldErrors, setTimeEntryFieldErrors] = useState<Record<string, boolean>>({});
   const [permissionPayload, setPermissionPayload] = useState<TimeEntryPermissionPayload | null>(null);
   const timeEntryFormRef = useRef<HTMLDivElement>(null);
+  const [deleteTimeEntryId, setDeleteTimeEntryId] = useState<string | null>(null);
 
   // Configurações do projeto
   const [obrigatoriosHoras, setObrigatoriosHoras] = useState(false);
@@ -862,11 +864,7 @@ export function EditTaskModalFull({
     setTimeEntryDescription("");
   }
 
-  async function handleDeleteTimeEntry(entryId: string) {
-    if (!confirm("Tem certeza que deseja excluir este apontamento?")) {
-      return;
-    }
-
+  async function confirmDeleteTimeEntry(entryId: string) {
     try {
       const res = await apiFetch(`/api/time-entries/${entryId}`, {
         method: "DELETE",
@@ -878,7 +876,7 @@ export function EditTaskModalFull({
         return;
       }
 
-      // Recarregar lista de apontamentos
+      setDeleteTimeEntryId(null);
       loadTimeEntries();
     } catch (error) {
       console.error("Erro ao excluir apontamento:", error);
@@ -1719,7 +1717,7 @@ export function EditTaskModalFull({
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={() => handleDeleteTimeEntry(entry.id)}
+                                    onClick={() => setDeleteTimeEntryId(entry.id)}
                                     disabled={savingTimeEntry}
                                     className="p-2 rounded-lg hover:bg-red-50 text-slate-500 hover:text-red-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                                     title="Excluir apontamento"
@@ -2123,6 +2121,18 @@ export function EditTaskModalFull({
             });
             return res.ok;
           }}
+        />
+      )}
+
+      {deleteTimeEntryId && (
+        <ConfirmModal
+          title="Excluir apontamento"
+          message="Tem certeza que deseja excluir este apontamento? Esta ação não pode ser desfeita."
+          cancelLabel="Cancelar"
+          confirmLabel="Excluir"
+          variant="danger"
+          onConfirm={() => confirmDeleteTimeEntry(deleteTimeEntryId)}
+          onCancel={() => setDeleteTimeEntryId(null)}
         />
       )}
     </div>
