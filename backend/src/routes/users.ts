@@ -65,7 +65,11 @@ usersRouter.patch("/me/password", async (req, res) => {
 
 usersRouter.get("/for-select", async (req, res) => {
   const authUser = req.user;
-  if (authUser.role !== "ADMIN" && authUser.role !== "GESTOR_PROJETOS") {
+  // Lista de usuários para selects de responsável/membros em projeto/tópico/tarefa.
+  // Antes era restrito só a ADMIN e GESTOR_PROJETOS; isso fazia com que CONSULTOR
+  // não conseguisse ver nem os membros atuais ao abrir o modal de edição.
+  // Mantemos o bloqueio apenas para CLIENTE.
+  if (authUser.role === "CLIENTE") {
     res.status(403).json({ error: "Não autorizado" });
     return;
   }
