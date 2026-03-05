@@ -43,8 +43,24 @@ export function SubprojectCard({ ticket, projectId, projectName, onDelete, onCli
   const atrasadas = getTarefasAtrasadas(ticket);
   const percent = total > 0 ? Math.round((finalizadas / total) * 100) : 0;
 
-  const responsibles = ticket.responsibles?.map((r) => r.user) ?? [];
-  const displayResponsible = ticket.assignedTo ?? responsibles[0];
+  // Membros: assignedTo + responsibles (sem duplicar por id); exibe só o primeiro + "..." se houver mais
+  const memberNamesResult = (() => {
+    const seen = new Set<string>();
+    const names: string[] = [];
+    if (ticket.assignedTo?.name && !seen.has(ticket.assignedTo.id)) {
+      seen.add(ticket.assignedTo.id);
+      names.push(ticket.assignedTo.name);
+    }
+    ticket.responsibles?.forEach((r) => {
+      if (r.user?.name && !seen.has(r.user.id)) {
+        seen.add(r.user.id);
+        names.push(r.user.name);
+      }
+    });
+    if (names.length === 0) return { display: null as string | null, title: undefined as string | undefined };
+    const full = names.join(", ");
+    return { display: names.length > 1 ? `${names[0]}...` : names[0], title: names.length > 1 ? full : undefined };
+  })();
 
   const handleCardClick = () => {
     if (onClick) {
@@ -104,11 +120,9 @@ export function SubprojectCard({ ticket, projectId, projectName, onDelete, onCli
         </p>
       </div>
 
-      {displayResponsible && (
-        <p className="text-xs text-slate-500 mt-3 truncate" title={displayResponsible.name}>
-          Responsável: {displayResponsible.name}
-        </p>
-      )}
+      <p className="text-xs text-slate-500 mt-3 truncate" title={memberNamesResult.title ?? memberNamesResult.display ?? undefined}>
+        Membros: {memberNamesResult.display ?? "—"}
+      </p>
 
     </div>
   );

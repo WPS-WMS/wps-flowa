@@ -109,6 +109,25 @@ export function SubprojectCardHorizontal({ ticket, allTickets = [], onClick, onE
   // Executado = soma das horas apontadas de todas as tarefas do tópico
   const horasExecutadas = tarefasDoTopico.reduce((acc, t) => acc + (t.totalHorasApontadas ?? 0), 0);
 
+  // Membros: assignedTo + responsibles (sem duplicar por id); exibe só o primeiro + "..." se houver mais
+  const memberNamesResult = (() => {
+    const seen = new Set<string>();
+    const names: string[] = [];
+    if (ticket.assignedTo?.name && !seen.has(ticket.assignedTo.id)) {
+      seen.add(ticket.assignedTo.id);
+      names.push(ticket.assignedTo.name);
+    }
+    ticket.responsibles?.forEach((r) => {
+      if (r.user?.name && !seen.has(r.user.id)) {
+        seen.add(r.user.id);
+        names.push(r.user.name);
+      }
+    });
+    if (names.length === 0) return { display: null as string | null, title: undefined as string | undefined };
+    const full = names.join(", ");
+    return { display: names.length > 1 ? `${names[0]}...` : names[0], title: names.length > 1 ? full : undefined };
+  })();
+
   return (
     <div className="w-full">
       <div
@@ -148,9 +167,9 @@ export function SubprojectCardHorizontal({ ticket, allTickets = [], onClick, onE
             </p>
           </div>
           <div className="min-w-0">
-            <p className="text-slate-500 text-xs">Responsável</p>
-            <p className="text-slate-800 font-medium text-sm truncate" title={ticket.assignedTo?.name ?? undefined}>
-              {ticket.assignedTo?.name ?? "—"}
+            <p className="text-slate-500 text-xs">Membros</p>
+            <p className="text-slate-800 font-medium text-sm truncate" title={memberNamesResult.title ?? memberNamesResult.display ?? undefined}>
+              {memberNamesResult.display ?? "—"}
             </p>
           </div>
           <div className="min-w-0">
