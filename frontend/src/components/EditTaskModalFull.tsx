@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { X, Maximize2, Send, Pencil, Trash2, Check, X as XIcon, Plus, Upload, Download, File, Image as ImageIcon } from "lucide-react";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, getToken } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { RichTextEditor } from "./RichTextEditor";
 import { TimeEntryPermissionModal, isOutsideAllowedHours, type TimeEntryPermissionPayload } from "./TimeEntryPermissionModal";
@@ -663,6 +663,30 @@ export function EditTaskModalFull({
       console.error("Erro ao processar arquivo:", error);
       setError("Erro ao processar arquivo");
       setUploadingAttachment(false);
+    }
+  }
+
+  async function handleDownloadAttachment(attachment: typeof attachments[0]) {
+    const fileUrl = attachment.fileUrl.startsWith("http")
+      ? attachment.fileUrl
+      : `${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:4000"}${attachment.fileUrl}`;
+    try {
+      const token = getToken();
+      const res = await fetch(fileUrl, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Falha ao baixar arquivo");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = attachment.filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Erro ao baixar anexo:", err);
+      setError("Não foi possível baixar o arquivo.");
     }
   }
 
@@ -1977,18 +2001,28 @@ export function EditTaskModalFull({
                             className="p-4 hover:bg-blue-50/50 transition-colors duration-150"
                           >
                             <div className="flex items-start gap-4">
-                              {/* Ícone do arquivo */}
-                              <div className="shrink-0 p-3 rounded-lg bg-slate-100 text-slate-600">
+                              {/* Ícone do arquivo — clicável para visualizar */}
+                              <button
+                                type="button"
+                                onClick={() => window.open(fileUrl, "_blank", "noopener,noreferrer")}
+                                className="shrink-0 p-3 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
+                                title="Visualizar arquivo"
+                              >
                                 {getFileIcon(attachment.fileType)}
-                              </div>
+                              </button>
 
-                              {/* Informações do arquivo */}
+                              {/* Informações do arquivo — clicável para visualizar */}
                               <div className="flex-1 min-w-0">
-                                <div className="flex items-start justify-between gap-2 mb-1">
-                                  <h4 className="text-sm font-semibold text-slate-800 truncate" title={attachment.filename}>
+                                <button
+                                  type="button"
+                                  onClick={() => window.open(fileUrl, "_blank", "noopener,noreferrer")}
+                                  className="text-left w-full group"
+                                  title="Visualizar arquivo"
+                                >
+                                  <h4 className="text-sm font-semibold text-slate-800 truncate group-hover:text-blue-600 transition-colors" title={attachment.filename}>
                                     {attachment.filename}
                                   </h4>
-                                </div>
+                                </button>
                                 <div className="flex items-center gap-3 text-xs text-slate-500 mb-2">
                                   <span>{formatFileSize(attachment.fileSize)}</span>
                                   <span>•</span>
@@ -2005,30 +2039,43 @@ export function EditTaskModalFull({
                                   <span className="truncate">{attachment.user.name}</span>
                                 </div>
 
-                                {/* Preview de imagem */}
+                                {/* Preview de imagem — clicável para visualizar */}
                                 {isImage && (
-                                  <div className="mt-3 mb-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => window.open(fileUrl, "_blank", "noopener,noreferrer")}
+                                    className="mt-3 mb-2 block text-left"
+                                    title="Visualizar imagem"
+                                  >
                                     <img
                                       src={fileUrl}
                                       alt={attachment.filename}
-                                      className="max-w-full max-h-48 rounded-lg border border-slate-200 shadow-sm"
+                                      className="max-w-full max-h-48 rounded-lg border border-slate-200 shadow-sm hover:ring-2 hover:ring-blue-400 transition-shadow cursor-pointer"
                                       onError={(e) => {
                                         (e.target as HTMLImageElement).style.display = "none";
                                       }}
                                     />
-                                  </div>
+                                  </button>
                                 )}
 
                                 {/* Botões de ação */}
-                                <div className="flex items-center gap-2 mt-3">
+                                <div className="flex items-center gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDownloadAttachment(attachment)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors duration-200"
+                                  >
+                                    <Download className="h-3.5 w-3.5" />
+                                    Baixar
+                                  </button>
                                   <a
                                     href={fileUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors duration-200"
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors duration-200"
+                                    onClick={(e) => e.stopPropagation()}
                                   >
-                                    <Download className="h-3.5 w-3.5" />
-                                    {isImage ? "Visualizar" : "Baixar"}
+                                    Visualizar
                                   </a>
                                   {(currentUser?.id === attachment.user.id ||
                                     currentUser?.role === "ADMIN" ||
