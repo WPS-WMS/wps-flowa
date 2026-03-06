@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Search } from "lucide-react";
+import { Search, RefreshCw } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { KanbanWithFilters } from "@/components/KanbanWithFilters";
 import { type PackageTicket } from "@/components/PackageCard";
@@ -174,6 +174,17 @@ export default function DashboardDailyAdminPage() {
                 ))}
               </select>
             </div>
+            <button
+              type="button"
+              onClick={() => {
+                setLoading(true);
+                setRetryCount((c) => c + 1);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:bg-slate-50 hover:border-slate-300"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Atualizar projetos
+            </button>
           </div>
 
           {/* Kanban */}

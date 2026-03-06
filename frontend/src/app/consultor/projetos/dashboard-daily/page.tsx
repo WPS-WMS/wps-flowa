@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { LayoutGrid, Search } from "lucide-react";
+import { LayoutGrid, Search, RefreshCw } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { KanbanWithFilters } from "@/components/KanbanWithFilters";
 import { type PackageTicket } from "@/components/PackageCard";
@@ -16,8 +16,8 @@ export default function DashboardDailyConsultorPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Carregar projetos
-  useEffect(() => {
+  const loadProjects = () => {
+    setLoading(true);
     apiFetch("/api/projects")
       .then((r) => {
         if (!r.ok) throw new Error("Erro ao carregar projetos");
@@ -31,6 +31,11 @@ export default function DashboardDailyConsultorPage() {
         console.error("Erro ao carregar projetos:", err);
         setLoading(false);
       });
+  };
+
+  // Carregar projetos
+  useEffect(() => {
+    loadProjects();
   }, []);
 
   // Carregar tópicos quando projeto é selecionado
@@ -159,6 +164,14 @@ export default function DashboardDailyConsultorPage() {
               ))}
             </select>
           </div>
+          <button
+            type="button"
+            onClick={loadProjects}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:bg-slate-50 hover:border-slate-300"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Atualizar projetos
+          </button>
           {selectedProjectId && (
             <div className="flex-1 min-w-[200px]">
               <label className="block text-xs font-medium text-slate-600 mb-1.5">Tópico</label>
