@@ -66,7 +66,6 @@ export function KanbanWithFilters({
   const [filterSubproject, setFilterSubproject] = useState<string>("");
   const [filterTicketId, setFilterTicketId] = useState<string>("");
   const [filterStatus, setFilterStatus] = useState<string>(""); // Agora será o ID da coluna (BACKLOG, EM_EXECUCAO, FINALIZADAS ou ID de coluna customizada)
-  const [filterType, setFilterType] = useState<string>("");
   const [filterPrioridade, setFilterPrioridade] = useState<string>("");
   const [filterAssignedTo, setFilterAssignedTo] = useState<string>("");
   const [customColumns, setCustomColumns] = useState<Array<{ id: string; label: string; color: string }>>([]);
@@ -152,14 +151,6 @@ export function KanbanWithFilters({
     return allColumns.map((col) => ({ id: col.id, label: col.label, color: col.color }));
   }, [customColumns]);
 
-  const types = useMemo(() => {
-    const unique = new Set<string>();
-    tasksOnly.forEach((t) => {
-      if (t.type && t.type !== "SUBPROJETO") unique.add(t.type);
-    });
-    return Array.from(unique).sort();
-  }, [tasksOnly]);
-
   const assignedToUsers = useMemo(() => {
     const unique = new Map<string, string>();
     tasksOnly.forEach((t) => {
@@ -175,7 +166,11 @@ export function KanbanWithFilters({
     return tasksOnly.filter((ticket) => {
       // Filtro por tópico: usa parentTicketId
       if (filterSubproject && ticket.parentTicketId !== filterSubproject) return false;
-      if (filterTicketId && !ticket.code.toLowerCase().includes(filterTicketId.toLowerCase()) && !ticket.id.toLowerCase().includes(filterTicketId.toLowerCase())) return false;
+      // ID da Tarefa: apenas ID digital (código), aplicado só quando o usuário aplica o filtro
+      if (filterTicketId) {
+        const idTrim = filterTicketId.trim();
+        if (idTrim && !String(ticket.code ?? "").toLowerCase().includes(idTrim.toLowerCase())) return false;
+      }
       
       // Filtro por Status (coluna do Kanban)
       if (filterStatus) {
@@ -190,7 +185,6 @@ export function KanbanWithFilters({
         }
       }
       
-      if (filterType && ticket.type !== filterType) return false;
       if (filterPrioridade) {
         const t = (ticket.criticidade || "").trim();
         if (!t) return false;
@@ -207,16 +201,15 @@ export function KanbanWithFilters({
       if (filterAssignedTo && ticket.assignedTo?.id !== filterAssignedTo) return false;
       return true;
     });
-  }, [tasksOnly, filterSubproject, filterTicketId, filterStatus, filterType, filterPrioridade, filterAssignedTo]);
+  }, [tasksOnly, filterSubproject, filterTicketId, filterStatus, filterPrioridade, filterAssignedTo]);
 
   const hasActiveFilters =
-    filterSubproject || filterTicketId || filterStatus || filterType || filterPrioridade || filterAssignedTo;
+    filterSubproject || filterTicketId || filterStatus || filterPrioridade || filterAssignedTo;
 
   const clearFilters = () => {
     setFilterSubproject("");
     setFilterTicketId("");
     setFilterStatus("");
-    setFilterType("");
     setFilterPrioridade("");
     setFilterAssignedTo("");
   };
@@ -239,7 +232,7 @@ export function KanbanWithFilters({
             Filtros
             {hasActiveFilters && (
               <span className="ml-0.5 px-1.5 py-0.5 text-xs font-semibold rounded-full bg-white/20">
-                {[filterSubproject, filterTicketId, filterStatus, filterType, filterPrioridade, filterAssignedTo].filter(Boolean).length}
+                {[filterSubproject, filterTicketId, filterStatus, filterPrioridade, filterAssignedTo].filter(Boolean).length}
               </span>
             )}
             <ChevronDown className={`h-4 w-4 transition-transform ${showFilters ? "rotate-180" : ""}`} />
@@ -365,23 +358,6 @@ export function KanbanWithFilters({
                   ))}
                 </div>
               )}
-            </div>
-
-            {/* Filtro por Tipo */}
-            <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1.5">Tipo</label>
-              <select
-                value={filterType}
-                onChange={(e) => setFilterType(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
-              >
-                <option value="">Todos</option>
-                {types.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
             </div>
 
             {/* Filtro por Prioridade (bolinha + cor) */}
