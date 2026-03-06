@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 type ColumnColor = {
   id: string;
@@ -29,6 +29,7 @@ export function CreateColumnModal({ projectId, onClose, onSaved }: CreateColumnM
   const [label, setLabel] = useState("");
   const [selectedColor, setSelectedColor] = useState<ColumnColor>(COLUMN_COLORS[0]);
   const [error, setError] = useState("");
+  const labelInputRef = useRef<HTMLInputElement>(null);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -36,6 +37,7 @@ export function CreateColumnModal({ projectId, onClose, onSaved }: CreateColumnM
     
     if (!label.trim()) {
       setError("O nome da coluna é obrigatório.");
+      labelInputRef.current?.focus();
       return;
     }
 
@@ -53,6 +55,7 @@ export function CreateColumnModal({ projectId, onClose, onSaved }: CreateColumnM
   const inputClass =
     "w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400";
   const labelClass = "block text-sm font-medium text-slate-600 mb-1.5";
+  const labelHasError = !!error;
 
   return (
     <div
@@ -67,18 +70,26 @@ export function CreateColumnModal({ projectId, onClose, onSaved }: CreateColumnM
           <h2 className="text-xl font-semibold text-slate-800">Nova Coluna</h2>
           <p className="text-sm text-slate-500 mt-0.5">Adicione uma nova coluna ao Kanban.</p>
         </div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5" noValidate>
           <div>
             <label className={labelClass}>Nome da coluna *</label>
             <input
               type="text"
               value={label}
-              onChange={(e) => setLabel(e.target.value)}
-              className={inputClass}
+              onChange={(e) => {
+                setLabel(e.target.value);
+                if (error) setError("");
+              }}
+              ref={labelInputRef}
+              className={`${inputClass} ${
+                labelHasError ? "border-red-500 focus:ring-red-500 focus:border-red-500" : ""
+              }`}
               placeholder="Ex: Em revisão, Aguardando aprovação..."
-              required
               autoFocus
             />
+            {labelHasError && (
+              <p className="mt-1 text-sm text-red-600">Campo obrigatório.</p>
+            )}
           </div>
           
           <div>
@@ -119,7 +130,6 @@ export function CreateColumnModal({ projectId, onClose, onSaved }: CreateColumnM
             <p className="text-xs text-slate-500 mt-2">Cor selecionada: {selectedColor.label}</p>
           </div>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex gap-3 pt-2">
             <button
               type="button"

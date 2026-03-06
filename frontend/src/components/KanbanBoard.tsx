@@ -68,12 +68,73 @@ function getPriorityDotClass(criticidade: string | null | undefined): string {
   return map[criticidade] ?? "bg-slate-400";
 }
 
-// Fundo da coluna por tipo (Backlog neutro, Em execução azul, Finalizadas verde)
-function getColumnBodyBg(columnId: string): string {
-  if (columnId === "BACKLOG") return "bg-slate-100/40";
-  if (columnId === "EM_EXECUCAO") return "bg-blue-50/70";
-  if (columnId === "FINALIZADAS") return "bg-emerald-50/70";
-  return "bg-slate-50/50";
+function getColumnThemeByColor(colorClass: string): {
+  container: string;
+  headerBg: string;
+  bodyBg: string;
+} {
+  // Importante: manter classes estáticas (Tailwind) — evitar strings dinâmicas.
+  if (colorClass.includes("slate")) {
+    return {
+      container: "bg-slate-50 border-slate-200",
+      headerBg: "bg-slate-50",
+      bodyBg: "bg-slate-100/40",
+    };
+  }
+  if (colorClass.includes("blue")) {
+    return {
+      container: "bg-blue-50/30 border-blue-100",
+      headerBg: "bg-blue-50/80",
+      bodyBg: "bg-blue-50/70",
+    };
+  }
+  if (colorClass.includes("emerald") || colorClass.includes("green")) {
+    return {
+      container: "bg-emerald-50/30 border-emerald-100",
+      headerBg: "bg-emerald-50/80",
+      bodyBg: "bg-emerald-50/70",
+    };
+  }
+  if (colorClass.includes("amber") || colorClass.includes("yellow")) {
+    return {
+      container: "bg-amber-50/30 border-amber-100",
+      headerBg: "bg-amber-50/80",
+      bodyBg: "bg-amber-50/70",
+    };
+  }
+  if (colorClass.includes("cyan") || colorClass.includes("teal")) {
+    return {
+      container: "bg-cyan-50/30 border-cyan-100",
+      headerBg: "bg-cyan-50/80",
+      bodyBg: "bg-cyan-50/70",
+    };
+  }
+  if (colorClass.includes("purple") || colorClass.includes("indigo")) {
+    return {
+      container: "bg-purple-50/30 border-purple-100",
+      headerBg: "bg-purple-50/80",
+      bodyBg: "bg-purple-50/70",
+    };
+  }
+  if (colorClass.includes("rose") || colorClass.includes("pink")) {
+    return {
+      container: "bg-rose-50/30 border-rose-100",
+      headerBg: "bg-rose-50/80",
+      bodyBg: "bg-rose-50/70",
+    };
+  }
+  if (colorClass.includes("orange")) {
+    return {
+      container: "bg-orange-50/30 border-orange-100",
+      headerBg: "bg-orange-50/80",
+      bodyBg: "bg-orange-50/70",
+    };
+  }
+  return {
+    container: "bg-white border-slate-200",
+    headerBg: "bg-slate-50/80",
+    bodyBg: "bg-slate-50/50",
+  };
 }
 
 function formatDateShort(value: string | null | undefined): string | null {
@@ -319,34 +380,31 @@ export function KanbanBoard({
         const columnTickets = ticketsByColumn[column.id] || [];
         const isDropTarget = draggingTicketId && columnTickets.every((t) => t.id !== draggingTicketId);
         const isFinalizadas = column.id === "FINALIZADAS";
-        const columnHeaderBg =
+        const theme =
           column.id === "BACKLOG"
-            ? "bg-slate-50"
+            ? getColumnThemeByColor("bg-slate-500")
             : column.id === "EM_EXECUCAO"
-            ? "bg-blue-50/80"
+            ? getColumnThemeByColor("bg-blue-500")
             : column.id === "FINALIZADAS"
-            ? "bg-emerald-50/80"
-            : "bg-slate-50/80";
+            ? getColumnThemeByColor("bg-emerald-500")
+            : getColumnThemeByColor(column.color);
 
         return (
           <div
             key={column.id}
-            className={`flex-shrink-0 w-[280px] rounded-xl border overflow-hidden shadow-sm transition-shadow ${
-              column.id === "BACKLOG"
-                ? "bg-slate-50 border-slate-200"
-                : column.id === "EM_EXECUCAO"
-                ? "bg-blue-50/30 border-blue-100"
-                : column.id === "FINALIZADAS"
-                ? "bg-emerald-50/30 border-emerald-100"
-                : "bg-white border-slate-200"
-            } ${draggingTicketId ? "shadow-md" : ""}`}
+            className={`flex-shrink-0 w-[280px] rounded-xl border overflow-hidden shadow-sm transition-shadow ${theme.container} ${
+              draggingTicketId ? "shadow-md" : ""
+            }`}
           >
             {/* Cabeçalho da coluna - estilo referência */}
-            <div className={`${columnHeaderBg} border-b border-slate-200/80 px-4 py-3`}>
+            <div className={`${theme.headerBg} border-b border-slate-200/80 px-4 py-3`}>
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
                   {isFinalizadas && (
                     <Check className="h-4 w-4 text-emerald-600 flex-shrink-0" aria-hidden />
+                  )}
+                  {isCustomColumn && (
+                    <span className={`h-2 w-2 rounded-full ${column.color}`} aria-hidden />
                   )}
                   <h3 className="text-sm font-semibold text-slate-800 truncate">
                     {column.label}
@@ -386,7 +444,7 @@ export function KanbanBoard({
             </div>
             <div className="flex flex-col flex-1">
               <div
-                className={`p-3 space-y-3 min-h-[180px] max-h-[calc(100vh-320px)] overflow-y-auto transition-colors ${getColumnBodyBg(column.id)} ${
+                className={`p-3 space-y-3 min-h-[180px] max-h-[calc(100vh-320px)] overflow-y-auto transition-colors ${theme.bodyBg} ${
                   isDropTarget ? "ring-1 ring-inset ring-blue-200" : ""
                 }`}
                 onDragOver={(e) => {
