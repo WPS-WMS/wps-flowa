@@ -39,13 +39,30 @@ const productionOrigins = [
 ];
 const allowedOrigins = [...new Set([...productionOrigins, ...envOrigins])];
 
+function getCorsOrigin(req: express.Request): string | undefined {
+  const origin = req.headers.origin;
+  if (typeof origin !== "string" || !origin) return undefined;
+  return allowedOrigins.includes(origin) ? origin : undefined;
+}
+
+// Preflight OPTIONS: responder primeiro com headers CORS (evita falha em proxies/Railway)
+app.use("/api", (req, res, next) => {
+  if (req.method !== "OPTIONS") return next();
+  const allowOrigin = getCorsOrigin(req) ?? allowedOrigins[0];
+  res.setHeader("Access-Control-Allow-Origin", allowOrigin);
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  res.setHeader("Access-Control-Max-Age", "86400");
+  res.status(204).end();
+});
+
 app.use(
   cors({
     origin: (origin, cb) => {
-      // Preflight/requests sem Origin (ex.: Postman, same-origin) → permitir
       if (!origin) return cb(null, true);
       if (allowedOrigins.includes(origin)) return cb(null, true);
-      cb(new Error("CORS not allowed"));
+      return cb(null, false);
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
