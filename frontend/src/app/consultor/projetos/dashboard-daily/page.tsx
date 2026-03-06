@@ -1,13 +1,27 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { LayoutGrid, Search, RefreshCw } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { KanbanWithFilters } from "@/components/KanbanWithFilters";
 import { type PackageTicket } from "@/components/PackageCard";
 import { type ProjectForCard } from "@/components/ProjectCard";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function DashboardDailyConsultorPage() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  // Gestor de Projetos deve usar a versão de admin do Dashboard Daily (mesmo layout)
+  useEffect(() => {
+    if (loading) return;
+    if (!user) return;
+    if (user.role === "GESTOR_PROJETOS") {
+      router.replace("/admin/projetos/dashboard-daily");
+    }
+  }, [user, loading, router]);
+
   const [projects, setProjects] = useState<ProjectForCard[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [selectedTopicId, setSelectedTopicId] = useState<string>("");
@@ -111,7 +125,8 @@ export default function DashboardDailyConsultorPage() {
     }
   };
 
-  if (loading) {
+  // Enquanto estiver carregando ou redirecionando gestor de projetos, mostra apenas loader simples
+  if (loading || user?.role === "GESTOR_PROJETOS") {
     return (
       <div className="flex-1 flex items-center justify-center">
         <p className="text-slate-500 text-sm">Carregando...</p>
