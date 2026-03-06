@@ -13,7 +13,6 @@ const NAV: NavItem[] = [
     icon: FolderKanban,
     children: [
       { href: "/consultor/projetos", label: "Lista de Projetos" },
-      { href: "/consultor/projetos/arquivados", label: "Projetos Arquivados" },
       { href: "/consultor/projetos/dashboard-daily", label: "Dashboard Daily" },
     ],
   },

@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Plus, Archive } from "lucide-react";
+import { Link } from "@/components/Link";
 import { apiFetch } from "@/lib/api";
 import { ProjectCard, type ProjectForCard } from "@/components/ProjectCard";
 import { NewProjectModal } from "@/components/NewProjectModal";
@@ -11,7 +11,6 @@ export default function ProjetosPage() {
   const [projects, setProjects] = useState<ProjectForCard[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [showNewModal, setShowNewModal] = useState(false);
-  const router = useRouter();
 
   useEffect(() => {
     setError(null);
@@ -44,14 +43,23 @@ export default function ProjetosPage() {
           {/* Barra de ações */}
           <div className="flex items-center justify-between gap-4">
             <div className="flex-1"></div>
-            <button
-              type="button"
-              onClick={() => setShowNewModal(true)}
-              className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
-            >
-              <Plus className="h-4 w-4" />
-              Novo Projeto
-            </button>
+            <div className="flex items-center gap-3">
+              <Link
+                href="/consultor/projetos/arquivados"
+                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+              >
+                <Archive className="h-4 w-4" />
+                Projetos Arquivados
+              </Link>
+              <button
+                type="button"
+                onClick={() => setShowNewModal(true)}
+                className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
+              >
+                <Plus className="h-4 w-4" />
+                Novo Projeto
+              </button>
+            </div>
           </div>
           {projects.length === 0 && !error && (
             <div className="bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-500">
