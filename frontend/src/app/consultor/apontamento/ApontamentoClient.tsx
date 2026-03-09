@@ -153,7 +153,8 @@ export function ApontamentoClient() {
 
   const totalSemana = entries.reduce((s, e) => s + e.totalHoras, 0);
   const metaSemana = 5 * HORAS_META; // 5 dias úteis
-  const saldoSemana = totalSemana - metaSemana;
+  // Se ainda não há apontamentos, o saldo deve iniciar zerado
+  const saldoSemana = totalSemana === 0 ? 0 : totalSemana - metaSemana;
 
   function prevWeek() {
     setWeekStart((d) => {

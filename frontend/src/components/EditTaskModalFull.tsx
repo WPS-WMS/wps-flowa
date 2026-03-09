@@ -908,6 +908,20 @@ export function EditTaskModalFull({
     return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
   }
 
+  function formatDateOnly(dateValue: string | Date): string {
+    const raw = typeof dateValue === "string" ? dateValue : dateValue.toISOString();
+    const iso = raw.slice(0, 10);
+    const [year, month, day] = iso.split("-");
+    if (year && month && day) {
+      return `${day.padStart(2, "0")}/${month.padStart(2, "0")}/${year}`;
+    }
+    try {
+      return new Date(dateValue).toLocaleDateString("pt-BR");
+    } catch {
+      return String(dateValue);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
@@ -1701,7 +1715,7 @@ export function EditTaskModalFull({
                                       {entry.user?.name || "Usuário"}
                                     </p>
                                     <p className="text-xs text-slate-500">
-                                      {new Date(entry.date).toLocaleDateString("pt-BR")}
+                                      {formatDateOnly(entry.date)}
                                     </p>
                                   </div>
                                 </div>
