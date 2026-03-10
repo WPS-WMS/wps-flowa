@@ -22,6 +22,7 @@ type UserRow = {
   ativo?: boolean | null;
   inativadoEm?: string | null;
   inativacaoMotivo?: string | null;
+  dataInicioAtividades?: string | null;
 };
 
 const ROLES: Record<string, string> = {
@@ -284,7 +285,8 @@ function InativarUsuarioModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [motivo, setMotivo] = useState("");
+  const [motivo, setMotivo] = useState<"ROMPIMENTO" | "SOLICITACAO" | "OUTROS">("ROMPIMENTO");
+  const [descricaoBreve, setDescricaoBreve] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -293,17 +295,20 @@ function InativarUsuarioModal({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    if (!isAtivar && !motivo.trim()) {
-      setError("Informe o motivo da inativação.");
-      return;
-    }
     setSaving(true);
     try {
       const body: Record<string, unknown> = {
         ativo: isAtivar,
       };
       if (!isAtivar) {
-        body.inativacaoMotivo = motivo.trim();
+        const baseMotivo =
+          motivo === "ROMPIMENTO"
+            ? "Rompimento de contrato"
+            : motivo === "SOLICITACAO"
+            ? "Solicitação de rompimento de contrato"
+            : "Outros";
+        const desc = descricaoBreve.trim();
+        body.inativacaoMotivo = desc ? `${baseMotivo} - ${desc}` : baseMotivo;
       }
       const res = await apiFetch(`/api/users/${user.id}`, {
         method: "PATCH",
@@ -349,11 +354,49 @@ function InativarUsuarioModal({
                 <label className={labelClass}>
                   Motivo da inativação <span className="text-red-500">*</span>
                 </label>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="motivoInativacao"
+                      value="ROMPIMENTO"
+                      checked={motivo === "ROMPIMENTO"}
+                      onChange={() => setMotivo("ROMPIMENTO")}
+                      className="text-blue-600 border-gray-300 focus:ring-blue-500"
+                    />
+                    Rompimento de contrato
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="motivoInativacao"
+                      value="SOLICITACAO"
+                      checked={motivo === "SOLICITACAO"}
+                      onChange={() => setMotivo("SOLICITACAO")}
+                      className="text-blue-600 border-gray-300 focus:ring-blue-500"
+                    />
+                    Solicitação de rompimento de contrato
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="motivoInativacao"
+                      value="OUTROS"
+                      checked={motivo === "OUTROS"}
+                      onChange={() => setMotivo("OUTROS")}
+                      className="text-blue-600 border-gray-300 focus:ring-blue-500"
+                    />
+                    Outros
+                  </label>
+                </div>
+              </div>
+              <div>
+                <label className={labelClass}>Descrição breve (opcional)</label>
                 <textarea
-                  value={motivo}
-                  onChange={(e) => setMotivo(e.target.value)}
+                  value={descricaoBreve}
+                  onChange={(e) => setDescricaoBreve(e.target.value)}
                   className={`${inputClass} min-h-[80px] resize-y`}
-                  placeholder="Explique o motivo da inativação..."
+                  placeholder="Inclua uma observação, se necessário..."
                   maxLength={500}
                 />
               </div>
@@ -427,9 +470,10 @@ function NovoUsuarioModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
     sab: "00:00",
   });
   const [diasPermitidos, setDiasPermitidos] = useState("");
+  const [dataInicioAtividades, setDataInicioAtividades] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [fieldErrors, setFieldErrors] = useState<{ name?: boolean; email?: boolean; password?: boolean; cargo?: boolean }>({});
+  const [fieldErrors, setFieldErrors] = useState<{ name?: boolean; email?: boolean; password?: boolean; cargo?: boolean; dataInicioAtividades?: boolean }>({});
 
   useEffect(() => {
     if (role === "CLIENTE") {
@@ -452,6 +496,7 @@ function NovoUsuarioModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
     if (!email.trim() || !emailRegex.test(email.trim())) nextFieldErrors.email = true;
     if (!password.trim()) nextFieldErrors.password = true;
     if (!cargo.trim()) nextFieldErrors.cargo = true;
+    if (!dataInicioAtividades) nextFieldErrors.dataInicioAtividades = true;
     setFieldErrors(nextFieldErrors);
     if (Object.keys(nextFieldErrors).length > 0) {
       setError("Preencha todos os campos obrigatórios corretamente.");
@@ -486,6 +531,7 @@ function NovoUsuarioModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
           return Math.max(...valores, 0);
         })(),
         diasPermitidos: diasPermitidos.trim() ? parseInt(diasPermitidos, 10) : undefined,
+        dataInicioAtividades: dataInicioAtividades || undefined,
       };
       if (role === "CLIENTE") body.clientIds = clientIds;
       const res = await apiFetch("/api/users", {
@@ -659,6 +705,22 @@ function NovoUsuarioModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
                 />
               </div>
               <div>
+                <label className={labelClass}>
+                  Data de início das atividades <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  value={dataInicioAtividades}
+                  onChange={(e) => {
+                    setDataInicioAtividades(e.target.value);
+                    setFieldErrors((prev) => ({ ...prev, dataInicioAtividades: false }));
+                  }}
+                  className={`${inputClass} ${
+                    fieldErrors.dataInicioAtividades ? "border-red-400 focus:ring-red-300" : ""
+                  }`}
+                />
+              </div>
+              <div>
                 <label className={labelClass}>Limite diário de horas para apontamento</label>
                 <div className="grid grid-cols-7 gap-2 text-xs text-center mb-1">
                   {(Object.keys(DIA_LABELS) as DiaKey[]).map((k) => (
@@ -740,6 +802,10 @@ function EditarUsuarioModal({
       return String(d);
     }
   });
+  const [dataInicioAtividades, setDataInicioAtividades] = useState(() => {
+    if (!user.dataInicioAtividades) return "";
+    return String(user.dataInicioAtividades).slice(0, 10);
+  });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{ name?: boolean; email?: boolean; cargo?: boolean }>({});
@@ -797,6 +863,7 @@ function EditarUsuarioModal({
           return Math.max(...valores, 0);
         })(),
         diasPermitidos: diasPermitidos.trim() ? parseInt(diasPermitidos, 10) : undefined,
+        dataInicioAtividades: dataInicioAtividades || undefined,
       };
       if (password.trim()) body.password = password;
       if (role === "CLIENTE") body.clientIds = clientIds;

@@ -5,16 +5,53 @@ import { authMiddleware } from "../lib/auth.js";
 export const hourBankRouter = Router();
 hourBankRouter.use(authMiddleware);
 
-function getWorkingDays(year: number, month: number): number {
-  let count = 0;
-  const d = new Date(year, month - 1, 1);
-  const last = new Date(year, month, 0);
-  while (d <= last) {
-    const day = d.getDay();
-    if (day !== 0 && day !== 6) count++;
+type UserForHourBank = {
+  limiteHorasDiarias?: number | null;
+  limiteHorasPorDia?: string | null;
+  dataInicioAtividades?: Date | null;
+};
+
+function getDailyLimitFromUser(user: UserForHourBank, dateValue: Date): number {
+  const fallback =
+    typeof user.limiteHorasDiarias === "number" && !Number.isNaN(user.limiteHorasDiarias)
+      ? user.limiteHorasDiarias
+      : 8;
+  const raw = user.limiteHorasPorDia;
+  if (!raw) return fallback;
+  try {
+    const map = JSON.parse(raw) as Record<string, number>;
+    const idx = dateValue.getDay(); // 0..6 => Dom..Sáb
+    const keys = ["dom", "seg", "ter", "qua", "qui", "sex", "sab"] as const;
+    const key = keys[idx] as string;
+    const v = map[key];
+    return typeof v === "number" && v > 0 ? v : 0;
+  } catch {
+    return fallback;
+  }
+}
+
+function computeHorasPrevistasParaMes(
+  user: UserForHourBank | null,
+  year: number,
+  month: number
+): number {
+  const startOfMonth = new Date(year, month - 1, 1);
+  const endOfMonth = new Date(year, month, 0, 23, 59, 59);
+
+  let d = new Date(startOfMonth);
+  if (user?.dataInicioAtividades && user.dataInicioAtividades > d) {
+    d = new Date(user.dataInicioAtividades);
+    d.setHours(0, 0, 0, 0);
+  }
+
+  if (d > endOfMonth) return 0;
+
+  let previstas = 0;
+  while (d <= endOfMonth) {
+    previstas += getDailyLimitFromUser(user ?? {}, d);
     d.setDate(d.getDate() + 1);
   }
-  return count;
+  return Math.round(previstas * 100) / 100;
 }
 
 hourBankRouter.get("/", async (req, res) => {
@@ -38,12 +75,14 @@ hourBankRouter.get("/", async (req, res) => {
     orderBy: [{ year: "asc" }, { month: "asc" }],
   });
 
-  const carga = user.cargaHorariaSemanal ?? 40;
   const targetUser = await prisma.user.findUnique({
     where: { id: targetUserId },
-    select: { cargaHorariaSemanal: true },
+    select: {
+      limiteHorasDiarias: true,
+      limiteHorasPorDia: true,
+      dataInicioAtividades: true,
+    },
   });
-  const cargaTarget = targetUser?.cargaHorariaSemanal ?? carga;
 
   const start = new Date(y, 0, 1);
   const end = new Date(y, 11, 31, 23, 59, 59);
@@ -73,8 +112,7 @@ hourBankRouter.get("/", async (req, res) => {
         observacao: rec.observacao,
       });
     } else {
-      const diasUteis = getWorkingDays(y, m);
-      const previstas = (cargaTarget / 5) * diasUteis;
+      const previstas = computeHorasPrevistasParaMes(targetUser, y, m);
       result.push({
         id: null,
         month: m,
@@ -137,14 +175,15 @@ hourBankRouter.patch("/", async (req, res) => {
   const horasTrabalhadasNum = parseHoras(horasTrabalhadas);
 
   if (!record) {
-    const carga = user.cargaHorariaSemanal ?? 40;
     const targetUserData = await prisma.user.findUnique({
       where: { id: targetUserId },
-      select: { cargaHorariaSemanal: true },
+      select: {
+        limiteHorasDiarias: true,
+        limiteHorasPorDia: true,
+        dataInicioAtividades: true,
+      },
     });
-    const cargaTarget = targetUserData?.cargaHorariaSemanal ?? carga;
-    const diasUteis = getWorkingDays(y, m);
-    const horasPrevistas = (cargaTarget / 5) * diasUteis;
+    const horasPrevistas = computeHorasPrevistasParaMes(targetUserData, y, m);
     let horasTrab = horasTrabalhadasNum;
     if (horasTrab == null) {
       const start = new Date(y, m - 1, 1);

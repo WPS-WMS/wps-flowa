@@ -114,6 +114,7 @@ usersRouter.get("/", async (req, res) => {
       permitirFimDeSemana: true,
       permitirOutroPeriodo: true,
       diasPermitidos: true,
+      dataInicioAtividades: true,
       ativo: true,
       inativadoEm: true,
       inativacaoMotivo: true,
@@ -144,10 +145,13 @@ usersRouter.post("/", async (req, res) => {
     permitirFimDeSemana,
     permitirOutroPeriodo,
     diasPermitidos,
+    dataInicioAtividades,
     clientIds,
   } = req.body;
-  if (!email || !name || !password || !role) {
-    res.status(400).json({ error: "E-mail, nome, senha e tipo são obrigatórios" });
+  if (!email || !name || !password || !role || !dataInicioAtividades) {
+    res
+      .status(400)
+      .json({ error: "E-mail, nome, senha, tipo e data de início das atividades são obrigatórios" });
     return;
   }
   let clientIdsValid: string[] = [];
@@ -205,6 +209,7 @@ usersRouter.post("/", async (req, res) => {
       diasPermitidos: diasPermitidos
         ? JSON.stringify(diasPermitidos)
         : '["seg","ter","qua","qui","sex"]',
+      dataInicioAtividades: dataInicioAtividades ? new Date(dataInicioAtividades) : null,
     },
     select: {
       id: true,
@@ -254,6 +259,7 @@ usersRouter.patch("/:id", async (req, res) => {
       clientIds,
       ativo,
       inativacaoMotivo,
+      dataInicioAtividades,
     } = body;
 
     const existing = await prisma.user.findUnique({
@@ -314,7 +320,30 @@ usersRouter.patch("/:id", async (req, res) => {
             ? JSON.stringify(limiteHorasPorDia)
             : null;
     }
+    if (dataInicioAtividades !== undefined) {
+      data.dataInicioAtividades =
+        dataInicioAtividades === null || dataInicioAtividades === ""
+          ? null
+          : new Date(String(dataInicioAtividades));
+    }
     if (typeof ativo === "boolean") {
+      // Regra: não permitir inativar o único ADMIN ativo do tenant
+      if (!ativo && existing.role === "ADMIN") {
+        const otherActiveAdmins = await prisma.user.count({
+          where: {
+            tenantId: authUser.tenantId,
+            role: "ADMIN",
+            ativo: true,
+            id: { not: userId },
+          },
+        });
+        if (otherActiveAdmins === 0) {
+          res
+            .status(400)
+            .json({ error: "Não é possível inativar o único usuário com perfil Admin do sistema." });
+          return;
+        }
+      }
       data.ativo = ativo;
       if (!ativo) {
         data.inativadoEm = new Date();
