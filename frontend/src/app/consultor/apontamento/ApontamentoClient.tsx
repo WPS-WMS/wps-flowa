@@ -10,6 +10,34 @@ import { Plus, Trash2 } from "lucide-react";
 const DIAS_ABREV = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const HORAS_META = 8;
 
+function getDailyLimitFromUserForDate(
+  user: { limiteHorasPorDia?: string; limiteHorasDiarias?: number } | null,
+  date: Date,
+): number {
+  const dow = date.getDay();
+  const defaultDaily = dow === 0 || dow === 6 ? 0 : HORAS_META;
+  if (!user) return defaultDaily;
+
+  const fallback =
+    typeof user.limiteHorasDiarias === "number" && !Number.isNaN(user.limiteHorasDiarias)
+      ? user.limiteHorasDiarias
+      : HORAS_META;
+  const raw = user.limiteHorasPorDia;
+  if (!raw) {
+    return dow === 0 || dow === 6 ? 0 : fallback;
+  }
+  try {
+    const map = JSON.parse(raw) as Record<string, number>;
+    const keys = ["dom", "seg", "ter", "qua", "qui", "sex", "sab"] as const;
+    const key = keys[dow] as string;
+    const v = map[key];
+    if (typeof v === "number" && v >= 0) return v;
+    return dow === 0 || dow === 6 ? 0 : fallback;
+  } catch {
+    return dow === 0 || dow === 6 ? 0 : fallback;
+  }
+}
+
 function getWeekBounds(date: Date) {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
@@ -70,6 +98,7 @@ export function ApontamentoClient() {
   const [modal, setModal] = useState<{ date: Date; baseTotal: number } | null>(null);
   const [editEntry, setEditEntry] = useState<TimeEntryFull | null>(null);
   const { dom, sab } = getWeekBounds(weekStart);
+  const { user } = useAuth();
 
   function loadEntries() {
     apiFetch(`/api/time-entries?start=${dom.toISOString()}&end=${sab.toISOString()}`)
@@ -151,8 +180,9 @@ export function ApontamentoClient() {
     return acc;
   }, {});
 
+  const dailyLimits = days.map((d) => getDailyLimitFromUserForDate(user, d));
   const totalSemana = entries.reduce((s, e) => s + e.totalHoras, 0);
-  const metaSemana = 5 * HORAS_META; // 5 dias úteis
+  const metaSemana = dailyLimits.reduce((s, v) => s + v, 0);
   // Se ainda não há apontamentos, o saldo deve iniciar zerado
   const saldoSemana = totalSemana === 0 ? 0 : totalSemana - metaSemana;
 
@@ -217,13 +247,12 @@ export function ApontamentoClient() {
 
       {/* 7 colunas */}
       <div className="grid grid-cols-7 gap-2 min-w-0">
-        {days.map((d) => {
+        {days.map((d, index) => {
           const key = d.toDateString();
           const dayEntries = entriesByDay[key] ?? [];
           const dayRequests = requestsByDay[key] ?? [];
           const totalDay = dayEntries.reduce((s, e) => s + e.totalHoras, 0);
-          const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-          const meta = isWeekend ? 0 : HORAS_META;
+          const meta = dailyLimits[index] ?? 0;
 
           return (
             <div
@@ -236,12 +265,20 @@ export function ApontamentoClient() {
                   {d.getDate()} {DIAS_ABREV[d.getDay()]}
                 </div>
                 <div className="text-xs text-gray-500 mt-0.5">
-                  {fmt(totalDay)} de {fmt(isWeekend ? 0 : meta)}
+                    {fmt(totalDay)} de {fmt(meta)}
                 </div>
                 <div className="mt-1 h-1.5 rounded-full bg-blue-100 overflow-hidden">
                   <div
                     className="h-full rounded-full bg-blue-500 transition-all"
-                    style={{ width: `${isWeekend ? (totalDay > 0 ? 100 : 0) : Math.min(100, (totalDay / meta) * 100)}%` }}
+                      style={{
+                        width: `${
+                          meta > 0
+                            ? Math.min(100, (totalDay / meta) * 100)
+                            : totalDay > 0
+                            ? 100
+                            : 0
+                        }%`,
+                      }}
                   />
                 </div>
               </div>

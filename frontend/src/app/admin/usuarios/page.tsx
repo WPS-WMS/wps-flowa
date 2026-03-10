@@ -808,7 +808,12 @@ function EditarUsuarioModal({
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [fieldErrors, setFieldErrors] = useState<{ name?: boolean; email?: boolean; cargo?: boolean }>({});
+  const [fieldErrors, setFieldErrors] = useState<{
+    name?: boolean;
+    email?: boolean;
+    cargo?: boolean;
+    dataInicioAtividades?: boolean;
+  }>({});
 
   useEffect(() => {
     if (role === "CLIENTE") {
@@ -830,6 +835,7 @@ function EditarUsuarioModal({
     if (!name.trim()) nextFieldErrors.name = true;
     if (!email.trim() || !emailRegex.test(email.trim())) nextFieldErrors.email = true;
     if (!cargo.trim()) nextFieldErrors.cargo = true;
+    if (!dataInicioAtividades) nextFieldErrors.dataInicioAtividades = true;
     setFieldErrors(nextFieldErrors);
     if (Object.keys(nextFieldErrors).length > 0) {
       setError("Preencha todos os campos obrigatórios corretamente.");
@@ -997,6 +1003,22 @@ function EditarUsuarioModal({
                 }}
                 className={`${inputClass} ${fieldErrors.cargo ? "border-red-400 focus:ring-red-300" : ""}`}
                 placeholder="Cargo na empresa"
+              />
+            </div>
+            <div>
+              <label className={labelClass}>
+                Data de início das atividades <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="date"
+                value={dataInicioAtividades}
+                onChange={(e) => {
+                  setDataInicioAtividades(e.target.value);
+                  setFieldErrors((prev) => ({ ...prev, dataInicioAtividades: false }));
+                }}
+                className={`${inputClass} ${
+                  fieldErrors.dataInicioAtividades ? "border-red-400 focus:ring-red-300" : ""
+                }`}
               />
             </div>
 

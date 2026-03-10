@@ -13,6 +13,7 @@ type User = {
   cargo?: string;
   cargaHorariaSemanal?: number;
   limiteHorasDiarias?: number;
+  limiteHorasPorDia?: string;
   permitirMaisHoras?: boolean;
   permitirFimDeSemana?: boolean;
   permitirOutroPeriodo?: boolean;
