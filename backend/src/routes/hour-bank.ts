@@ -101,25 +101,30 @@ hourBankRouter.get("/", async (req, res) => {
   const result = [];
   for (let m = 1; m <= 12; m++) {
     const rec = recordsByMonth.get(m);
+    const previstasComputed = computeHorasPrevistasParaMes(targetUser, y, m);
+    const horasPrevistas = Math.round(previstasComputed * 100) / 100;
+    const horasTrabalhadas = rec ? rec.horasTrabalhadas : byMonth[m];
+    const horasComplementares =
+      rec?.horasComplementares ?? Math.round((horasTrabalhadas - horasPrevistas) * 100) / 100;
+
     if (rec) {
       result.push({
         id: rec.id,
         month: m,
         year: y,
-        horasPrevistas: rec.horasPrevistas,
-        horasTrabalhadas: rec.horasTrabalhadas,
-        horasComplementares: rec.horasComplementares ?? rec.horasTrabalhadas - rec.horasPrevistas,
+        horasPrevistas,
+        horasTrabalhadas,
+        horasComplementares,
         observacao: rec.observacao,
       });
     } else {
-      const previstas = computeHorasPrevistasParaMes(targetUser, y, m);
       result.push({
         id: null,
         month: m,
         year: y,
-        horasPrevistas: Math.round(previstas * 100) / 100,
+        horasPrevistas,
         horasTrabalhadas: Math.round(byMonth[m] * 100) / 100,
-        horasComplementares: Math.round((byMonth[m] - previstas) * 100) / 100,
+        horasComplementares: Math.round((byMonth[m] - horasPrevistas) * 100) / 100,
         observacao: null,
       });
     }
