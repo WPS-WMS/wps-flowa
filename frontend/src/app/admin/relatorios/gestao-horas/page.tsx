@@ -146,7 +146,8 @@ export default function RelatorioGestaoHorasPage() {
       });
       sheet.addImage(imageId, {
         tl: { col: 4, row: 1 }, // coluna E, linha 2 (ao lado das infos)
-        ext: { width: 200, height: 80 },
+        // Tamanho mais proporcional à nova arte (aprox. 2,5:1)
+        ext: { width: 160, height: 64 },
       });
     } catch {
       // Se der erro na logo, seguimos sem imagem
