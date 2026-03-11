@@ -2,10 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { apiFetch } from "@/lib/api";
-import { Download, FileText } from "lucide-react";
-import { DayPicker, type DateRange } from "react-day-picker";
-import { ptBR } from "date-fns/locale/pt-BR";
-import "react-day-picker/style.css";
+import { Download, FileText, Calendar as CalendarIcon } from "lucide-react";
 
 type UserOption = { id: string; name: string };
 type ProjectOption = { id: string; name: string; clientId?: string; client?: { id: string; name: string } };
@@ -74,25 +71,18 @@ function downloadCsv(rows: EntryRow[]) {
 
 export default function RelatorioGestaoHorasPage() {
   const [userId, setUserId] = useState("");
-  const [range, setRange] = useState<DateRange | undefined>(() => {
-    const from = new Date();
-    from.setDate(1);
-    const to = new Date();
-    return { from, to };
+  const [start, setStart] = useState(() => {
+    const d = new Date();
+    d.setDate(1);
+    return d.toISOString().slice(0, 10);
   });
+  const [end, setEnd] = useState(() => new Date().toISOString().slice(0, 10));
   const [projectId, setProjectId] = useState("");
   const [users, setUsers] = useState<UserOption[]>([]);
   const [projects, setProjects] = useState<ProjectOption[]>([]);
   const [entries, setEntries] = useState<EntryRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasFiltered, setHasFiltered] = useState(false);
-
-  const startStr = range?.from ? range.from.toISOString().slice(0, 10) : "";
-  const endStr = range?.to
-    ? range.to.toISOString().slice(0, 10)
-    : range?.from
-    ? range.from.toISOString().slice(0, 10)
-    : "";
 
   useEffect(() => {
     apiFetch("/api/users/for-select")
@@ -109,15 +99,15 @@ export default function RelatorioGestaoHorasPage() {
   }, []);
 
   function handleFilter() {
-    if (!startStr || !endStr) {
-      alert("Selecione um período no calendário.");
+    if (!start || !end) {
+      alert("Selecione o período (de e até).");
       return;
     }
     setHasFiltered(true);
     setLoading(true);
     const params = new URLSearchParams({
-      start: new Date(startStr).toISOString(),
-      end: new Date(endStr + "T23:59:59.999Z").toISOString(),
+      start: new Date(start).toISOString(),
+      end: new Date(end + "T23:59:59.999Z").toISOString(),
     });
     if (userId) params.set("userId", userId);
     if (projectId) params.set("projectId", projectId);
@@ -166,7 +156,7 @@ export default function RelatorioGestaoHorasPage() {
       <html>
         <head>
           <meta charset="utf-8">
-          <title>Gestão de horas - ${startStr} a ${endStr}</title>
+          <title>Gestão de horas - ${start} a ${end}</title>
           <style>
             body { font-family: sans-serif; font-size: 12px; padding: 16px; }
             h1 { font-size: 18px; margin-bottom: 8px; }
@@ -180,7 +170,7 @@ export default function RelatorioGestaoHorasPage() {
         </head>
         <body>
           <h1>Gestão de horas</h1>
-          <p class="meta">Período: ${startStr ? formatDateOnly(startStr) : ""} a ${endStr ? formatDateOnly(endStr) : ""} | Total apontado: ${fmtHours(totalHoras)}</p>
+          <p class="meta">Período: ${formatDateOnly(start)} a ${formatDateOnly(end)} | Total apontado: ${fmtHours(totalHoras)}</p>
           <table>
             <thead>
               <tr>
@@ -235,22 +225,32 @@ export default function RelatorioGestaoHorasPage() {
                 ))}
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-600 mb-1">Período (de–até)</label>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <p className="text-xs text-slate-600 mb-2">
-                  {startStr && endStr
-                    ? `De ${formatDateOnly(startStr)} até ${formatDateOnly(endStr)}`
-                    : "Selecione um período no calendário abaixo."}
-                </p>
-                <DayPicker
-                  mode="range"
-                  selected={range}
-                  onSelect={(r) => setRange(r ?? undefined)}
-                  numberOfMonths={2}
-                  locale={ptBR}
-                  defaultMonth={range?.from}
-                />
+            <div className="flex flex-col gap-1">
+              <label className="block text-sm font-medium text-slate-600">Período</label>
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1 min-w-[160px]">
+                  <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400">
+                    <CalendarIcon className="h-4 w-4" />
+                  </span>
+                  <input
+                    type="date"
+                    value={start}
+                    onChange={(e) => setStart(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 py-2 text-sm text-slate-800 hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
+                  />
+                </div>
+                <span className="text-slate-400 text-xs">até</span>
+                <div className="relative flex-1 min-w-[160px]">
+                  <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400">
+                    <CalendarIcon className="h-4 w-4" />
+                  </span>
+                  <input
+                    type="date"
+                    value={end}
+                    onChange={(e) => setEnd(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 py-2 text-sm text-slate-800 hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
+                  />
+                </div>
               </div>
             </div>
             <div>
