@@ -23,6 +23,7 @@ const NAV: NavItem[] = [
     icon: BarChart3,
     children: [
       { href: "/admin/relatorios", label: "Visão geral" },
+      { href: "/admin/relatorios/gestao-horas", label: "Gestão de horas" },
       { href: "/admin/relatorios/horas", label: "Horas (período/projeto/cliente)" },
       { href: "/admin/relatorios/utilizacao", label: "Utilização" },
       { href: "/admin/relatorios/chamados", label: "Chamados" },

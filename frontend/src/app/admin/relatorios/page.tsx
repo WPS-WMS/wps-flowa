@@ -1,9 +1,10 @@
 "use client";
 
 import { Link } from "@/components/Link";
-import { Clock, User, TrendingUp, FileSpreadsheet, Banknote, ArrowRight } from "lucide-react";
+import { Clock, User, TrendingUp, FileSpreadsheet, Banknote, ArrowRight, CalendarClock } from "lucide-react";
 
 const RELATORIOS = [
+  { id: "gestao-horas", href: "/admin/relatorios/gestao-horas", title: "Gestão de horas", description: "Lista de apontamentos com filtros por usuário, período e projeto. Exportar CSV e PDF.", icon: CalendarClock },
   { id: "horas", href: "/admin/relatorios/horas", title: "Horas por período / projeto / cliente", description: "Total de horas apontadas com filtro por datas e agrupamento por consultor, projeto ou cliente.", icon: Clock },
   { id: "utilizacao", href: "/admin/relatorios/utilizacao", title: "Utilização", description: "Horas por consultor no período vs. capacidade (carga horária). Quem está alocado e quem tem disponibilidade.", icon: User },
   { id: "chamados", href: "/admin/relatorios/chamados", title: "Chamados / tickets", description: "Quantidade de chamados por status e por período. Visão de demanda e throughput.", icon: TrendingUp },
