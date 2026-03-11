@@ -102,16 +102,16 @@ export default function RelatorioGestaoHorasPage() {
 
     const mesLabel = start ? formatMonthLabel(start) : "";
 
-    // Cabeçalho superior
-    sheet.getCell("A1").value = "Mês:";
-    sheet.getCell("B1").value = mesLabel;
-    sheet.getCell("A2").value = "Horas contratadas:";
-    sheet.getCell("B2").value = ""; // pode ser preenchido manualmente
-    sheet.getCell("A3").value = "Horas utilizadas:";
-    sheet.getCell("B3").value = fmtHours(totalHoras);
+    // Cabeçalho superior (começando na linha 2)
+    sheet.getCell("A2").value = "Mês:";
+    sheet.getCell("B2").value = mesLabel;
+    sheet.getCell("A3").value = "Horas contratadas:";
+    sheet.getCell("B3").value = ""; // pode ser preenchido manualmente
+    sheet.getCell("A4").value = "Horas utilizadas:";
+    sheet.getCell("B4").value = fmtHours(totalHoras);
 
-    // Estilo das linhas de informação (fundo azul claro e cinza, com bordas)
-    const infoRows = [1, 2, 3];
+    // Estilo das linhas de informação (fundo azul escuro e cinza, com bordas)
+    const infoRows = [2, 3, 4];
     for (const rowIdx of infoRows) {
       const labelCell = sheet.getCell(`A${rowIdx}`);
       const valueCell = sheet.getCell(`B${rowIdx}`);
@@ -138,15 +138,15 @@ export default function RelatorioGestaoHorasPage() {
 
     // Tentar adicionar logo na planilha (canto superior direito)
     try {
-      const logoResp = await fetch(`${window.location.origin}/logo-wps.png`);
+      const logoResp = await fetch(`${window.location.origin}/logo-wps-2.png`);
       const logoBuffer = await logoResp.arrayBuffer();
       const imageId = workbook.addImage({
         buffer: logoBuffer,
         extension: "png",
       });
       sheet.addImage(imageId, {
-        tl: { col: 4, row: 0 }, // coluna E, acima
-        ext: { width: 220, height: 70 },
+        tl: { col: 4, row: 1 }, // coluna E, linha 2 (ao lado das infos)
+        ext: { width: 200, height: 80 },
       });
     } catch {
       // Se der erro na logo, seguimos sem imagem
