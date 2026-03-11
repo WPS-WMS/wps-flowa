@@ -142,6 +142,89 @@ export default function RelatorioGestaoHorasPage() {
     downloadCsv(entries, start, end);
   }
 
+  async function handleDownloadXlsx() {
+    if (entries.length === 0) {
+      alert("Não há dados para exportar. Aplique os filtros primeiro.");
+      return;
+    }
+    const [{ default: ExcelJS }] = await Promise.all([import("exceljs")]);
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Gestão de horas");
+
+    const mesLabel = start ? formatMonthLabel(start) : "";
+
+    // Cabeçalho superior
+    sheet.getCell("A1").value = "Mês:";
+    sheet.getCell("B1").value = mesLabel;
+    sheet.getCell("A2").value = "Horas contratadas:";
+    sheet.getCell("B2").value = ""; // pode ser preenchido manualmente
+    sheet.getCell("A3").value = "Horas utilizadas:";
+    sheet.getCell("B3").value = fmtHours(totalHoras);
+
+    // Logo não vai no XLSX (precisaria de template), então focamos nas colunas
+
+    // Linha em branco + cabeçalho de colunas
+    const headerRowIndex = 5;
+    const header = ["Cliente", "Consultor", "Qtde Horas", "Data", "ID", "Descrição Atividade", "Status"];
+    const headerRow = sheet.getRow(headerRowIndex);
+    headerRow.values = header;
+    headerRow.height = 18;
+    headerRow.eachCell((cell) => {
+      cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+      cell.alignment = { vertical: "middle", horizontal: "center" };
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FF1E3A5F" }, // azul WPS aproximado
+      };
+      cell.border = {
+        top: { style: "thin", color: { argb: "FFCBD5E1" } },
+        left: { style: "thin", color: { argb: "FFCBD5E1" } },
+        bottom: { style: "thin", color: { argb: "FFCBD5E1" } },
+        right: { style: "thin", color: { argb: "FFCBD5E1" } },
+      };
+    });
+
+    // Largura das colunas
+    const widths = [18, 20, 12, 12, 10, 40, 14];
+    widths.forEach((w, i) => {
+      sheet.getColumn(i + 1).width = w;
+    });
+
+    // Linhas de dados
+    let currentRow = headerRowIndex + 1;
+    for (const e of entries) {
+      const row = sheet.getRow(currentRow++);
+      const cliente = e.project?.client?.name ?? "";
+      const consultor = e.user?.name ?? "";
+      const horas = fmtHours(e.totalHoras);
+      const data = formatDateOnly(e.date);
+      const id = e.ticket?.code ?? "";
+      const descricaoAtividade = e.ticket?.title ?? "";
+      const status = ""; // opcional para preencher depois
+      row.values = [cliente, consultor, horas, data, id, descricaoAtividade, status];
+      row.eachCell((cell) => {
+        cell.border = {
+          top: { style: "thin", color: { argb: "FFE5E7EB" } },
+          left: { style: "thin", color: { argb: "FFE5E7EB" } },
+          bottom: { style: "thin", color: { argb: "FFE5E7EB" } },
+          right: { style: "thin", color: { argb: "FFE5E7EB" } },
+        };
+      });
+    }
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `gestao-horas-${start}-a-${end}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   function handleDownloadPdf() {
     if (entries.length === 0) {
       alert("Não há dados para exportar. Aplique os filtros primeiro.");
@@ -385,6 +468,15 @@ export default function RelatorioGestaoHorasPage() {
               >
                 <FileText className="h-4 w-4" />
                 Download PDF
+              </button>
+              <button
+                type="button"
+                onClick={handleDownloadXlsx}
+                disabled={entries.length === 0}
+                className="inline-flex items-center gap-2 rounded-lg border border-emerald-400 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-100 disabled:opacity-50"
+              >
+                <Download className="h-4 w-4" />
+                Download Excel
               </button>
             </div>
           )}
