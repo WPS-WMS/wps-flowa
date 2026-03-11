@@ -40,49 +40,6 @@ function formatMonthLabel(dateStr: string): string {
   return `${mes}/${ano2}`;
 }
 
-function downloadCsv(rows: EntryRow[], start: string, end: string) {
-  const headerBlock = [
-    "WPS Flowa - Gestão de horas",
-    `Período:;${formatDateOnly(start)};até;${formatDateOnly(end)}`,
-    "",
-  ];
-
-  const headers = [
-    "Data",
-    "Colaborador",
-    "Projeto",
-    "ID Tarefa",
-    "Tarefa",
-    "Início",
-    "Fim",
-    "Hora total",
-  ];
-  const escape = (v: string | number) => {
-    const s = String(v ?? "");
-    if (s.includes(",") || s.includes('"') || s.includes("\n")) return `"${s.replace(/"/g, '""')}"`;
-    return s;
-  };
-  const line = (row: EntryRow) =>
-    [
-      formatDateOnly(row.date),
-      row.user?.name ?? "",
-      row.project?.name ?? "",
-      row.ticket?.code ?? "",
-      row.ticket?.title ?? "",
-      row.horaInicio,
-      row.horaFim,
-      fmtHours(row.totalHoras),
-    ].map(escape).join(",");
-  const csv = [...headerBlock, headers.join(","), ...rows.map(line)].join("\r\n");
-  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `gestao-horas-${rows[0]?.date ?? "inicio"}-${rows[rows.length - 1]?.date ?? "fim"}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
 export default function RelatorioGestaoHorasPage() {
   const [userId, setUserId] = useState("");
   const [start, setStart] = useState(() => {
@@ -134,14 +91,6 @@ export default function RelatorioGestaoHorasPage() {
 
   const totalHoras = entries.reduce((s, e) => s + e.totalHoras, 0);
 
-  function handleDownloadCsv() {
-    if (entries.length === 0) {
-      alert("Não há dados para exportar. Aplique os filtros primeiro.");
-      return;
-    }
-    downloadCsv(entries, start, end);
-  }
-
   async function handleDownloadXlsx() {
     if (entries.length === 0) {
       alert("Não há dados para exportar. Aplique os filtros primeiro.");
@@ -161,11 +110,51 @@ export default function RelatorioGestaoHorasPage() {
     sheet.getCell("A3").value = "Horas utilizadas:";
     sheet.getCell("B3").value = fmtHours(totalHoras);
 
-    // Logo não vai no XLSX (precisaria de template), então focamos nas colunas
+    // Estilo das linhas de informação (fundo azul claro e cinza, com bordas)
+    const infoRows = [1, 2, 3];
+    for (const rowIdx of infoRows) {
+      const labelCell = sheet.getCell(`A${rowIdx}`);
+      const valueCell = sheet.getCell(`B${rowIdx}`);
+      labelCell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+      labelCell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FF1E3A5F" }, // azul mais escuro
+      };
+      valueCell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFE5E7EB" }, // cinza claro
+      };
+      [labelCell, valueCell].forEach((cell) => {
+        cell.border = {
+          top: { style: "thin", color: { argb: "FFCBD5E1" } },
+          left: { style: "thin", color: { argb: "FFCBD5E1" } },
+          bottom: { style: "thin", color: { argb: "FFCBD5E1" } },
+          right: { style: "thin", color: { argb: "FFCBD5E1" } },
+        };
+      });
+    }
+
+    // Tentar adicionar logo na planilha (canto superior direito)
+    try {
+      const logoResp = await fetch(`${window.location.origin}/logo-wps.png`);
+      const logoBuffer = await logoResp.arrayBuffer();
+      const imageId = workbook.addImage({
+        buffer: logoBuffer,
+        extension: "png",
+      });
+      sheet.addImage(imageId, {
+        tl: { col: 4, row: 0 }, // coluna E, acima
+        ext: { width: 220, height: 70 },
+      });
+    } catch {
+      // Se der erro na logo, seguimos sem imagem
+    }
 
     // Linha em branco + cabeçalho de colunas
     const headerRowIndex = 5;
-    const header = ["Cliente", "Consultor", "Qtde Horas", "Data", "ID", "Descrição Atividade", "Status"];
+    const header = ["Cliente", "Consultor", "Qtde Horas", "Data", "ID", "Descrição Atividade"];
     const headerRow = sheet.getRow(headerRowIndex);
     headerRow.values = header;
     headerRow.height = 18;
@@ -186,7 +175,7 @@ export default function RelatorioGestaoHorasPage() {
     });
 
     // Largura das colunas
-    const widths = [18, 20, 12, 12, 10, 40, 14];
+    const widths = [20, 20, 12, 14, 10, 40];
     widths.forEach((w, i) => {
       sheet.getColumn(i + 1).width = w;
     });
@@ -201,8 +190,7 @@ export default function RelatorioGestaoHorasPage() {
       const data = formatDateOnly(e.date);
       const id = e.ticket?.code ?? "";
       const descricaoAtividade = e.ticket?.title ?? "";
-      const status = ""; // opcional para preencher depois
-      row.values = [cliente, consultor, horas, data, id, descricaoAtividade, status];
+      row.values = [cliente, consultor, horas, data, id, descricaoAtividade];
       row.eachCell((cell) => {
         cell.border = {
           top: { style: "thin", color: { argb: "FFE5E7EB" } },
@@ -451,15 +439,6 @@ export default function RelatorioGestaoHorasPage() {
           {/* Botões de download */}
           {hasFiltered && (
             <div className="flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={handleDownloadCsv}
-                disabled={entries.length === 0}
-                className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-              >
-                <Download className="h-4 w-4" />
-                Download CSV
-              </button>
               <button
                 type="button"
                 onClick={handleDownloadPdf}
