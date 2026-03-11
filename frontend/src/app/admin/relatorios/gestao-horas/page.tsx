@@ -32,7 +32,13 @@ function formatDateOnly(dateStr: string): string {
   return `${day}/${month}/${year}`;
 }
 
-function downloadCsv(rows: EntryRow[]) {
+function downloadCsv(rows: EntryRow[], start: string, end: string) {
+  const headerBlock = [
+    "WPS Flowa - Gestão de horas",
+    `Período:;${formatDateOnly(start)};até;${formatDateOnly(end)}`,
+    "",
+  ];
+
   const headers = [
     "Data",
     "Colaborador",
@@ -59,7 +65,7 @@ function downloadCsv(rows: EntryRow[]) {
       row.horaFim,
       fmtHours(row.totalHoras),
     ].map(escape).join(",");
-  const csv = [headers.join(","), ...rows.map(line)].join("\r\n");
+  const csv = [...headerBlock, headers.join(","), ...rows.map(line)].join("\r\n");
   const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -125,7 +131,7 @@ export default function RelatorioGestaoHorasPage() {
       alert("Não há dados para exportar. Aplique os filtros primeiro.");
       return;
     }
-    downloadCsv(entries);
+    downloadCsv(entries, start, end);
   }
 
   function handleDownloadPdf() {
@@ -138,6 +144,8 @@ export default function RelatorioGestaoHorasPage() {
       alert("Permita pop-ups para gerar o PDF.");
       return;
     }
+    const logoUrl = "https://wps-flowa.web.app/logo-wps.png"; // ajuste se tiver outra URL de logo
+
     const rows = entries.map(
       (row) =>
         `<tr>
@@ -158,19 +166,67 @@ export default function RelatorioGestaoHorasPage() {
           <meta charset="utf-8">
           <title>Gestão de horas - ${start} a ${end}</title>
           <style>
-            body { font-family: sans-serif; font-size: 12px; padding: 16px; }
-            h1 { font-size: 18px; margin-bottom: 8px; }
-            .meta { color: #666; margin-bottom: 16px; }
+            @page { size: A4 landscape; margin: 18mm; }
+            body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 11px; color: #111827; }
+            .header {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              margin-bottom: 12px;
+              padding-bottom: 8px;
+              border-bottom: 1px solid #e5e7eb;
+            }
+            .header-left {
+              display: flex;
+              align-items: center;
+              gap: 10px;
+            }
+            .header-logo {
+              height: 32px;
+            }
+            h1 { font-size: 20px; margin: 0; color: #111827; }
+            .subtitle { font-size: 11px; color: #6b7280; margin-top: 2px; }
+            .meta { font-size: 11px; color: #374151; margin: 4px 0 12px 0; }
             table { width: 100%; border-collapse: collapse; }
-            th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; }
-            th { background: #1e3a5f; color: #fff; }
-            tr:nth-child(even) { background: #f5f5f5; }
-            .total { font-weight: bold; margin-top: 12px; }
+            th, td { border: 1px solid #e5e7eb; padding: 4px 6px; text-align: left; }
+            th {
+              background: #111827;
+              color: #f9fafb;
+              font-weight: 600;
+              font-size: 10px;
+              text-transform: uppercase;
+            }
+            tr:nth-child(even) td { background: #f9fafb; }
+            .total {
+              margin-top: 8px;
+              font-weight: 600;
+            }
+            .footer {
+              margin-top: 8px;
+              font-size: 10px;
+              color: #9ca3af;
+              text-align: right;
+            }
           </style>
         </head>
         <body>
-          <h1>Gestão de horas</h1>
-          <p class="meta">Período: ${formatDateOnly(start)} a ${formatDateOnly(end)} | Total apontado: ${fmtHours(totalHoras)}</p>
+          <div class="header">
+            <div class="header-left">
+              <img src="${logoUrl}" alt="WPS" class="header-logo" />
+              <div>
+                <h1>Gestão de horas</h1>
+                <div class="subtitle">Relatório detalhado de apontamentos por usuário / projeto</div>
+              </div>
+            </div>
+            <div style="font-size:10px;color:#6b7280;">
+              Gerado em ${new Date().toLocaleString("pt-BR")}
+            </div>
+          </div>
+
+          <p class="meta">
+            Período: <strong>${formatDateOnly(start)}</strong> a <strong>${formatDateOnly(end)}</strong>
+            &nbsp;|&nbsp; Total apontado: <strong>${fmtHours(totalHoras)}</strong>
+          </p>
           <table>
             <thead>
               <tr>
@@ -186,7 +242,8 @@ export default function RelatorioGestaoHorasPage() {
             </thead>
             <tbody>${rows}</tbody>
           </table>
-          <p class="total">Total: ${fmtHours(totalHoras)}</p>
+          <p class="total">Total apontado no período: ${fmtHours(totalHoras)}</p>
+          <div class="footer">FLOWA - WPS Warehouse Process Solutions</div>
         </body>
       </html>
     `);
