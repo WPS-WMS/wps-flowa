@@ -3,6 +3,9 @@
 import { useState, useEffect } from "react";
 import { apiFetch } from "@/lib/api";
 import { Download, FileText } from "lucide-react";
+import { DayPicker, type DateRange } from "react-day-picker";
+import { ptBR } from "date-fns/locale/pt-BR";
+import "react-day-picker/style.css";
 
 type UserOption = { id: string; name: string };
 type ProjectOption = { id: string; name: string; clientId?: string; client?: { id: string; name: string } };
@@ -71,18 +74,25 @@ function downloadCsv(rows: EntryRow[]) {
 
 export default function RelatorioGestaoHorasPage() {
   const [userId, setUserId] = useState("");
-  const [start, setStart] = useState(() => {
-    const d = new Date();
-    d.setDate(1);
-    return d.toISOString().slice(0, 10);
+  const [range, setRange] = useState<DateRange | undefined>(() => {
+    const from = new Date();
+    from.setDate(1);
+    const to = new Date();
+    return { from, to };
   });
-  const [end, setEnd] = useState(() => new Date().toISOString().slice(0, 10));
   const [projectId, setProjectId] = useState("");
   const [users, setUsers] = useState<UserOption[]>([]);
   const [projects, setProjects] = useState<ProjectOption[]>([]);
   const [entries, setEntries] = useState<EntryRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasFiltered, setHasFiltered] = useState(false);
+
+  const startStr = range?.from ? range.from.toISOString().slice(0, 10) : "";
+  const endStr = range?.to
+    ? range.to.toISOString().slice(0, 10)
+    : range?.from
+    ? range.from.toISOString().slice(0, 10)
+    : "";
 
   useEffect(() => {
     apiFetch("/api/users/for-select")
@@ -99,11 +109,15 @@ export default function RelatorioGestaoHorasPage() {
   }, []);
 
   function handleFilter() {
+    if (!startStr || !endStr) {
+      alert("Selecione um período no calendário.");
+      return;
+    }
     setHasFiltered(true);
     setLoading(true);
     const params = new URLSearchParams({
-      start: new Date(start).toISOString(),
-      end: new Date(end + "T23:59:59.999Z").toISOString(),
+      start: new Date(startStr).toISOString(),
+      end: new Date(endStr + "T23:59:59.999Z").toISOString(),
     });
     if (userId) params.set("userId", userId);
     if (projectId) params.set("projectId", projectId);
@@ -152,7 +166,7 @@ export default function RelatorioGestaoHorasPage() {
       <html>
         <head>
           <meta charset="utf-8">
-          <title>Gestão de horas - ${start} a ${end}</title>
+          <title>Gestão de horas - ${startStr} a ${endStr}</title>
           <style>
             body { font-family: sans-serif; font-size: 12px; padding: 16px; }
             h1 { font-size: 18px; margin-bottom: 8px; }
@@ -166,7 +180,7 @@ export default function RelatorioGestaoHorasPage() {
         </head>
         <body>
           <h1>Gestão de horas</h1>
-          <p class="meta">Período: ${formatDateOnly(start)} a ${formatDateOnly(end)} | Total apontado: ${fmtHours(totalHoras)}</p>
+          <p class="meta">Período: ${startStr ? formatDateOnly(startStr) : ""} a ${endStr ? formatDateOnly(endStr) : ""} | Total apontado: ${fmtHours(totalHoras)}</p>
           <table>
             <thead>
               <tr>
@@ -223,19 +237,19 @@ export default function RelatorioGestaoHorasPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-600 mb-1">Período (de–até)</label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="date"
-                  value={start}
-                  onChange={(e) => setStart(e.target.value)}
-                  className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                />
-                <span className="text-slate-400">até</span>
-                <input
-                  type="date"
-                  value={end}
-                  onChange={(e) => setEnd(e.target.value)}
-                  className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <p className="text-xs text-slate-600 mb-2">
+                  {startStr && endStr
+                    ? `De ${formatDateOnly(startStr)} até ${formatDateOnly(endStr)}`
+                    : "Selecione um período no calendário abaixo."}
+                </p>
+                <DayPicker
+                  mode="range"
+                  selected={range}
+                  onSelect={(r) => setRange(r ?? undefined)}
+                  numberOfMonths={2}
+                  locale={ptBR}
+                  defaultMonth={range?.from}
                 />
               </div>
             </div>
