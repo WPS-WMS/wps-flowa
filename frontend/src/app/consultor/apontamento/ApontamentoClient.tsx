@@ -662,8 +662,8 @@ function ApontamentoModal({
     const totalDecimal = calcTotalHorasDecimal();
 
     // Caso especial: correção de apontamento REPROVADO.
-    // Aqui não criamos o apontamento direto; abrimos uma NOVA solicitação de permissão
-    // já com os dados corrigidos e reaproveitando a justificativa anterior.
+    // Aqui não criamos um novo registro; reaproveitamos a própria solicitação REJECTED,
+    // atualizando os dados e voltando o status para PENDING para nova aprovação.
     if (requestToFix && !isEdit) {
       if (!requestToFix.justification || !requestToFix.justification.trim()) {
         setError("Não foi possível reenviar a solicitação: justificativa anterior ausente.");
@@ -685,7 +685,7 @@ function ApontamentoModal({
           ticketId: ticketId || undefined,
           activityId: activityId || undefined,
         };
-        const res = await apiFetch("/api/permission-requests", {
+        const res = await apiFetch(`/api/permission-requests/${requestToFix.id}/resend`, {
           method: "POST",
           body: JSON.stringify(body),
         });
@@ -693,11 +693,6 @@ function ApontamentoModal({
         if (!res.ok) {
           setError(data?.error || "Erro ao reenviar solicitação para aprovação.");
           return;
-        }
-
-        // Remove a solicitação reprovada antiga para não ficar duplicada na tela
-        if (requestToFix.id) {
-          void apiFetch(`/api/permission-requests/${requestToFix.id}`, { method: "DELETE" }).catch(() => {});
         }
 
         onSaved();

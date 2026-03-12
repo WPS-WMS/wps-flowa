@@ -171,6 +171,130 @@ permissionRequestsRouter.post("/", async (req, res) => {
   res.status(201).json(created);
 });
 
+// Reenviar uma solicitação REJECTED (apenas o dono pode reenviar)
+permissionRequestsRouter.post("/:id/resend", async (req, res) => {
+  const user = req.user;
+  const id = req.params.id;
+  const {
+    date,
+    horaInicio,
+    horaFim,
+    intervaloInicio,
+    intervaloFim,
+    totalHoras,
+    description,
+    projectId,
+    ticketId,
+    activityId,
+  } = req.body;
+
+  const existing = await prisma.timeEntryPermissionRequest.findUnique({
+    where: { id },
+    include: { user: true },
+  });
+
+  if (!existing) {
+    res.status(404).json({ error: "Solicitação não encontrada" });
+    return;
+  }
+
+  if (existing.userId !== user.id) {
+    res.status(403).json({ error: "Você só pode reenviar suas próprias solicitações" });
+    return;
+  }
+
+  if (existing.status !== "REJECTED") {
+    res.status(400).json({ error: "Somente solicitações reprovadas podem ser reenviadas" });
+    return;
+  }
+
+  if (!date || !horaInicio || !horaFim || totalHoras == null || !projectId) {
+    res.status(400).json({ error: "Data, horário, total de horas e projeto são obrigatórios" });
+    return;
+  }
+
+  const project = await prisma.project.findFirst({
+    where: { id: String(projectId) },
+    select: { id: true },
+  });
+  if (!project) {
+    res.status(400).json({ error: "Projeto não encontrado" });
+    return;
+  }
+
+  const totalHorasNum = typeof totalHoras === "number" ? totalHoras : parseFloat(totalHoras);
+  if (isNaN(totalHorasNum) || totalHorasNum <= 0) {
+    res.status(400).json({ error: "Total de horas inválido" });
+    return;
+  }
+
+  // Mesma regra global dos apontamentos: ninguém pode solicitar permissão para data futura
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayYmd = formatYmdLocal(today);
+  const dateStr = String(date);
+  const requestedYmd =
+    dateStr.length >= 10 ? dateStr.slice(0, 10) : formatYmdLocal(new Date(dateStr));
+  if (requestedYmd > todayYmd) {
+    res.status(400).json({ error: "Não é permitido apontar horas em datas futuras." });
+    return;
+  }
+
+  // Respeitar também a janela de dias permitidos do usuário
+  const maxPastDays = getMaxPastDaysFromUser(user);
+  if (maxPastDays != null) {
+    const requestedDateForRules = new Date(requestedYmd + "T00:00:00");
+    const diffMs = today.getTime() - requestedDateForRules.getTime();
+    const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+    if (diffDays > maxPastDays) {
+      res.status(400).json({
+        error:
+          maxPastDays === 0
+            ? "Você só pode apontar horas na data de hoje."
+            : `Você só pode apontar horas até ${maxPastDays} dia(s) para trás.`,
+      });
+      return;
+    }
+  }
+
+  // Construir a data do apontamento em horário local (evita voltar um dia em fuso -03)
+  const [year, month, day] = requestedYmd.split("-").map((n) => Number(n));
+  const storedDate = new Date(year, (month || 1) - 1, day || 1);
+
+  const updated = await prisma.timeEntryPermissionRequest.update({
+    where: { id },
+    data: {
+      status: "PENDING",
+      reviewedAt: null,
+      reviewedById: null,
+      rejectionReason: null,
+      date: storedDate,
+      horaInicio: String(horaInicio),
+      horaFim: String(horaFim),
+      intervaloInicio: intervaloInicio ? String(intervaloInicio) : null,
+      intervaloFim: intervaloFim ? String(intervaloFim) : null,
+      totalHoras: totalHorasNum,
+      description: description ? String(description).trim() : null,
+      projectId: String(projectId),
+      ticketId: ticketId ? String(ticketId) : null,
+      activityId: activityId ? String(activityId) : null,
+    },
+    include: {
+      user: { select: { id: true, name: true, email: true } },
+      project: {
+        select: {
+          id: true,
+          name: true,
+          client: { select: { id: true, name: true } },
+        },
+      },
+      ticket: { select: { id: true, code: true, title: true } },
+    },
+  });
+
+  res.json(updated);
+});
+
 // Aprovar ou rejeitar (ADMIN ou GESTOR_PROJETOS)
 permissionRequestsRouter.patch("/:id", async (req, res) => {
   const authUser = req.user;
