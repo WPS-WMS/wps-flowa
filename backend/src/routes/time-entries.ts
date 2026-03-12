@@ -168,6 +168,17 @@ timeEntriesRouter.post("/", async (req, res) => {
       userId: user.id,
     });
 
+    console.log("[TIME-ENTRIES][POST] Nova requisição de apontamento", {
+      date,
+      horaInicio,
+      horaFim,
+      intervaloInicio,
+      intervaloFim,
+      projectId,
+      ticketId,
+      userId: user.id,
+    });
+
     if (!date || !horaInicio || !horaFim || !projectId) {
       res.status(400).json({
         error: "Data, hora início, hora fim e projeto são obrigatórios",
@@ -175,6 +186,9 @@ timeEntriesRouter.post("/", async (req, res) => {
       return;
     }
   if (description && String(description).length > 800) {
+    console.log("[TIME-ENTRIES][POST] Bloqueado: descrição > 800 caracteres", {
+      length: String(description).length,
+    });
     res.status(400).json({ error: "Descrição deve ter no máximo 800 caracteres" });
     return;
   }
@@ -186,6 +200,7 @@ timeEntriesRouter.post("/", async (req, res) => {
   const entryStr = String(date);
   const entryYmd = entryStr.length >= 10 ? entryStr.slice(0, 10) : formatYmdLocal(new Date(entryStr));
   if (entryYmd > todayYmd) {
+    console.log("[TIME-ENTRIES][POST] Bloqueado: data futura", { entryYmd, todayYmd });
     res.status(400).json({ error: "Não é permitido apontar horas em datas futuras." });
     return;
   }
@@ -197,6 +212,13 @@ timeEntriesRouter.post("/", async (req, res) => {
     const diffMs = today.getTime() - entryDate.getTime();
     const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
     if (diffDays > maxPastDays) {
+      console.log("[TIME-ENTRIES][POST] Bloqueado: fora da janela de diasPermitidos", {
+        entryYmd,
+        todayYmd,
+        diffDays,
+        maxPastDays,
+        raw: user.diasPermitidos,
+      });
       res.status(400).json({
         error:
           maxPastDays === 0
@@ -211,6 +233,12 @@ timeEntriesRouter.post("/", async (req, res) => {
   const startHours = parseHours(horaInicio);
   const endHours = parseHours(horaFim);
   if ((intervaloInicio && !intervaloFim) || (!intervaloInicio && intervaloFim)) {
+    console.log("[TIME-ENTRIES][POST] Bloqueado: intervalo incompleto", {
+      horaInicio,
+      horaFim,
+      intervaloInicio,
+      intervaloFim,
+    });
     res
       .status(400)
       .json({ error: "Preencha início e fim do intervalo ou deixe ambos em branco." });
@@ -220,12 +248,30 @@ timeEntriesRouter.post("/", async (req, res) => {
     const intervalStart = parseHours(intervaloInicio);
     const intervalEnd = parseHours(intervaloFim);
     if (intervalStart >= intervalEnd) {
+      console.log("[TIME-ENTRIES][POST] Bloqueado: intervalo início >= fim", {
+        horaInicio,
+        horaFim,
+        intervaloInicio,
+        intervaloFim,
+        intervalStart,
+        intervalEnd,
+      });
       res
         .status(400)
         .json({ error: "Horário de início do intervalo deve ser menor que o fim do intervalo." });
       return;
     }
     if (intervalStart < startHours || intervalEnd > endHours) {
+      console.log("[TIME-ENTRIES][POST] Bloqueado: intervalo fora do período apontado", {
+        horaInicio,
+        horaFim,
+        intervaloInicio,
+        intervaloFim,
+        startHours,
+        endHours,
+        intervalStart,
+        intervalEnd,
+      });
       res.status(400).json({
         error:
           "O intervalo deve estar totalmente dentro do período apontado (entre a hora de início e a hora de fim).",
@@ -336,6 +382,10 @@ timeEntriesRouter.patch("/:id", async (req, res) => {
     return;
   }
   if (description !== undefined && description != null && String(description).length > 800) {
+    console.log("[TIME-ENTRIES][PATCH] Bloqueado: descrição > 800 caracteres", {
+      length: String(description).length,
+      id,
+    });
     res.status(400).json({ error: "Descrição deve ter no máximo 800 caracteres" });
     return;
   }
@@ -347,6 +397,11 @@ timeEntriesRouter.patch("/:id", async (req, res) => {
   const todayYmd = formatYmdLocal(today);
   const entryYmd = formatYmdLocal(effectiveDate as Date);
   if (entryYmd > todayYmd) {
+    console.log("[TIME-ENTRIES][PATCH] Bloqueado: data futura", {
+      id,
+      entryYmd,
+      todayYmd,
+    });
     res.status(400).json({ error: "Não é permitido apontar horas em datas futuras." });
     return;
   }
@@ -357,6 +412,14 @@ timeEntriesRouter.patch("/:id", async (req, res) => {
     const diffMs = today.getTime() - (effectiveDate as Date).setHours(0, 0, 0, 0);
     const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
     if (diffDays > maxPastDays) {
+      console.log("[TIME-ENTRIES][PATCH] Bloqueado: fora da janela de diasPermitidos", {
+        id,
+        entryYmd,
+        todayYmd,
+        diffDays,
+        maxPastDays,
+        raw: user.diasPermitidos,
+      });
       res.status(400).json({
         error:
           maxPastDays === 0
@@ -387,6 +450,13 @@ timeEntriesRouter.patch("/:id", async (req, res) => {
   const startHours = parseHours(String(hInicio));
   const endHours = parseHours(String(hFim));
   if ((intIni && !intFim) || (!intIni && intFim)) {
+    console.log("[TIME-ENTRIES][PATCH] Bloqueado: intervalo incompleto", {
+      id,
+      horaInicio: String(hInicio),
+      horaFim: String(hFim),
+      intervaloInicio: String(intIni ?? ""),
+      intervaloFim: String(intFim ?? ""),
+    });
     res
       .status(400)
       .json({ error: "Preencha início e fim do intervalo ou deixe ambos em branco." });
@@ -396,12 +466,32 @@ timeEntriesRouter.patch("/:id", async (req, res) => {
     const intervalStart = parseHours(String(intIni));
     const intervalEnd = parseHours(String(intFim));
     if (intervalStart >= intervalEnd) {
+      console.log("[TIME-ENTRIES][PATCH] Bloqueado: intervalo início >= fim", {
+        id,
+        horaInicio: String(hInicio),
+        horaFim: String(hFim),
+        intervaloInicio: String(intIni),
+        intervaloFim: String(intFim),
+        intervalStart,
+        intervalEnd,
+      });
       res
         .status(400)
         .json({ error: "Horário de início do intervalo deve ser menor que o fim do intervalo." });
       return;
     }
     if (intervalStart < startHours || intervalEnd > endHours) {
+      console.log("[TIME-ENTRIES][PATCH] Bloqueado: intervalo fora do período apontado", {
+        id,
+        horaInicio: String(hInicio),
+        horaFim: String(hFim),
+        intervaloInicio: String(intIni),
+        intervaloFim: String(intFim),
+        startHours,
+        endHours,
+        intervalStart,
+        intervalEnd,
+      });
       res.status(400).json({
         error:
           "O intervalo deve estar totalmente dentro do período apontado (entre a hora de início e a hora de fim).",
