@@ -157,6 +157,24 @@ timeEntriesRouter.post("/", async (req, res) => {
     return;
   }
 
+  // Regra global: ninguém pode apontar horas em data futura
+  const today = new Date();
+  const todayY = today.getFullYear();
+  const todayM = today.getMonth();
+  const todayD = today.getDate();
+  const entryDate = new Date(date);
+  const entryY = entryDate.getFullYear();
+  const entryM = entryDate.getMonth();
+  const entryD = entryDate.getDate();
+  const isFuture =
+    entryY > todayY ||
+    (entryY === todayY && entryM > todayM) ||
+    (entryY === todayY && entryM === todayM && entryD > todayD);
+  if (isFuture) {
+    res.status(400).json({ error: "Não é permitido apontar horas em datas futuras." });
+    return;
+  }
+
   let total = parseHours(horaFim) - parseHours(horaInicio);
   if (intervaloInicio && intervaloFim) {
     total -= parseHours(intervaloFim) - parseHours(intervaloInicio);
@@ -260,6 +278,24 @@ timeEntriesRouter.patch("/:id", async (req, res) => {
   }
   if (description !== undefined && description != null && String(description).length > 600) {
     res.status(400).json({ error: "Descrição deve ter no máximo 600 caracteres" });
+    return;
+  }
+
+  // Regra global: ninguém pode deixar o apontamento em data futura
+  const effectiveDate = (payload.date as Date | undefined) ?? existing.date;
+  const today = new Date();
+  const todayY = today.getFullYear();
+  const todayM = today.getMonth();
+  const todayD = today.getDate();
+  const entryY = effectiveDate.getFullYear();
+  const entryM = effectiveDate.getMonth();
+  const entryD = effectiveDate.getDate();
+  const isFuture =
+    entryY > todayY ||
+    (entryY === todayY && entryM > todayM) ||
+    (entryY === todayY && entryM === todayM && entryD > todayD);
+  if (isFuture) {
+    res.status(400).json({ error: "Não é permitido apontar horas em datas futuras." });
     return;
   }
 
