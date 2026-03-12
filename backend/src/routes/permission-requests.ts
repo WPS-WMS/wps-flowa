@@ -116,8 +116,8 @@ permissionRequestsRouter.post("/", async (req, res) => {
   // Respeitar também a janela de dias permitidos do usuário
   const maxPastDays = getMaxPastDaysFromUser(user);
   if (maxPastDays != null) {
-    const requestedDate = new Date(requestedYmd + "T00:00:00");
-    const diffMs = today.getTime() - requestedDate.getTime();
+    const requestedDateForRules = new Date(requestedYmd + "T00:00:00");
+    const diffMs = today.getTime() - requestedDateForRules.getTime();
     const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
     if (diffDays > maxPastDays) {
       res.status(400).json({
@@ -130,12 +130,16 @@ permissionRequestsRouter.post("/", async (req, res) => {
     }
   }
 
+  // Construir a data do apontamento em horário local (evita voltar um dia em fuso -03)
+  const [year, month, day] = requestedYmd.split("-").map((n) => Number(n));
+  const storedDate = new Date(year, (month || 1) - 1, day || 1);
+
   const created = await prisma.timeEntryPermissionRequest.create({
     data: {
       userId: user.id,
       status: "PENDING",
       justification: String(justification).trim(),
-      date: new Date(date),
+      date: storedDate,
       horaInicio: String(horaInicio),
       horaFim: String(horaFim),
       intervaloInicio: intervaloInicio ? String(intervaloInicio) : null,
