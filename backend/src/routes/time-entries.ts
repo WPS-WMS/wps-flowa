@@ -207,6 +207,33 @@ timeEntriesRouter.post("/", async (req, res) => {
     }
   }
 
+  // Validação de intervalo: se informado, deve estar dentro do horário apontado
+  const startHours = parseHours(horaInicio);
+  const endHours = parseHours(horaFim);
+  if ((intervaloInicio && !intervaloFim) || (!intervaloInicio && intervaloFim)) {
+    res
+      .status(400)
+      .json({ error: "Preencha início e fim do intervalo ou deixe ambos em branco." });
+    return;
+  }
+  if (intervaloInicio && intervaloFim) {
+    const intervalStart = parseHours(intervaloInicio);
+    const intervalEnd = parseHours(intervaloFim);
+    if (intervalStart >= intervalEnd) {
+      res
+        .status(400)
+        .json({ error: "Horário de início do intervalo deve ser menor que o fim do intervalo." });
+      return;
+    }
+    if (intervalStart < startHours || intervalEnd > endHours) {
+      res.status(400).json({
+        error:
+          "O intervalo deve estar totalmente dentro do período apontado (entre a hora de início e a hora de fim).",
+      });
+      return;
+    }
+  }
+
   let total = parseHours(horaFim) - parseHours(horaInicio);
   if (intervaloInicio && intervaloFim) {
     total -= parseHours(intervaloFim) - parseHours(intervaloInicio);
@@ -355,6 +382,33 @@ timeEntriesRouter.patch("/:id", async (req, res) => {
   const hFim = payload.horaFim ?? existing.horaFim;
   const intIni = payload.intervaloInicio ?? existing.intervaloInicio;
   const intFim = payload.intervaloFim ?? existing.intervaloFim;
+
+  // Validação de intervalo: se informado, deve estar dentro do horário apontado
+  const startHours = parseHours(String(hInicio));
+  const endHours = parseHours(String(hFim));
+  if ((intIni && !intFim) || (!intIni && intFim)) {
+    res
+      .status(400)
+      .json({ error: "Preencha início e fim do intervalo ou deixe ambos em branco." });
+    return;
+  }
+  if (intIni && intFim) {
+    const intervalStart = parseHours(String(intIni));
+    const intervalEnd = parseHours(String(intFim));
+    if (intervalStart >= intervalEnd) {
+      res
+        .status(400)
+        .json({ error: "Horário de início do intervalo deve ser menor que o fim do intervalo." });
+      return;
+    }
+    if (intervalStart < startHours || intervalEnd > endHours) {
+      res.status(400).json({
+        error:
+          "O intervalo deve estar totalmente dentro do período apontado (entre a hora de início e a hora de fim).",
+      });
+      return;
+    }
+  }
 
   let total = parseHours(String(hFim)) - parseHours(String(hInicio));
   if (intIni && intFim) {
