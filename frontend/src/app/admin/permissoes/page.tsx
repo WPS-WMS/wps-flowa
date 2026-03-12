@@ -25,6 +25,15 @@ type PermissionRequest = {
   rejectionReason?: string | null;
 };
 
+function formatDatePtBR(dateStr: string): string {
+  const ymd = String(dateStr || "").slice(0, 10);
+  const parts = ymd.split("-");
+  if (parts.length !== 3) return ymd || "—";
+  const [y, m, d] = parts;
+  if (!y || !m || !d) return ymd || "—";
+  return `${d.padStart(2, "0")}/${m.padStart(2, "0")}/${y}`;
+}
+
 export default function PermissoesPage() {
   const [requests, setRequests] = useState<PermissionRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -154,7 +163,7 @@ export default function PermissoesPage() {
                     <p className="text-sm text-slate-600">{req.user.email}</p>
                     <p className="mt-2 text-sm text-slate-700">
                       <span className="font-medium">Horário de apontamento:</span>{" "}
-                      {new Date(req.date).toLocaleDateString("pt-BR")} · {req.horaInicio} às {req.horaFim}
+                      {formatDatePtBR(req.date)} · {req.horaInicio} às {req.horaFim}
                       {req.totalHoras ? ` (${req.totalHoras.toFixed(1)}h)` : ""}
                     </p>
                     {req.project?.name && (
