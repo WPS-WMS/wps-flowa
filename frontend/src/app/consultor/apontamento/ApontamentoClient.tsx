@@ -99,7 +99,7 @@ export function ApontamentoClient() {
   const [requests, setRequests] = useState<TimeEntryRequest[]>([]);
   const [modal, setModal] = useState<{ date: Date; baseTotal: number } | null>(null);
   const [editEntry, setEditEntry] = useState<TimeEntryFull | null>(null);
-  const [selectedRequest, setSelectedRequest] = useState<TimeEntryRequest | null>(null);
+  const [requestToFix, setRequestToFix] = useState<TimeEntryRequest | null>(null);
   const { dom, sab } = getWeekBounds(weekStart);
   const { user } = useAuth();
 
@@ -351,7 +351,31 @@ export function ApontamentoClient() {
                         key={r.id}
                         onClick={() => {
                           if (r.status === "REJECTED") {
-                            setSelectedRequest(r);
+                            const syntheticEntry: TimeEntryFull = {
+                              id: r.id,
+                              date: r.date,
+                              totalHoras: r.totalHoras,
+                              horaInicio: r.horaInicio,
+                              horaFim: r.horaFim,
+                              intervaloInicio: r.intervaloInicio ?? null,
+                              intervaloFim: r.intervaloFim ?? null,
+                              description: r.description ?? null,
+                              project: r.project
+                                ? {
+                                    id: r.project.id,
+                                    name: r.project.name,
+                                    client: r.project.client
+                                      ? { id: r.project.client.id, name: r.project.client.name }
+                                      : undefined,
+                                  }
+                                : undefined,
+                              ticket: r.ticket
+                                ? { id: r.ticket.id, code: r.ticket.code, title: r.ticket.title }
+                                : undefined,
+                              activity: undefined,
+                            };
+                            setRequestToFix(r);
+                            setEditEntry(syntheticEntry);
                           }
                         }}
                         className={`group rounded-lg border p-3 text-sm transition-colors cursor-pointer ${
@@ -426,9 +450,11 @@ export function ApontamentoClient() {
         <ApontamentoModal
           date={modal.date}
           baseDayTotal={modal.baseTotal}
+          requestToFix={requestToFix ?? undefined}
           onClose={() => setModal(null)}
           onSaved={() => {
             setModal(null);
+            setRequestToFix(null);
             loadEntries();
             loadRequests();
           }}
@@ -444,6 +470,7 @@ export function ApontamentoClient() {
             )
             .reduce((sum, e) => sum + e.totalHoras, 0)}
           entry={editEntry}
+          requestToFix={requestToFix && requestToFix.id === editEntry.id ? requestToFix : undefined}
           onClose={() => setEditEntry(null)}
           onSaved={() => {
             setEditEntry(null);
@@ -451,74 +478,6 @@ export function ApontamentoClient() {
             loadRequests();
           }}
         />
-      )}
-
-      {selectedRequest && (
-        <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          onClick={() => setSelectedRequest(null)}
-        >
-          <div
-            className="bg-white rounded-2xl border border-slate-200 w-full max-w-md shadow-2xl p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-lg font-semibold text-slate-900 mb-2">Solicitação reprovada</h3>
-            <p className="text-sm text-slate-600 mb-4">
-              Este apontamento foi reprovado pelo administrador/gestor. Veja o motivo abaixo, ajuste o horário ou a
-              descrição e crie um novo apontamento se necessário.
-            </p>
-            <div className="space-y-2 text-sm text-slate-700 mb-4">
-              <p>
-                <span className="font-medium">Data:</span>{" "}
-                {new Date(selectedRequest.date).toLocaleDateString("pt-BR")} · {selectedRequest.horaInicio} às{" "}
-                {selectedRequest.horaFim}
-                {selectedRequest.totalHoras ? ` (${selectedRequest.totalHoras.toFixed(1)}h)` : ""}
-              </p>
-              {selectedRequest.project && (
-                <p>
-                  <span className="font-medium">Projeto:</span> {selectedRequest.project.name}
-                  {selectedRequest.ticket ? ` · ${selectedRequest.ticket.code} ${selectedRequest.ticket.title}` : ""}
-                </p>
-              )}
-              {selectedRequest.justification && (
-                <p>
-                  <span className="font-medium">Justificativa enviada:</span> {selectedRequest.justification}
-                </p>
-              )}
-              {selectedRequest.rejectionReason && (
-                <p>
-                  <span className="font-medium">Motivo da reprovação:</span> {selectedRequest.rejectionReason}
-                </p>
-              )}
-              {selectedRequest.description && (
-                <p>
-                  <span className="font-medium">Descrição:</span> {selectedRequest.description}
-                </p>
-              )}
-            </div>
-            <div className="flex gap-3 justify-end">
-              <button
-                type="button"
-                onClick={() => setSelectedRequest(null)}
-                className="px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-medium hover:bg-slate-50"
-              >
-                Fechar
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!selectedRequest) return;
-                  const d = new Date(selectedRequest.date);
-                  setModal({ date: d, baseTotal: 0 });
-                  setSelectedRequest(null);
-                }}
-                className="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
-              >
-                Ajustar apontamento
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );
@@ -528,12 +487,14 @@ function ApontamentoModal({
   date,
   baseDayTotal,
   entry,
+  requestToFix,
   onClose,
   onSaved,
 }: {
   date: Date;
   baseDayTotal: number;
   entry?: TimeEntryFull;
+  requestToFix?: TimeEntryRequest;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -552,16 +513,21 @@ function ApontamentoModal({
   };
   const [tickets, setTickets] = useState<TicketForSelect[]>([]);
   const [activities, setActivities] = useState<Array<{ id: string; name: string }>>([]);
-  const [clientId, setClientId] = useState(entry?.project?.clientId ?? entry?.project?.client?.id ?? "");
-  const [projectId, setProjectId] = useState(entry?.project?.id ?? "");
+  const [clientId, setClientId] = useState(
+    entry?.project?.clientId ??
+      entry?.project?.client?.id ??
+      requestToFix?.project?.client?.id ??
+      "",
+  );
+  const [projectId, setProjectId] = useState(entry?.project?.id ?? requestToFix?.project?.id ?? "");
   const [topicId, setTopicId] = useState<string>("");
-  const [ticketId, setTicketId] = useState(entry?.ticket?.id ?? "");
+  const [ticketId, setTicketId] = useState(entry?.ticket?.id ?? requestToFix?.ticket?.id ?? "");
   const [activityId, setActivityId] = useState(entry?.activity?.id ?? "");
-  const [horaInicio, setHoraInicio] = useState(entry?.horaInicio ?? "09:00");
-  const [horaFim, setHoraFim] = useState(entry?.horaFim ?? "17:00");
-  const [intervaloInicio, setIntervaloInicio] = useState(entry?.intervaloInicio ?? "");
-  const [intervaloFim, setIntervaloFim] = useState(entry?.intervaloFim ?? "");
-  const [description, setDescription] = useState(entry?.description ?? "");
+  const [horaInicio, setHoraInicio] = useState(entry?.horaInicio ?? requestToFix?.horaInicio ?? "09:00");
+  const [horaFim, setHoraFim] = useState(entry?.horaFim ?? requestToFix?.horaFim ?? "17:00");
+  const [intervaloInicio, setIntervaloInicio] = useState(entry?.intervaloInicio ?? requestToFix?.intervaloInicio ?? "");
+  const [intervaloFim, setIntervaloFim] = useState(entry?.intervaloFim ?? requestToFix?.intervaloFim ?? "");
+  const [description, setDescription] = useState(entry?.description ?? requestToFix?.description ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, boolean>>({});
@@ -764,6 +730,10 @@ function ApontamentoModal({
         setError(data.error || "Erro ao salvar");
         return;
       }
+      // Se o usuário estava corrigindo uma solicitação reprovada, remover a solicitação antiga
+      if (!isEdit && requestToFix?.id) {
+        await apiFetch(`/api/permission-requests/${requestToFix.id}`, { method: "DELETE" }).catch(() => {});
+      }
       onSaved();
     } catch {
       setError("Erro de conexão");
@@ -790,6 +760,18 @@ function ApontamentoModal({
             {isEdit ? "Editar apontamento" : "Novo apontamento"}
           </h3>
           <p className="text-gray-500 text-[15px] mb-6">{date.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}</p>
+          {!isEdit && requestToFix?.status === "REJECTED" && (
+            <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+              <p className="font-semibold">Apontamento reprovado</p>
+              {requestToFix.rejectionReason ? (
+                <p className="mt-1">
+                  <span className="font-medium">Motivo:</span> {requestToFix.rejectionReason}
+                </p>
+              ) : (
+                <p className="mt-1">Motivo da reprovação não informado.</p>
+              )}
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className={labelClass}>
