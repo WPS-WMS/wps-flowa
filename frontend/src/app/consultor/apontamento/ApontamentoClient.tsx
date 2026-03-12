@@ -547,9 +547,14 @@ function ApontamentoModal({
   );
 
   function formatHorasInput(value: string): string {
-    const digits = value.replace(/\D/g, "");
-    if (digits.length <= 2) return digits + (digits.length > 0 ? ":" : "");
-    return digits.slice(0, 2) + ":" + digits.slice(2, 4);
+    // Mantém só dígitos e limita a 4 (HHMM)
+    const digits = value.replace(/\D/g, "").slice(0, 4);
+    if (digits.length <= 2) {
+      // Enquanto o usuário está digitando as horas, não força os dois pontos
+      return digits;
+    }
+    // A partir de 3 dígitos, formata como HH:MM
+    return `${digits.slice(0, 2)}:${digits.slice(2)}`;
   }
 
   function parseHours(h: string): number {
@@ -820,7 +825,7 @@ function ApontamentoModal({
                     type="text"
                     inputMode="numeric"
                     value={horaInicio}
-                    onChange={(e) => setHoraInicio(e.target.value)}
+                    onChange={(e) => setHoraInicio(formatHorasInput(e.target.value))}
                     placeholder="09:00"
                     className={inputClass}
                   />
@@ -831,7 +836,7 @@ function ApontamentoModal({
                     type="text"
                     inputMode="numeric"
                     value={horaFim}
-                    onChange={(e) => setHoraFim(e.target.value)}
+                    onChange={(e) => setHoraFim(formatHorasInput(e.target.value))}
                     placeholder="17:00"
                     className={inputClass}
                   />
@@ -844,7 +849,7 @@ function ApontamentoModal({
                     type="text"
                     inputMode="numeric"
                     value={intervaloInicio}
-                    onChange={(e) => setIntervaloInicio(e.target.value)}
+                    onChange={(e) => setIntervaloInicio(formatHorasInput(e.target.value))}
                     placeholder="12:00"
                     className={inputClass}
                   />
@@ -855,7 +860,7 @@ function ApontamentoModal({
                     type="text"
                     inputMode="numeric"
                     value={intervaloFim}
-                    onChange={(e) => setIntervaloFim(e.target.value)}
+                    onChange={(e) => setIntervaloFim(formatHorasInput(e.target.value))}
                     placeholder="13:00"
                     className={inputClass}
                   />
