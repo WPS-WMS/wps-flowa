@@ -820,7 +820,7 @@ function ApontamentoModal({
                     type="text"
                     inputMode="numeric"
                     value={horaInicio}
-                    onChange={(e) => setHoraInicio(formatHorasInput(e.target.value))}
+                    onChange={(e) => setHoraInicio(e.target.value)}
                     placeholder="09:00"
                     className={inputClass}
                   />
@@ -831,7 +831,7 @@ function ApontamentoModal({
                     type="text"
                     inputMode="numeric"
                     value={horaFim}
-                    onChange={(e) => setHoraFim(formatHorasInput(e.target.value))}
+                    onChange={(e) => setHoraFim(e.target.value)}
                     placeholder="17:00"
                     className={inputClass}
                   />
@@ -844,7 +844,7 @@ function ApontamentoModal({
                     type="text"
                     inputMode="numeric"
                     value={intervaloInicio}
-                    onChange={(e) => setIntervaloInicio(formatHorasInput(e.target.value))}
+                    onChange={(e) => setIntervaloInicio(e.target.value)}
                     placeholder="12:00"
                     className={inputClass}
                   />
@@ -855,7 +855,7 @@ function ApontamentoModal({
                     type="text"
                     inputMode="numeric"
                     value={intervaloFim}
-                    onChange={(e) => setIntervaloFim(formatHorasInput(e.target.value))}
+                    onChange={(e) => setIntervaloFim(e.target.value)}
                     placeholder="13:00"
                     className={inputClass}
                   />
