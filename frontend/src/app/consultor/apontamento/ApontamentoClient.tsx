@@ -531,17 +531,23 @@ function ApontamentoModal({
       return;
     }
     const entryClientId = entry?.project?.clientId ?? entry?.project?.client?.id;
-    const isEditSameClient = entry && clientId === entryClientId;
+    const requestClientId = requestToFix?.project?.client?.id;
+    const hasEntry = !!entry;
+    const hasRequest = !!requestToFix;
+    const isEditSameClient = hasEntry && clientId === entryClientId;
+
     apiFetch("/api/projects")
       .then((r) => r.json())
       .then((list: Array<{ id: string; name: string; clientId?: string; client?: { id: string } }>) =>
         setProjects(list.filter((p) => (p.clientId || p.client?.id) === clientId))
       );
-    if (!isEditSameClient) {
+    // Para edição de apontamento: se o cliente mudou em relação ao registro original,
+    // limpamos projeto e tarefa. Para correção de REPROVADO mantemos os campos.
+    if (hasEntry && !isEditSameClient) {
       setProjectId("");
       setTicketId("");
     }
-  }, [clientId, entry?.project?.clientId, entry?.project?.client?.id]);
+  }, [clientId, entry?.project?.clientId, entry?.project?.client?.id, requestToFix?.project?.client?.id]);
   useEffect(() => {
     if (!projectId) {
       setTickets([]);
@@ -549,7 +555,9 @@ function ApontamentoModal({
       setTicketId("");
       return;
     }
-    const isEditSameProject = entry && projectId === entry.project?.id;
+    const hasEntry = !!entry;
+    const hasRequest = !!requestToFix;
+    const isEditSameProject = hasEntry && projectId === entry.project?.id;
     apiFetch(`/api/tickets?projectId=${projectId}`)
       .then((r) => r.json())
       .then((list) => {
@@ -565,11 +573,13 @@ function ApontamentoModal({
           }
         }
       });
-    if (!isEditSameProject) {
+    // Para edição de apontamento: se o projeto mudou em relação ao registro original,
+    // limpamos tópico e tarefa. Para correção de REPROVADO mantemos os campos.
+    if (hasEntry && !isEditSameProject) {
       setTopicId("");
       setTicketId("");
     }
-  }, [projectId, entry?.project?.id]);
+  }, [projectId, entry?.project?.id, requestToFix, ticketId, topicId]);
 
   const topics = tickets.filter((t) => t.type === "SUBPROJETO");
   const taskOptions = tickets.filter(
@@ -650,6 +660,57 @@ function ApontamentoModal({
     }
 
     const totalDecimal = calcTotalHorasDecimal();
+
+    // Caso especial: correção de apontamento REPROVADO.
+    // Aqui não criamos o apontamento direto; abrimos uma NOVA solicitação de permissão
+    // já com os dados corrigidos e reaproveitando a justificativa anterior.
+    if (requestToFix && !isEdit) {
+      if (!requestToFix.justification || !requestToFix.justification.trim()) {
+        setError("Não foi possível reenviar a solicitação: justificativa anterior ausente.");
+        return;
+      }
+
+      setSaving(true);
+      try {
+        const body = {
+          justification: requestToFix.justification,
+          date: date.toISOString().slice(0, 10),
+          horaInicio,
+          horaFim,
+          intervaloInicio: intervaloInicio || undefined,
+          intervaloFim: intervaloFim || undefined,
+          totalHoras: totalDecimal,
+          description: description || undefined,
+          projectId,
+          ticketId: ticketId || undefined,
+          activityId: activityId || undefined,
+        };
+        const res = await apiFetch("/api/permission-requests", {
+          method: "POST",
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setError(data?.error || "Erro ao reenviar solicitação para aprovação.");
+          return;
+        }
+
+        // Remove a solicitação reprovada antiga para não ficar duplicada na tela
+        if (requestToFix.id) {
+          void apiFetch(`/api/permission-requests/${requestToFix.id}`, { method: "DELETE" }).catch(() => {});
+        }
+
+        onSaved();
+        return;
+      } catch {
+        setError("Erro de conexão ao reenviar solicitação.");
+        return;
+      } finally {
+        setSaving(false);
+      }
+    }
+
+    // Fluxo normal (sem correção de REPROVADO): aplica regras de limite diário e horário permitido.
 
     // Regra: usuários sem permissão não podem exceder o limite diário configurado.
     // Considera tanto um único apontamento > limite quanto a soma do dia (novo ou edição).
