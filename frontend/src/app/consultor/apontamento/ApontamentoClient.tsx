@@ -81,6 +81,8 @@ type TimeEntryRequest = {
   intervaloFim?: string | null;
   description?: string | null;
   status: "PENDING" | "APPROVED" | "REJECTED";
+  justification?: string;
+  rejectionReason?: string | null;
   project?: { id: string; name: string; client?: { id: string; name: string } };
   ticket?: { id: string; code: string; title: string } | null;
 };
@@ -97,6 +99,7 @@ export function ApontamentoClient() {
   const [requests, setRequests] = useState<TimeEntryRequest[]>([]);
   const [modal, setModal] = useState<{ date: Date; baseTotal: number } | null>(null);
   const [editEntry, setEditEntry] = useState<TimeEntryFull | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<TimeEntryRequest | null>(null);
   const { dom, sab } = getWeekBounds(weekStart);
   const { user } = useAuth();
 
@@ -124,6 +127,8 @@ export function ApontamentoClient() {
           intervaloInicio: req.intervaloInicio,
           intervaloFim: req.intervaloFim,
           description: req.description,
+          justification: req.justification,
+          rejectionReason: req.rejectionReason ?? null,
           status: req.status as "PENDING" | "APPROVED" | "REJECTED",
           project: req.project
             ? {
@@ -344,7 +349,12 @@ export function ApontamentoClient() {
                     {dayRequests.map((r) => (
                       <div
                         key={r.id}
-                        className={`group rounded-lg border p-3 text-sm transition-colors ${
+                        onClick={() => {
+                          if (r.status === "REJECTED") {
+                            setSelectedRequest(r);
+                          }
+                        }}
+                        className={`group rounded-lg border p-3 text-sm transition-colors cursor-pointer ${
                           r.status === "PENDING"
                             ? "border-amber-200 bg-amber-50/60"
                             : "border-red-200 bg-red-50/70"
@@ -441,6 +451,74 @@ export function ApontamentoClient() {
             loadRequests();
           }}
         />
+      )}
+
+      {selectedRequest && (
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setSelectedRequest(null)}
+        >
+          <div
+            className="bg-white rounded-2xl border border-slate-200 w-full max-w-md shadow-2xl p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold text-slate-900 mb-2">Solicitação reprovada</h3>
+            <p className="text-sm text-slate-600 mb-4">
+              Este apontamento foi reprovado pelo administrador/gestor. Veja o motivo abaixo, ajuste o horário ou a
+              descrição e crie um novo apontamento se necessário.
+            </p>
+            <div className="space-y-2 text-sm text-slate-700 mb-4">
+              <p>
+                <span className="font-medium">Data:</span>{" "}
+                {new Date(selectedRequest.date).toLocaleDateString("pt-BR")} · {selectedRequest.horaInicio} às{" "}
+                {selectedRequest.horaFim}
+                {selectedRequest.totalHoras ? ` (${selectedRequest.totalHoras.toFixed(1)}h)` : ""}
+              </p>
+              {selectedRequest.project && (
+                <p>
+                  <span className="font-medium">Projeto:</span> {selectedRequest.project.name}
+                  {selectedRequest.ticket ? ` · ${selectedRequest.ticket.code} ${selectedRequest.ticket.title}` : ""}
+                </p>
+              )}
+              {selectedRequest.justification && (
+                <p>
+                  <span className="font-medium">Justificativa enviada:</span> {selectedRequest.justification}
+                </p>
+              )}
+              {selectedRequest.rejectionReason && (
+                <p>
+                  <span className="font-medium">Motivo da reprovação:</span> {selectedRequest.rejectionReason}
+                </p>
+              )}
+              {selectedRequest.description && (
+                <p>
+                  <span className="font-medium">Descrição:</span> {selectedRequest.description}
+                </p>
+              )}
+            </div>
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedRequest(null)}
+                className="px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-medium hover:bg-slate-50"
+              >
+                Fechar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!selectedRequest) return;
+                  const d = new Date(selectedRequest.date);
+                  setModal({ date: d, baseTotal: 0 });
+                  setSelectedRequest(null);
+                }}
+                className="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
+              >
+                Ajustar apontamento
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
