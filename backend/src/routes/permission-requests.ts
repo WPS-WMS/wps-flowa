@@ -5,6 +5,13 @@ import { authMiddleware } from "../lib/auth.js";
 export const permissionRequestsRouter = Router();
 permissionRequestsRouter.use(authMiddleware);
 
+function formatYmdLocal(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 // Listar pedidos de permissão (ADMIN: todos; usuário: apenas os seus)
 permissionRequestsRouter.get("/", async (req, res) => {
   const user = req.user;
@@ -80,6 +87,14 @@ permissionRequestsRouter.post("/", async (req, res) => {
     return;
   }
 
+  // Mesma regra global dos apontamentos: ninguém pode solicitar permissão para data futura
+  const todayYmd = formatYmdLocal(new Date());
+  const requestedYmd = String(date).slice(0, 10);
+  if (requestedYmd > todayYmd) {
+    res.status(400).json({ error: "Não é permitido apontar horas em datas futuras." });
+    return;
+  }
+
   const created = await prisma.timeEntryPermissionRequest.create({
     data: {
       userId: user.id,
@@ -137,6 +152,14 @@ permissionRequestsRouter.patch("/:id", async (req, res) => {
   }
 
   const now = new Date();
+
+  // Bloqueio extra de segurança: mesmo pedidos antigos não podem ser aprovados se a data for futura
+  const todayYmd = formatYmdLocal(new Date());
+  const requestYmd = formatYmdLocal(request.date);
+  if (requestYmd > todayYmd) {
+    res.status(400).json({ error: "Não é permitido aprovar apontamentos em datas futuras." });
+    return;
+  }
 
   if (status === "APPROVED") {
     await prisma.$transaction([
