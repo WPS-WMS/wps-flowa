@@ -584,28 +584,35 @@ function ApontamentoModal({
 
     // Validação dos campos obrigatórios
     const errors: Record<string, boolean> = {};
-    let hasErrors = false;
+    const missingLabels: string[] = [];
 
     if (!clientId) {
       errors.clientId = true;
-      hasErrors = true;
+      missingLabels.push("Cliente");
     }
     if (!projectId) {
       errors.projectId = true;
-      hasErrors = true;
+      missingLabels.push("Projeto");
     }
     if (!ticketId) {
       errors.ticketId = true;
-      hasErrors = true;
+      missingLabels.push("Tarefa");
     }
     if (!description.trim()) {
       errors.description = true;
-      hasErrors = true;
+      missingLabels.push("Descrição");
     }
 
-    if (hasErrors) {
+    if (missingLabels.length > 0) {
       setFieldErrors(errors);
-      setError("Preencha todos os campos obrigatórios: Cliente, Projeto, Tarefa e Descrição");
+      const msgBase = "Preencha o campo obrigatório";
+      if (missingLabels.length === 1) {
+        setError(`${msgBase}: ${missingLabels[0]}`);
+      } else {
+        const last = missingLabels[missingLabels.length - 1];
+        const initial = missingLabels.slice(0, -1).join(", ");
+        setError(`${msgBase}s: ${initial} e ${last}`);
+      }
       return;
     }
 
