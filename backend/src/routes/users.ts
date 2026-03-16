@@ -154,6 +154,27 @@ usersRouter.post("/", async (req, res) => {
       .json({ error: "E-mail, nome, senha, tipo e data de início das atividades são obrigatórios" });
     return;
   }
+
+  // Quando "permitirOutroPeriodo" estiver habilitado, "diasPermitidos" passa a ser obrigatório
+  // e deve ser um número maior ou igual a 0 (quantidade de dias para trás permitidos).
+  if (permitirOutroPeriodo) {
+    const diasRaw = diasPermitidos;
+    const diasNum =
+      typeof diasRaw === "number"
+        ? diasRaw
+        : typeof diasRaw === "string"
+          ? Number(diasRaw)
+          : Array.isArray(diasRaw) || typeof diasRaw === "object"
+            ? NaN
+            : NaN;
+    if (Number.isNaN(diasNum) || diasNum < 0) {
+      res.status(400).json({
+        error:
+          'Quando "Permitido apontar em outro período" estiver marcado, informe uma quantidade válida de dias permitidos para apontamento (0 ou mais).',
+      });
+      return;
+    }
+  }
   let clientIdsValid: string[] = [];
   if (role === "CLIENTE") {
     const ids = Array.isArray(clientIds) ? clientIds.filter(Boolean) : [];
@@ -206,9 +227,12 @@ usersRouter.post("/", async (req, res) => {
       permitirMaisHoras: permitirMaisHoras ?? false,
       permitirFimDeSemana: permitirFimDeSemana ?? false,
       permitirOutroPeriodo: permitirOutroPeriodo ?? false,
-      diasPermitidos: diasPermitidos
-        ? JSON.stringify(diasPermitidos)
-        : '["seg","ter","qua","qui","sex"]',
+      diasPermitidos:
+        diasPermitidos != null
+          ? typeof diasPermitidos === "string" || typeof diasPermitidos === "number"
+            ? String(diasPermitidos)
+            : JSON.stringify(diasPermitidos)
+          : null,
       dataInicioAtividades: dataInicioAtividades ? new Date(dataInicioAtividades) : null,
     },
     select: {

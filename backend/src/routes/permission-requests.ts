@@ -12,18 +12,29 @@ function formatYmdLocal(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-function getMaxPastDaysFromUser(user: { diasPermitidos?: string | null }): number | null {
+function getMaxPastDaysFromUser(user: {
+  diasPermitidos?: string | null;
+  permitirOutroPeriodo?: boolean | null;
+}): number {
+  // Se o usuário NÃO tem permissão para apontar em outro período,
+  // ele só pode solicitar permissão para a data de hoje (0 dias para trás).
+  if (!user.permitirOutroPeriodo) {
+    return 0;
+  }
+
   const raw = user.diasPermitidos;
-  if (raw == null || raw === "") return null;
+  if (raw == null || raw === "") return 0;
+
   const n = Number(raw);
   if (!Number.isNaN(n) && n >= 0) return n;
+
   try {
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) return parsed.length;
   } catch {
     // ignore
   }
-  return null;
+  return 0;
 }
 
 // Listar pedidos de permissão (ADMIN: todos; usuário: apenas os seus)
@@ -119,21 +130,31 @@ permissionRequestsRouter.post("/", async (req, res) => {
     return;
   }
 
-  // Respeitar também a janela de dias permitidos do usuário
+  // Respeitar também a janela de dias permitidos do usuário (sempre datas ANTERIORES)
   const maxPastDays = getMaxPastDaysFromUser(user);
-  if (maxPastDays != null) {
-    const requestedDateForRules = new Date(requestedYmd + "T00:00:00");
-    const diffMs = today.getTime() - requestedDateForRules.getTime();
-    const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
-    if (diffDays > maxPastDays) {
-      res.status(400).json({
-        error:
-          maxPastDays === 0
-            ? "Você só pode apontar horas na data de hoje."
-            : `Você só pode apontar horas até ${maxPastDays} dia(s) para trás.`,
-      });
-      return;
-    }
+  const requestedDateForRules = new Date(requestedYmd + "T00:00:00");
+  const diffMs = today.getTime() - requestedDateForRules.getTime();
+  const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+  if (diffDays > maxPastDays) {
+    res.status(400).json({
+      error:
+        maxPastDays === 0
+          ? "Você só pode apontar horas na data de hoje."
+          : `Você só pode apontar horas até ${maxPastDays} dia(s) para trás.`,
+    });
+    return;
+  }
+
+  // Regra específica: finais de semana/feriados
+  // Apenas usuários com permitirFimDeSemana conseguem enviar solicitação;
+  // mesmo assim, o apontamento SEMPRE precisa de aprovação (não cria TimeEntry direto).
+  const weekday = requestedDateForRules.getDay(); // 0 = domingo, 6 = sábado
+  const isWeekend = weekday === 0 || weekday === 6;
+  if (isWeekend && !user.permitirFimDeSemana) {
+    res.status(400).json({
+      error: "Você não tem permissão para apontar em finais de semana ou feriados.",
+    });
+    return;
   }
 
   // Construir a data do apontamento em horário local (evita voltar um dia em fuso -03)
@@ -242,19 +263,27 @@ permissionRequestsRouter.post("/:id/resend", async (req, res) => {
 
   // Respeitar também a janela de dias permitidos do usuário
   const maxPastDays = getMaxPastDaysFromUser(user);
-  if (maxPastDays != null) {
-    const requestedDateForRules = new Date(requestedYmd + "T00:00:00");
-    const diffMs = today.getTime() - requestedDateForRules.getTime();
-    const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
-    if (diffDays > maxPastDays) {
-      res.status(400).json({
-        error:
-          maxPastDays === 0
-            ? "Você só pode apontar horas na data de hoje."
-            : `Você só pode apontar horas até ${maxPastDays} dia(s) para trás.`,
-      });
-      return;
-    }
+  const requestedDateForRules = new Date(requestedYmd + "T00:00:00");
+  const diffMs = today.getTime() - requestedDateForRules.getTime();
+  const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+  if (diffDays > maxPastDays) {
+    res.status(400).json({
+      error:
+        maxPastDays === 0
+          ? "Você só pode apontar horas na data de hoje."
+          : `Você só pode apontar horas até ${maxPastDays} dia(s) para trás.`,
+    });
+    return;
+  }
+
+  // Regra específica: finais de semana/feriados
+  const weekday = requestedDateForRules.getDay();
+  const isWeekend = weekday === 0 || weekday === 6;
+  if (isWeekend && !user.permitirFimDeSemana) {
+    res.status(400).json({
+      error: "Você não tem permissão para apontar em finais de semana ou feriados.",
+    });
+    return;
   }
 
   // Construir a data do apontamento em horário local (evita voltar um dia em fuso -03)

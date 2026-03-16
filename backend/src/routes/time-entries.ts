@@ -12,18 +12,29 @@ function formatYmdLocal(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-function getMaxPastDaysFromUser(user: { diasPermitidos?: string | null }): number | null {
+function getMaxPastDaysFromUser(user: {
+  diasPermitidos?: string | null;
+  permitirOutroPeriodo?: boolean | null;
+}): number {
+  // Se o usuário NÃO tem permissão para apontar em outro período,
+  // ele só pode apontar na data de hoje (0 dias para trás).
+  if (!user.permitirOutroPeriodo) {
+    return 0;
+  }
+
   const raw = user.diasPermitidos;
-  if (raw == null || raw === "") return null;
+  if (raw == null || raw === "") return 0;
+
   const n = Number(raw);
   if (!Number.isNaN(n) && n >= 0) return n;
+
   try {
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) return parsed.length;
   } catch {
     // ignore
   }
-  return null;
+  return 0;
 }
 
 function getDailyLimitFromUser(
@@ -144,7 +155,7 @@ timeEntriesRouter.get("/", async (req, res) => {
 
 timeEntriesRouter.post("/", async (req, res) => {
   try {
-  const user = (req as Request & { user: { id: string; tenantId: string; permitirMaisHoras?: boolean; limiteHorasDiarias?: number | null; limiteHorasPorDia?: string | null } }).user;
+  const user = (req as Request & { user: { id: string; tenantId: string; permitirMaisHoras?: boolean; limiteHorasDiarias?: number | null; limiteHorasPorDia?: string | null; permitirOutroPeriodo?: boolean | null; permitirFimDeSemana?: boolean | null } }).user;
     const {
       date,
       horaInicio,
@@ -205,28 +216,43 @@ timeEntriesRouter.post("/", async (req, res) => {
     return;
   }
 
-  // Regra adicional: respeitar janela de dias permitidos para apontamento
+  // Regra adicional: respeitar janela de dias permitidos para apontamento (sempre datas ANTERIORES)
   const maxPastDays = getMaxPastDaysFromUser(user);
-  if (maxPastDays != null) {
-    const entryDate = new Date(entryYmd + "T00:00:00");
-    const diffMs = today.getTime() - entryDate.getTime();
-    const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
-    if (diffDays > maxPastDays) {
-      console.log("[TIME-ENTRIES][POST] Bloqueado: fora da janela de diasPermitidos", {
-        entryYmd,
-        todayYmd,
-        diffDays,
-        maxPastDays,
-        raw: user.diasPermitidos,
-      });
-      res.status(400).json({
-        error:
-          maxPastDays === 0
-            ? "Você só pode apontar horas na data de hoje."
-            : `Você só pode apontar horas até ${maxPastDays} dia(s) para trás.`,
-      });
-      return;
-    }
+  const entryDate = new Date(entryYmd + "T00:00:00");
+  const diffMs = today.getTime() - entryDate.getTime();
+  const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+  if (diffDays > maxPastDays) {
+    console.log("[TIME-ENTRIES][POST] Bloqueado: fora da janela de diasPermitidos", {
+      entryYmd,
+      todayYmd,
+      diffDays,
+      maxPastDays,
+      raw: user.diasPermitidos,
+    });
+    res.status(400).json({
+      error:
+        maxPastDays === 0
+          ? "Você só pode apontar horas na data de hoje."
+          : `Você só pode apontar horas até ${maxPastDays} dia(s) para trás.`,
+    });
+    return;
+  }
+
+  // Regra: apontamentos em finais de semana/feriados SEMPRE precisam passar por aprovação.
+  // Aqui bloqueamos o registro direto e orientamos o usuário a enviar uma solicitação.
+  const entryWeekday = entryDate.getDay(); // 0 = domingo, 6 = sábado
+  const isWeekend = entryWeekday === 0 || entryWeekday === 6;
+  if (isWeekend) {
+    console.log("[TIME-ENTRIES][POST] Bloqueado: tentativa de apontar direto em final de semana", {
+      entryYmd,
+      userId: user.id,
+      permitirFimDeSemana: user.permitirFimDeSemana,
+    });
+    res.status(400).json({
+      error:
+        "Não é permitido registrar apontamentos diretamente em finais de semana ou feriados. Envie uma solicitação para aprovação.",
+    });
+    return;
   }
 
   // Validação de intervalo: se informado, deve estar dentro do horário apontado
@@ -353,7 +379,7 @@ timeEntriesRouter.post("/", async (req, res) => {
 });
 
 timeEntriesRouter.patch("/:id", async (req, res) => {
-  const user = (req as Request & { user: { id: string; role: string; tenantId: string; permitirMaisHoras?: boolean; limiteHorasDiarias?: number | null; limiteHorasPorDia?: string | null } }).user;
+  const user = (req as Request & { user: { id: string; role: string; tenantId: string; permitirMaisHoras?: boolean; limiteHorasDiarias?: number | null; limiteHorasPorDia?: string | null; permitirOutroPeriodo?: boolean | null } }).user;
   const { id } = req.params;
   const {
     date,
@@ -408,26 +434,24 @@ timeEntriesRouter.patch("/:id", async (req, res) => {
 
   // Janela de dias permitidos também se aplica em edições
   const maxPastDays = getMaxPastDaysFromUser(user);
-  if (maxPastDays != null) {
-    const diffMs = today.getTime() - (effectiveDateForRules as Date).setHours(0, 0, 0, 0);
-    const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
-    if (diffDays > maxPastDays) {
-      console.log("[TIME-ENTRIES][PATCH] Bloqueado: fora da janela de diasPermitidos", {
-        id,
-        entryYmd,
-        todayYmd,
-        diffDays,
-        maxPastDays,
-        raw: user.diasPermitidos,
-      });
-      res.status(400).json({
-        error:
-          maxPastDays === 0
-            ? "Você só pode apontar horas na data de hoje."
-            : `Você só pode apontar horas até ${maxPastDays} dia(s) para trás.`,
-      });
-      return;
-    }
+  const diffMs = today.getTime() - (effectiveDateForRules as Date).setHours(0, 0, 0, 0);
+  const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+  if (diffDays > maxPastDays) {
+    console.log("[TIME-ENTRIES][PATCH] Bloqueado: fora da janela de diasPermitidos", {
+      id,
+      entryYmd,
+      todayYmd,
+      diffDays,
+      maxPastDays,
+      raw: user.diasPermitidos,
+    });
+    res.status(400).json({
+      error:
+        maxPastDays === 0
+          ? "Você só pode apontar horas na data de hoje."
+          : `Você só pode apontar horas até ${maxPastDays} dia(s) para trás.`,
+    });
+    return;
   }
 
   const payload: Record<string, unknown> = {};

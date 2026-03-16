@@ -497,9 +497,23 @@ function NovoUsuarioModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
     if (!password.trim()) nextFieldErrors.password = true;
     if (!cargo.trim()) nextFieldErrors.cargo = true;
     if (!dataInicioAtividades) nextFieldErrors.dataInicioAtividades = true;
+    // Quando "Permitido apontar em outro período" estiver marcado,
+    // o campo "Dias permitidos para apontamento" passa a ser obrigatório.
+    if (permitirOutroPeriodo) {
+      const diasNum = diasPermitidos.trim() ? parseInt(diasPermitidos, 10) : NaN;
+      if (Number.isNaN(diasNum) || diasNum < 0) {
+        nextFieldErrors.dataInicioAtividades = nextFieldErrors.dataInicioAtividades || false;
+        setError("Informe uma quantidade válida de dias permitidos para apontamento (0 ou mais).");
+        // marcamos erro de validação genérico para impedir o submit
+        setFieldErrors(nextFieldErrors);
+        return;
+      }
+    }
     setFieldErrors(nextFieldErrors);
     if (Object.keys(nextFieldErrors).length > 0) {
-      setError("Preencha todos os campos obrigatórios corretamente.");
+      if (!error) {
+        setError("Preencha todos os campos obrigatórios corretamente.");
+      }
       return;
     }
     if (role === "CLIENTE" && clientIds.length === 0) {

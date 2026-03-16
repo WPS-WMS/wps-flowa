@@ -661,6 +661,34 @@ function ApontamentoModal({
 
     const totalDecimal = calcTotalHorasDecimal();
 
+    // Regra de finais de semana / feriados
+    const weekday = date.getDay(); // 0 = domingo, 6 = sábado
+    const isWeekend = weekday === 0 || weekday === 6;
+    if (isWeekend) {
+      // Se o usuário não tem permissão, bloqueia com mensagem de erro.
+      if (!user?.permitirFimDeSemana) {
+        setError("Você não tem permissão para apontar em finais de semana ou feriados.");
+        return;
+      }
+
+      // Mesmo com permissão, o apontamento em final de semana SEMPRE precisa de aprovação.
+      if (!isEdit) {
+        setPermissionPayload({
+          date: date.toISOString().slice(0, 10),
+          horaInicio,
+          horaFim,
+          intervaloInicio: intervaloInicio || undefined,
+          intervaloFim: intervaloFim || undefined,
+          totalHoras: totalDecimal,
+          description: description || undefined,
+          projectId,
+          ticketId: ticketId || undefined,
+          activityId: activityId || undefined,
+        });
+        return;
+      }
+    }
+
     // Caso especial: correção de apontamento REPROVADO.
     // Aqui não criamos um novo registro; reaproveitamos a própria solicitação REJECTED,
     // atualizando os dados e voltando o status para PENDING para nova aprovação.
