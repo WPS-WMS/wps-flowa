@@ -5,7 +5,7 @@ import { X, Maximize2, Send, Pencil, Trash2, Check, X as XIcon, Plus, Upload, Do
 import { apiFetch, getToken } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { RichTextEditor } from "./RichTextEditor";
-import { TimeEntryPermissionModal, isOutsideAllowedHours, type TimeEntryPermissionPayload } from "./TimeEntryPermissionModal";
+import { TimeEntryPermissionModal, type TimeEntryPermissionPayload } from "./TimeEntryPermissionModal";
 import { ConfirmModal } from "./ConfirmModal";
 import type { PackageTicket } from "./PackageCard";
 
@@ -810,22 +810,6 @@ export function EditTaskModalFull({
         projectId: projectId!,
         ticketId: ticket.id,
         activityId: undefined,
-      });
-      return;
-    }
-
-    // Sem permissão para apontar fora de 08:00–18:00: abrir modal de solicitação (apenas ao criar, não ao editar)
-    if (!editingTimeEntry && !currentUser?.permitirOutroPeriodo && isOutsideAllowedHours(timeEntryHoraInicio, timeEntryHoraFim)) {
-      setPermissionPayload({
-        date: timeEntryDate,
-        horaInicio: timeEntryHoraInicio,
-        horaFim: timeEntryHoraFim,
-        intervaloInicio: timeEntryIntervaloInicio || undefined,
-        intervaloFim: timeEntryIntervaloFim || undefined,
-        totalHoras: calcTotalHorasDecimal(),
-        description: timeEntryDescription.trim() || undefined,
-        projectId: projectId!,
-        ticketId: ticket.id,
       });
       return;
     }

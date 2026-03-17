@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
-import { TimeEntryPermissionModal, isOutsideAllowedHours, type TimeEntryPermissionPayload } from "@/components/TimeEntryPermissionModal";
+import { TimeEntryPermissionModal, type TimeEntryPermissionPayload } from "@/components/TimeEntryPermissionModal";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { Plus, Trash2 } from "lucide-react";
 
@@ -745,23 +745,6 @@ function ApontamentoModal({
 
     if (!user?.permitirMaisHoras && (willExceedByEntry || willExceedByDay)) {
       setOverLimitPayload({
-        date: date.toISOString().slice(0, 10),
-        horaInicio,
-        horaFim,
-        intervaloInicio: intervaloInicio || undefined,
-        intervaloFim: intervaloFim || undefined,
-        totalHoras: totalDecimal,
-        description: description || undefined,
-        projectId,
-        ticketId: ticketId || undefined,
-        activityId: activityId || undefined,
-      });
-      return;
-    }
-
-    // Sem permissão para apontar fora de 08:00–18:00: abrir modal de solicitação
-    if (!isEdit && !user?.permitirOutroPeriodo && isOutsideAllowedHours(horaInicio, horaFim)) {
-      setPermissionPayload({
         date: date.toISOString().slice(0, 10),
         horaInicio,
         horaFim,

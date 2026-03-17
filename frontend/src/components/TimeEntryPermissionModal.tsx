@@ -2,25 +2,6 @@
 
 import { useState } from "react";
 
-const HORA_MIN = 8; // 08:00
-const HORA_MAX = 18; // 18:00
-
-/** Retorna true se o horário (ex: "07:30" ou "19:00") está fora do range 08:00–18:00 */
-export function isOutsideAllowedHours(horaInicio: string, horaFim: string): boolean {
-  const parse = (h: string) => {
-    const parts = String(h || "").trim().split(":").map(Number);
-    const hh = isNaN(parts[0]) ? 0 : parts[0];
-    const mm = isNaN(parts[1]) ? 0 : parts[1];
-    return hh + mm / 60;
-  };
-  const start = parse(horaInicio);
-  const end = parse(horaFim);
-  // Fora do permitido se início ou fim estiver antes das 08:00 ou depois das 18:00
-  if (start < HORA_MIN || start >= HORA_MAX) return true;
-  if (end <= HORA_MIN || end > HORA_MAX) return true;
-  return false;
-}
-
 export type TimeEntryPermissionPayload = {
   date: string;
   horaInicio: string;
@@ -82,7 +63,7 @@ export function TimeEntryPermissionModal({
       >
         <h3 className="text-lg font-semibold text-gray-800 mb-2">Permissão para apontamento</h3>
         <p className="text-sm text-gray-600 mb-4">
-          Você não tem permissão para apontar horas fora do horário estipulado (08:00 às 18:00).
+          Você não tem permissão para registrar este apontamento diretamente.
           Deseja enviar uma solicitação para o administrador aprovar?
         </p>
         <div className="mb-4">
