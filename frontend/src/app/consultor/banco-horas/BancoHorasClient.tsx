@@ -151,7 +151,7 @@ export function BancoHorasClient({ isAdmin = false }: { isAdmin?: boolean }) {
   }
 
   function downloadCsv() {
-    const headers = ["Usuário", "Mês/Ano", "Horas previstas", "Horas trabalhadas", "Total de Horas extras", "Observação"];
+    const headers = ["Usuário", "Mês/Ano", "Horas previstas", "Horas trabalhadas", "Total de Horas complementares", "Observação"];
     const rows: string[][] = filteredData.map((row) => [
       currentUserName,
       `${MESES[row.month - 1]}/${row.year}`,
@@ -162,7 +162,7 @@ export function BancoHorasClient({ isAdmin = false }: { isAdmin?: boolean }) {
     ]);
     const totalRow = [
       currentUserName,
-      "Total de hora extra do ano",
+      "Total de horas complementares do ano",
       "",
       "",
       `${totalHorasExtras >= 0 ? "" : "-"}${fmt(Math.abs(totalHorasExtras))}`,
@@ -243,7 +243,7 @@ export function BancoHorasClient({ isAdmin = false }: { isAdmin?: boolean }) {
               <th className="px-2 py-2 text-left w-[10.5rem] whitespace-nowrap">Mês/Ano</th>
               <th className="px-1 py-2 text-center whitespace-nowrap min-w-[6rem]">Horas previstas</th>
               <th className="px-1 py-2 text-center whitespace-nowrap min-w-[6rem]">Horas trabalhadas</th>
-              <th className="px-1 py-2 text-center whitespace-nowrap min-w-[7rem]">Total de Horas extras</th>
+              <th className="px-1 py-2 text-center whitespace-nowrap min-w-[7rem]">Total de Horas complementares</th>
               <th className="px-4 py-3 text-left whitespace-nowrap">Observação</th>
             </tr>
           </thead>
@@ -385,7 +385,7 @@ export function BancoHorasClient({ isAdmin = false }: { isAdmin?: boolean }) {
               </tr>
             ))}
             <tr className="border-t-2 border-blue-200 bg-blue-50/50 font-medium">
-              <td className="px-2 py-2 text-gray-800 w-[10.5rem] whitespace-nowrap">Total de hora extra do ano</td>
+              <td className="px-2 py-2 text-gray-800 w-[10.5rem] whitespace-nowrap">Total de horas complementares do ano</td>
               <td className="px-1 py-2 min-w-[6rem]"></td>
               <td className="px-1 py-2 min-w-[6rem]"></td>
               <td className="px-1 py-2 text-center font-mono min-w-[7rem]">
