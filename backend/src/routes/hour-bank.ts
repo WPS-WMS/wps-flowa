@@ -12,21 +12,26 @@ type UserForHourBank = {
 };
 
 function getDailyLimitFromUser(user: UserForHourBank, dateValue: Date): number {
+  const dow = dateValue.getDay();
   const fallback =
     typeof user.limiteHorasDiarias === "number" && !Number.isNaN(user.limiteHorasDiarias)
       ? user.limiteHorasDiarias
       : 8;
   const raw = user.limiteHorasPorDia;
-  if (!raw) return fallback;
+  // Se não existir mapa por dia, consideramos o padrão do sistema:
+  // fim de semana (dom/sáb) = 0, demais dias = fallback.
+  if (!raw) return dow === 0 || dow === 6 ? 0 : fallback;
   try {
     const map = JSON.parse(raw) as Record<string, number>;
-    const idx = dateValue.getDay(); // 0..6 => Dom..Sáb
     const keys = ["dom", "seg", "ter", "qua", "qui", "sex", "sab"] as const;
-    const key = keys[idx] as string;
+    const key = keys[dow] as string;
     const v = map[key];
-    return typeof v === "number" && v > 0 ? v : 0;
+    // Se o dia estiver definido como 0, deve valer 0 (ex.: fim de semana).
+    // Se não estiver definido, mantém o padrão: fim de semana 0, senão fallback.
+    if (typeof v === "number" && v >= 0) return v;
+    return dow === 0 || dow === 6 ? 0 : fallback;
   } catch {
-    return fallback;
+    return dow === 0 || dow === 6 ? 0 : fallback;
   }
 }
 

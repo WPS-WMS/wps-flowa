@@ -276,6 +276,29 @@ function parseHorasToNumber(hhmm: string): number {
   return hh + mm / 60;
 }
 
+function validateLimitesPorDia(limites: Record<DiaKey, string>): string | null {
+  // Obrigatório: cada dia deve estar em HH:MM e dentro de 00:00–23:59
+  // e pelo menos um dia deve ser > 00:00.
+  let anyPositive = false;
+  for (const k of Object.keys(DIA_LABELS) as DiaKey[]) {
+    const raw = (limites[k] ?? "").trim();
+    if (!/^\d{2}:\d{2}$/.test(raw)) {
+      return `Preencha o limite diário em formato HH:MM para ${DIA_LABELS[k]}.`;
+    }
+    const [hhStr, mmStr] = raw.split(":");
+    const hh = parseInt(hhStr, 10);
+    const mm = parseInt(mmStr, 10);
+    if (Number.isNaN(hh) || Number.isNaN(mm) || hh < 0 || hh > 23 || mm < 0 || mm > 59) {
+      return `Valor inválido no limite diário de ${DIA_LABELS[k]} (use 00:00 até 23:59).`;
+    }
+    if (hh > 0 || mm > 0) anyPositive = true;
+  }
+  if (!anyPositive) {
+    return "O limite diário não pode ser 00:00 para todos os dias.";
+  }
+  return null;
+}
+
 function InativarUsuarioModal({
   user,
   onClose,
@@ -512,6 +535,14 @@ function NovoUsuarioModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
         setError("Informe uma quantidade válida de dias permitidos para apontamento (0 ou mais).");
         // marcamos erro de validação genérico para impedir o submit
         setFieldErrors(nextFieldErrors);
+        return;
+      }
+    }
+
+    if (role !== "CLIENTE") {
+      const limiteErr = validateLimitesPorDia(limitesPorDia);
+      if (limiteErr) {
+        setError(limiteErr);
         return;
       }
     }
@@ -869,6 +900,14 @@ function EditarUsuarioModal({
     if (Object.keys(nextFieldErrors).length > 0) {
       setError("Preencha todos os campos obrigatórios corretamente.");
       return;
+    }
+
+    if (role !== "CLIENTE") {
+      const limiteErr = validateLimitesPorDia(limitesPorDia);
+      if (limiteErr) {
+        setError(limiteErr);
+        return;
+      }
     }
     if (role === "CLIENTE" && clientIds.length === 0) {
       setError("Usuários com perfil Cliente devem estar vinculados a pelo menos uma empresa.");

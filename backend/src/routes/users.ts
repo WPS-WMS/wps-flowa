@@ -177,6 +177,42 @@ usersRouter.post("/", async (req, res) => {
       return;
     }
   }
+
+  // "Limite diário de horas para apontamento" é obrigatório para perfis que apontam horas.
+  // Exigimos o mapa por dia (limiteHorasPorDia) no formato { dom, seg, ter, qua, qui, sex, sab }.
+  if (String(role) !== "CLIENTE") {
+    const expectedKeys = ["dom", "seg", "ter", "qua", "qui", "sex", "sab"] as const;
+    if (!limiteHorasPorDia || typeof limiteHorasPorDia !== "object" || Array.isArray(limiteHorasPorDia)) {
+      res.status(400).json({
+        error: 'Informe o "Limite diário de horas para apontamento" (por dia da semana) para este usuário.',
+      });
+      return;
+    }
+    const map = limiteHorasPorDia as Record<string, unknown>;
+    let anyPositive = false;
+    for (const k of expectedKeys) {
+      const v = map[k];
+      if (typeof v !== "number" || Number.isNaN(v) || v < 0) {
+        res.status(400).json({
+          error: 'O "Limite diário de horas para apontamento" deve ser um número válido (>= 0) para cada dia da semana.',
+        });
+        return;
+      }
+      if (v > 23.99) {
+        res.status(400).json({
+          error: 'O "Limite diário de horas para apontamento" não pode exceder 23:59 por dia.',
+        });
+        return;
+      }
+      if (v > 0) anyPositive = true;
+    }
+    if (!anyPositive) {
+      res.status(400).json({
+        error: 'O "Limite diário de horas para apontamento" não pode ser 0 para todos os dias.',
+      });
+      return;
+    }
+  }
   let clientIdsValid: string[] = [];
   if (role === "CLIENTE") {
     const ids = Array.isArray(clientIds) ? clientIds.filter(Boolean) : [];
@@ -352,8 +388,51 @@ usersRouter.patch("/:id", async (req, res) => {
       data.diasPermitidos = null;
       data.dataInicioAtividades = null;
     } else {
+      // Se o usuário aponta horas e o payload tenta limpar o mapa, bloqueia.
+      if (limiteHorasPorDia === null) {
+        res.status(400).json({
+          error: 'Informe o "Limite diário de horas para apontamento" (por dia da semana) para este usuário.',
+        });
+        return;
+      }
       if (limiteHorasDiarias !== undefined) data.limiteHorasDiarias = Number(limiteHorasDiarias);
       if (limiteHorasPorDia !== undefined) {
+        if (
+          limiteHorasPorDia == null ||
+          typeof limiteHorasPorDia !== "object" ||
+          Array.isArray(limiteHorasPorDia)
+        ) {
+          res.status(400).json({
+            error: 'Informe o "Limite diário de horas para apontamento" (por dia da semana) para este usuário.',
+          });
+          return;
+        }
+        const expectedKeys = ["dom", "seg", "ter", "qua", "qui", "sex", "sab"] as const;
+        const map = limiteHorasPorDia as Record<string, unknown>;
+        let anyPositive = false;
+        for (const k of expectedKeys) {
+          const v = map[k];
+          if (typeof v !== "number" || Number.isNaN(v) || v < 0) {
+            res.status(400).json({
+              error:
+                'O "Limite diário de horas para apontamento" deve ser um número válido (>= 0) para cada dia da semana.',
+            });
+            return;
+          }
+          if (v > 23.99) {
+            res.status(400).json({
+              error: 'O "Limite diário de horas para apontamento" não pode exceder 23:59 por dia.',
+            });
+            return;
+          }
+          if (v > 0) anyPositive = true;
+        }
+        if (!anyPositive) {
+          res.status(400).json({
+            error: 'O "Limite diário de horas para apontamento" não pode ser 0 para todos os dias.',
+          });
+          return;
+        }
         data.limiteHorasPorDia =
           typeof limiteHorasPorDia === "string"
             ? limiteHorasPorDia
