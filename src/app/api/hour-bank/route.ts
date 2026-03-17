@@ -11,6 +11,11 @@ export async function GET(request: NextRequest) {
   const targetUserId = user.role === "ADMIN" && userId ? userId : user.id;
   const y = year ? parseInt(year, 10) : new Date().getFullYear();
 
+  const targetUser = await prisma.user.findUnique({
+    where: { id: targetUserId },
+    select: { limiteHorasDiarias: true, limiteHorasPorDia: true, dataInicioAtividades: true, inativadoEm: true },
+  });
+
   const records = await prisma.hourBankRecord.findMany({
     where: { userId: targetUserId, year: y },
     orderBy: [{ year: "asc" }, { month: "asc" }],
@@ -18,7 +23,6 @@ export async function GET(request: NextRequest) {
 
   // Se não houver registros, calcular a partir dos apontamentos
   if (records.length === 0) {
-    const carga = user.cargaHorariaSemanal ?? 40;
     const start = new Date(y, 0, 1);
     const end = new Date(y, 11, 31, 23, 59, 59);
     const entries = await prisma.timeEntry.findMany({
@@ -32,8 +36,7 @@ export async function GET(request: NextRequest) {
     }
     const result = [];
     for (let m = 1; m <= 12; m++) {
-      const diasUteis = getWorkingDays(y, m);
-      const previstas = (carga / 5) * diasUteis;
+      const previstas = computeHorasPrevistasParaMes(targetUser, y, m);
       result.push({
         month: m,
         year: y,
@@ -48,14 +51,55 @@ export async function GET(request: NextRequest) {
   return NextResponse.json(records);
 }
 
-function getWorkingDays(year: number, month: number): number {
-  let count = 0;
-  const d = new Date(year, month - 1, 1);
-  const last = new Date(year, month, 0);
-  while (d <= last) {
-    const day = d.getDay();
-    if (day !== 0 && day !== 6) count++;
+type UserForHourBank = {
+  limiteHorasDiarias?: number | null;
+  limiteHorasPorDia?: string | null;
+  dataInicioAtividades?: Date | null;
+  inativadoEm?: Date | null;
+};
+
+function getDailyLimitFromUser(user: UserForHourBank, dateValue: Date): number {
+  const dow = dateValue.getDay();
+  const fallback =
+    typeof user.limiteHorasDiarias === "number" && !Number.isNaN(user.limiteHorasDiarias)
+      ? user.limiteHorasDiarias
+      : 8;
+  const raw = user.limiteHorasPorDia;
+  if (!raw) return dow === 0 || dow === 6 ? 0 : fallback;
+  try {
+    const map = JSON.parse(raw) as Record<string, number>;
+    const keys = ["dom", "seg", "ter", "qua", "qui", "sex", "sab"] as const;
+    const key = keys[dow] as string;
+    const v = map[key];
+    if (typeof v === "number" && v >= 0) return v;
+    return dow === 0 || dow === 6 ? 0 : fallback;
+  } catch {
+    return dow === 0 || dow === 6 ? 0 : fallback;
+  }
+}
+
+function computeHorasPrevistasParaMes(user: UserForHourBank | null, year: number, month: number): number {
+  const startOfMonth = new Date(year, month - 1, 1);
+  const endOfMonth = new Date(year, month, 0, 23, 59, 59);
+
+  let d = new Date(startOfMonth);
+  if (user?.dataInicioAtividades && user.dataInicioAtividades > d) {
+    d = new Date(user.dataInicioAtividades);
+    d.setHours(0, 0, 0, 0);
+  }
+
+  let effectiveEnd = new Date(endOfMonth);
+  if (user?.inativadoEm) {
+    const inat = new Date(user.inativadoEm);
+    inat.setHours(23, 59, 59, 999);
+    if (inat < effectiveEnd) effectiveEnd = inat;
+  }
+
+  if (d > effectiveEnd) return 0;
+  let previstas = 0;
+  while (d <= effectiveEnd) {
+    previstas += getDailyLimitFromUser(user ?? {}, d);
     d.setDate(d.getDate() + 1);
   }
-  return count;
+  return Math.round(previstas * 100) / 100;
 }

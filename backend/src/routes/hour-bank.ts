@@ -9,6 +9,7 @@ type UserForHourBank = {
   limiteHorasDiarias?: number | null;
   limiteHorasPorDia?: string | null;
   dataInicioAtividades?: Date | null;
+  inativadoEm?: Date | null;
 };
 
 function getDailyLimitFromUser(user: UserForHourBank, dateValue: Date): number {
@@ -49,10 +50,19 @@ function computeHorasPrevistasParaMes(
     d.setHours(0, 0, 0, 0);
   }
 
-  if (d > endOfMonth) return 0;
+  // Se o usuário foi inativado, não calcular horas previstas após a data de inativação.
+  // (mesma lógica da dataInicioAtividades, só que ao contrário)
+  let effectiveEnd = new Date(endOfMonth);
+  if (user?.inativadoEm) {
+    const inat = new Date(user.inativadoEm);
+    inat.setHours(23, 59, 59, 999);
+    if (inat < effectiveEnd) effectiveEnd = inat;
+  }
+
+  if (d > effectiveEnd) return 0;
 
   let previstas = 0;
-  while (d <= endOfMonth) {
+  while (d <= effectiveEnd) {
     previstas += getDailyLimitFromUser(user ?? {}, d);
     d.setDate(d.getDate() + 1);
   }
@@ -86,6 +96,7 @@ hourBankRouter.get("/", async (req, res) => {
       limiteHorasDiarias: true,
       limiteHorasPorDia: true,
       dataInicioAtividades: true,
+      inativadoEm: true,
     },
   });
 
@@ -191,6 +202,7 @@ hourBankRouter.patch("/", async (req, res) => {
         limiteHorasDiarias: true,
         limiteHorasPorDia: true,
         dataInicioAtividades: true,
+        inativadoEm: true,
       },
     });
     const horasPrevistas = computeHorasPrevistasParaMes(targetUserData, y, m);
