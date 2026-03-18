@@ -709,7 +709,7 @@ function ApontamentoModal({
         const requestedYmd = date.toISOString().slice(0, 10);
         if (requestedYmd !== todayYmd && !user?.permitirOutroPeriodo) {
           setError(
-            'Para apontar em finais de semana/feriados em outra data, habilite "Permitido apontar em outro período" e configure os dias permitidos.'
+            "Você não tem permissão para apontar em outras datas fora da data atual."
           );
           return;
         }

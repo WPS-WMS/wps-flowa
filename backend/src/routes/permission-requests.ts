@@ -173,8 +173,7 @@ permissionRequestsRouter.post("/", requireFeature("apontamentos"), async (req, r
     // Se tentar solicitar um domingo em outra data, precisa da permissão de outro período.
     if (requestedYmd !== todayYmd && !user.permitirOutroPeriodo) {
       res.status(400).json({
-        error:
-          'Para apontar em finais de semana/feriados em outra data, habilite "Permitido apontar em outro período" e configure os dias permitidos.',
+        error: "Você não tem permissão para apontar em outras datas fora da data atual.",
       });
       return;
     }
@@ -324,8 +323,7 @@ permissionRequestsRouter.post("/:id/resend", requireFeature("apontamentos"), asy
     }
     if (requestedYmd !== todayYmd && !user.permitirOutroPeriodo) {
       res.status(400).json({
-        error:
-          'Para apontar em finais de semana/feriados em outra data, habilite "Permitido apontar em outro período" e configure os dias permitidos.',
+        error: "Você não tem permissão para apontar em outras datas fora da data atual.",
       });
       return;
     }
