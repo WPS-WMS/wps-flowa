@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Sidebar, type NavItem } from "@/components/Sidebar";
@@ -10,30 +10,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { user, loading, can } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    if (loading) return;
-    if (!user) {
-      router.replace("/login");
-      return;
-    }
-    if (user.mustChangePassword) {
-      router.replace("/trocar-senha");
-      return;
-    }
-    if (user.role !== "ADMIN") {
-      router.replace("/");
-    }
-  }, [user, loading, router]);
-
-  if (loading || !user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-blue-50">
-        <p className="text-blue-700">Carregando...</p>
-      </div>
-    );
-  }
-
-  const nav = useMemo(() => {
+  const nav: NavItem[] = (() => {
     const items: NavItem[] = [];
     items.push({ href: "/admin", label: "Home", icon: Home });
     if (can("projeto")) {
@@ -71,11 +48,33 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       });
     }
     if (can("configuracoes")) items.push({ href: "/admin/configuracoes", label: "Configurações", icon: Settings });
-    // Remove menus vazios (ex.: Relatórios sem children por config)
     return items
       .map((it) => (it.children ? { ...it, children: it.children.filter(Boolean) } : it))
       .filter((it) => !it.children || it.children.length > 0);
-  }, [can]);
+  })();
+
+  useEffect(() => {
+    if (loading) return;
+    if (!user) {
+      router.replace("/login");
+      return;
+    }
+    if (user.mustChangePassword) {
+      router.replace("/trocar-senha");
+      return;
+    }
+    if (user.role !== "ADMIN") {
+      router.replace("/");
+    }
+  }, [user, loading, router]);
+
+  if (loading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-blue-50">
+        <p className="text-blue-700">Carregando...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-50">
