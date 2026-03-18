@@ -778,19 +778,12 @@ function ApontamentoModal({
     // Regra: usuários sem permissão não podem exceder o limite diário configurado.
     // Considera tanto um único apontamento > limite quanto a soma do dia (novo ou edição).
     const dailyLimit = getDailyLimitFromUserForDate(user ?? null, date);
-    // Dia com limite 0 é considerado não apontável (nem com permissão)
-    if (dailyLimit === 0) {
-      // Exceção: fim de semana no próprio dia pode abrir solicitação mesmo com limite 0
-      const todayYmd = new Date().toISOString().slice(0, 10);
-      const requestedYmd = date.toISOString().slice(0, 10);
-      if (isWeekend && requestedYmd === todayYmd && user?.permitirFimDeSemana && !isEdit) {
-        // já cai no fluxo de permissão acima quando isWeekend, então só não bloqueia aqui
-      } else {
+    // Dia com limite 0 é considerado não apontável (exceto fim de semana: abre solicitação para aprovação)
+    if (dailyLimit === 0 && !isWeekend) {
       setError(
         "Você não pode apontar horas neste dia, pois o limite diário para este dia está configurado como 0. Ajuste o limite diário ou escolha outro dia."
       );
       return;
-      }
     }
     const previousHours = isEdit && entry ? entry.totalHoras : 0;
     const effectiveBaseTotal = Math.max(0, baseDayTotal - previousHours);

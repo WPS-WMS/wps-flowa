@@ -199,7 +199,9 @@ permissionRequestsRouter.post("/", requireFeature("apontamentos"), async (req, r
     { limiteHorasDiarias: user.limiteHorasDiarias ?? null, limiteHorasPorDia: user.limiteHorasPorDia ?? null },
     requestedDateForRules
   );
-  if (dailyLimitForDay === 0 && !(isWeekend && requestedYmd === todayYmd)) {
+  // Em fim de semana, o limite diário 0 NÃO deve bloquear o envio da solicitação:
+  // o apontamento de fim de semana sempre precisa de aprovação.
+  if (dailyLimitForDay === 0 && !isWeekend) {
     res.status(400).json({
       error:
         "Você não pode apontar horas neste dia, pois o limite diário para este dia está configurado como 0. Ajuste o limite diário ou escolha outro dia.",
@@ -349,7 +351,7 @@ permissionRequestsRouter.post("/:id/resend", requireFeature("apontamentos"), asy
     { limiteHorasDiarias: user.limiteHorasDiarias ?? null, limiteHorasPorDia: user.limiteHorasPorDia ?? null },
     requestedDateForRules
   );
-  if (dailyLimitForDay === 0 && !(isWeekend && requestedYmd === todayYmd)) {
+  if (dailyLimitForDay === 0 && !isWeekend) {
     res.status(400).json({
       error:
         "Você não pode apontar horas neste dia, pois o limite diário para este dia está configurado como 0. Ajuste o limite diário ou escolha outro dia.",
