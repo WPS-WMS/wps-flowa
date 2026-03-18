@@ -705,6 +705,14 @@ function ApontamentoModal({
 
       // Mesmo com permissão, o apontamento em final de semana SEMPRE precisa de aprovação.
       if (!isEdit) {
+        const todayYmd = new Date().toISOString().slice(0, 10);
+        const requestedYmd = date.toISOString().slice(0, 10);
+        if (requestedYmd !== todayYmd && !user?.permitirOutroPeriodo) {
+          setError(
+            'Para apontar em finais de semana/feriados em outra data, habilite "Permitido apontar em outro período" e configure os dias permitidos.'
+          );
+          return;
+        }
         setPermissionPayload({
           date: date.toISOString().slice(0, 10),
           horaInicio,
@@ -772,10 +780,17 @@ function ApontamentoModal({
     const dailyLimit = getDailyLimitFromUserForDate(user ?? null, date);
     // Dia com limite 0 é considerado não apontável (nem com permissão)
     if (dailyLimit === 0) {
+      // Exceção: fim de semana no próprio dia pode abrir solicitação mesmo com limite 0
+      const todayYmd = new Date().toISOString().slice(0, 10);
+      const requestedYmd = date.toISOString().slice(0, 10);
+      if (isWeekend && requestedYmd === todayYmd && user?.permitirFimDeSemana && !isEdit) {
+        // já cai no fluxo de permissão acima quando isWeekend, então só não bloqueia aqui
+      } else {
       setError(
         "Você não pode apontar horas neste dia, pois o limite diário para este dia está configurado como 0. Ajuste o limite diário ou escolha outro dia."
       );
       return;
+      }
     }
     const previousHours = isEdit && entry ? entry.totalHoras : 0;
     const effectiveBaseTotal = Math.max(0, baseDayTotal - previousHours);
@@ -1096,7 +1111,10 @@ function ApontamentoModal({
                 activityId: data.activityId,
               }),
             });
-            if (!res.ok) return false;
+            if (!res.ok) {
+              const body = await res.json().catch(() => ({}));
+              throw new Error(body?.error || "Erro ao enviar solicitação para aprovação.");
+            }
             return true;
           }}
         />

@@ -2192,7 +2192,11 @@ export function EditTaskModalFull({
                 activityId: data.activityId,
               }),
             });
-            return res.ok;
+            if (!res.ok) {
+              const body = await res.json().catch(() => ({}));
+              throw new Error(body?.error || "Erro ao enviar solicitação para aprovação.");
+            }
+            return true;
           }}
         />
       )}

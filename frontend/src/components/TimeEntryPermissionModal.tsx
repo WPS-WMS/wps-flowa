@@ -44,9 +44,12 @@ export function TimeEntryPermissionModal({
       const ok = await onSubmitRequest({ ...payload, justification: j });
       if (ok) {
         onSent();
+      } else {
+        setError("Não foi possível enviar a solicitação. Verifique as regras do apontamento para esta data.");
       }
-    } catch {
-      setError("Erro ao enviar. Tente novamente.");
+    } catch (e: any) {
+      const msg = typeof e?.message === "string" && e.message.trim() ? e.message : "Erro ao enviar. Tente novamente.";
+      setError(msg);
     } finally {
       setSending(false);
     }

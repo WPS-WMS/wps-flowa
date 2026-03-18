@@ -158,9 +158,30 @@ permissionRequestsRouter.post("/", requireFeature("apontamentos"), async (req, r
     return;
   }
 
+  const requestedDateForRules = new Date(requestedYmd + "T00:00:00");
+  // Regra específica: finais de semana/feriados (hoje tratamos fim de semana; feriados podem ser adicionados depois)
+  const weekday = requestedDateForRules.getDay(); // 0 = domingo, 6 = sábado
+  const isWeekend = weekday === 0 || weekday === 6;
+  if (isWeekend) {
+    if (!user.permitirFimDeSemana) {
+      res.status(400).json({
+        error: "Você não tem permissão para apontar em finais de semana ou feriados.",
+      });
+      return;
+    }
+    // Só permitir solicitar para fim de semana/feriado NO PRÓPRIO DIA.
+    // Se tentar solicitar um domingo em outra data, precisa da permissão de outro período.
+    if (requestedYmd !== todayYmd && !user.permitirOutroPeriodo) {
+      res.status(400).json({
+        error:
+          'Para apontar em finais de semana/feriados em outra data, habilite "Permitido apontar em outro período" e configure os dias permitidos.',
+      });
+      return;
+    }
+  }
+
   // Respeitar também a janela de dias permitidos do usuário (sempre datas ANTERIORES)
   const maxPastDays = getMaxPastDaysFromUser(user);
-  const requestedDateForRules = new Date(requestedYmd + "T00:00:00");
   const diffMs = today.getTime() - requestedDateForRules.getTime();
   const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
   if (diffDays > maxPastDays) {
@@ -173,27 +194,16 @@ permissionRequestsRouter.post("/", requireFeature("apontamentos"), async (req, r
     return;
   }
 
-  // Limite diário = 0: dia não apontável (nem com permissão)
+  // Limite diário = 0: dia não apontável (nem com permissão),
+  // EXCETO para fim de semana/feriado no próprio dia (onde a regra é "sempre por solicitação").
   const dailyLimitForDay = getDailyLimitFromUser(
     { limiteHorasDiarias: user.limiteHorasDiarias ?? null, limiteHorasPorDia: user.limiteHorasPorDia ?? null },
     requestedDateForRules
   );
-  if (dailyLimitForDay === 0) {
+  if (dailyLimitForDay === 0 && !(isWeekend && requestedYmd === todayYmd)) {
     res.status(400).json({
       error:
         "Você não pode apontar horas neste dia, pois o limite diário para este dia está configurado como 0. Ajuste o limite diário ou escolha outro dia.",
-    });
-    return;
-  }
-
-  // Regra específica: finais de semana/feriados
-  // Apenas usuários com permitirFimDeSemana conseguem enviar solicitação;
-  // mesmo assim, o apontamento SEMPRE precisa de aprovação (não cria TimeEntry direto).
-  const weekday = requestedDateForRules.getDay(); // 0 = domingo, 6 = sábado
-  const isWeekend = weekday === 0 || weekday === 6;
-  if (isWeekend && !user.permitirFimDeSemana) {
-    res.status(400).json({
-      error: "Você não tem permissão para apontar em finais de semana ou feriados.",
     });
     return;
   }
@@ -302,9 +312,27 @@ permissionRequestsRouter.post("/:id/resend", requireFeature("apontamentos"), asy
     return;
   }
 
+  const requestedDateForRules = new Date(requestedYmd + "T00:00:00");
+  const weekday = requestedDateForRules.getDay();
+  const isWeekend = weekday === 0 || weekday === 6;
+  if (isWeekend) {
+    if (!user.permitirFimDeSemana) {
+      res.status(400).json({
+        error: "Você não tem permissão para apontar em finais de semana ou feriados.",
+      });
+      return;
+    }
+    if (requestedYmd !== todayYmd && !user.permitirOutroPeriodo) {
+      res.status(400).json({
+        error:
+          'Para apontar em finais de semana/feriados em outra data, habilite "Permitido apontar em outro período" e configure os dias permitidos.',
+      });
+      return;
+    }
+  }
+
   // Respeitar também a janela de dias permitidos do usuário
   const maxPastDays = getMaxPastDaysFromUser(user);
-  const requestedDateForRules = new Date(requestedYmd + "T00:00:00");
   const diffMs = today.getTime() - requestedDateForRules.getTime();
   const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
   if (diffDays > maxPastDays) {
@@ -317,25 +345,16 @@ permissionRequestsRouter.post("/:id/resend", requireFeature("apontamentos"), asy
     return;
   }
 
-  // Limite diário = 0: dia não apontável (nem com permissão)
+  // Limite diário = 0: dia não apontável (nem com permissão),
+  // EXCETO para fim de semana/feriado no próprio dia (onde a regra é "sempre por solicitação").
   const dailyLimitForDay = getDailyLimitFromUser(
     { limiteHorasDiarias: user.limiteHorasDiarias ?? null, limiteHorasPorDia: user.limiteHorasPorDia ?? null },
     requestedDateForRules
   );
-  if (dailyLimitForDay === 0) {
+  if (dailyLimitForDay === 0 && !(isWeekend && requestedYmd === todayYmd)) {
     res.status(400).json({
       error:
         "Você não pode apontar horas neste dia, pois o limite diário para este dia está configurado como 0. Ajuste o limite diário ou escolha outro dia.",
-    });
-    return;
-  }
-
-  // Regra específica: finais de semana/feriados
-  const weekday = requestedDateForRules.getDay();
-  const isWeekend = weekday === 0 || weekday === 6;
-  if (isWeekend && !user.permitirFimDeSemana) {
-    res.status(400).json({
-      error: "Você não tem permissão para apontar em finais de semana ou feriados.",
     });
     return;
   }
