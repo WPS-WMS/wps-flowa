@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Link } from "@/components/Link";
 import { apiFetch } from "@/lib/api";
 import { Check, X, ChevronLeft } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { notFound } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 
 type PermissionRequest = {
@@ -37,7 +37,6 @@ function formatDatePtBR(dateStr: string): string {
 
 export default function GestorPermissoesPage() {
   const { loading: authLoading, user, can, permissionsReady } = useAuth();
-  const router = useRouter();
   const [requests, setRequests] = useState<PermissionRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"PENDING" | "ALL">("PENDING");
@@ -45,15 +44,8 @@ export default function GestorPermissoesPage() {
   const [rejecting, setRejecting] = useState<PermissionRequest | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
 
-  useEffect(() => {
-    if (authLoading) return;
-    if (!user) return;
-    if (permissionsReady && !can("configuracoes.permissoes")) {
-      router.replace("/gestor");
-    }
-  }, [authLoading, user, can, permissionsReady, router]);
-
   function load() {
+    if (!permissionsReady || !can("configuracoes.permissoes")) return;
     setLoading(true);
     const q = filter === "PENDING" ? "?status=PENDING" : "";
     apiFetch(`/api/permission-requests${q}`)
@@ -65,7 +57,7 @@ export default function GestorPermissoesPage() {
 
   useEffect(() => {
     load();
-  }, [filter]);
+  }, [filter, permissionsReady, can]);
 
   async function handleApprove(id: string) {
     setActingId(id);
@@ -115,6 +107,10 @@ export default function GestorPermissoesPage() {
 
   const pendingCount =
     filter === "ALL" ? requests.filter((r) => r.status === "PENDING").length : requests.length;
+
+  // Evita "flicker" e redirecionamentos: só mostra a UI quando a permissão já foi carregada.
+  if (authLoading || !permissionsReady) return null;
+  if (!can("configuracoes.permissoes")) notFound();
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-slate-50">
