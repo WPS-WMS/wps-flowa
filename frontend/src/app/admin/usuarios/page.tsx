@@ -769,7 +769,23 @@ function NovoUsuarioModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
                     type="number"
                     min={0}
                     value={diasPermitidos}
-                    onChange={(e) => setDiasPermitidos(e.target.value)}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace("-", "");
+                      setDiasPermitidos(raw);
+                    }}
+                    onBlur={(e) => {
+                      const raw = e.target.value.trim();
+                      if (!raw) {
+                        setDiasPermitidos("");
+                        return;
+                      }
+                      const n = Number(raw);
+                      if (Number.isNaN(n) || n < 0) {
+                        setDiasPermitidos("0");
+                      } else {
+                        setDiasPermitidos(String(n));
+                      }
+                    }}
                     className={inputClass}
                     placeholder="Quantidade de dias"
                   />
@@ -1154,7 +1170,23 @@ function EditarUsuarioModal({
                       type="number"
                       min={0}
                       value={diasPermitidos}
-                      onChange={(e) => setDiasPermitidos(e.target.value)}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace("-", "");
+                      setDiasPermitidos(raw);
+                    }}
+                    onBlur={(e) => {
+                      const raw = e.target.value.trim();
+                      if (!raw) {
+                        setDiasPermitidos("");
+                        return;
+                      }
+                      const n = Number(raw);
+                      if (Number.isNaN(n) || n < 0) {
+                        setDiasPermitidos("0");
+                      } else {
+                        setDiasPermitidos(String(n));
+                      }
+                    }}
                       className={inputClass}
                       placeholder="Quantidade de dias"
                     />
