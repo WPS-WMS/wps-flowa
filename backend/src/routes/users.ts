@@ -465,6 +465,11 @@ usersRouter.patch("/:id", async (req, res) => {
       }
     }
     if (typeof ativo === "boolean") {
+      // Regra: usuário ADMIN não pode inativar a si mesmo
+      if (!ativo && existing.role === "ADMIN" && existing.id === authUser.id) {
+        res.status(400).json({ error: "O usuário Admin não pode se inativar." });
+        return;
+      }
       // Regra: não permitir inativar o único ADMIN ativo do tenant
       if (!ativo && existing.role === "ADMIN") {
         const otherActiveAdmins = await prisma.user.count({

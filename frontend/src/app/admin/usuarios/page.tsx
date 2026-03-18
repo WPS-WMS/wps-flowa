@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { apiFetch } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 import { Plus, Pencil, Trash2, Search } from "lucide-react";
 import { ConfirmarExclusaoModal } from "@/components/ConfirmarExclusaoModal";
 
@@ -40,6 +41,7 @@ const ROLE_OPTIONS = [
 ];
 
 export default function UsuariosPage() {
+  const { user: authUser } = useAuth();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
@@ -166,12 +168,19 @@ export default function UsuariosPage() {
                       <button
                         type="button"
                         onClick={() => setStatusUser(u)}
+                        disabled={!!authUser && u.role === "ADMIN" && u.id === authUser.id && u.ativo !== false}
                         className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                           u.ativo === false
                             ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
                             : "border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
-                        }`}
-                        title={u.ativo === false ? "Ativar usuário" : "Inativar usuário"}
+                        } disabled:opacity-60 disabled:cursor-not-allowed`}
+                        title={
+                          !!authUser && u.role === "ADMIN" && u.id === authUser.id && u.ativo !== false
+                            ? "O usuário Admin não pode se inativar"
+                            : u.ativo === false
+                              ? "Ativar usuário"
+                              : "Inativar usuário"
+                        }
                       >
                         {u.ativo === false ? "Ativar" : "Inativar"}
                       </button>
@@ -308,18 +317,25 @@ function InativarUsuarioModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { user: authUser } = useAuth();
   const [motivo, setMotivo] = useState<"ROMPIMENTO" | "SOLICITACAO" | "OUTROS">("ROMPIMENTO");
   const [descricaoBreve, setDescricaoBreve] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   const isAtivar = user.ativo === false;
+  const cannotSelfInactivateAdmin =
+    !isAtivar && !!authUser && user.role === "ADMIN" && user.id === authUser.id && user.ativo !== false;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setSaving(true);
     try {
+      if (cannotSelfInactivateAdmin) {
+        setError("O usuário Admin não pode se inativar.");
+        return;
+      }
       const body: Record<string, unknown> = {
         ativo: isAtivar,
       };
