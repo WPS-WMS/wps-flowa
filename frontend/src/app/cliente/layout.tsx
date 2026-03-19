@@ -4,16 +4,31 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Sidebar, type NavItem } from "@/components/Sidebar";
-import { Home, PlusCircle } from "lucide-react";
-
-const NAV: NavItem[] = [
-  { href: "/cliente", label: "Home", icon: Home },
-  { href: "/cliente/abrir-chamado", label: "Abrir chamado", icon: PlusCircle },
-];
+import { Home, PlusCircle, FolderKanban } from "lucide-react";
 
 export default function ClienteLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, can } = useAuth();
   const router = useRouter();
+
+  const nav: NavItem[] = (() => {
+    const items: NavItem[] = [{ href: "/cliente", label: "Home", icon: Home }];
+    items.push({ href: "/cliente/abrir-chamado", label: "Abrir chamado", icon: PlusCircle });
+    if (can("projeto")) {
+      items.push({
+        label: "Projetos",
+        icon: FolderKanban,
+        children: [
+          ...(can("projeto.lista") ? [{ href: "/cliente/projetos", label: "Lista de Projetos" }] : []),
+          ...(can("projeto.dashboardDaily")
+            ? [{ href: "/cliente/projetos/dashboard-daily", label: "Dashboard Daily" }]
+            : []),
+        ],
+      });
+    }
+    return items
+      .map((it) => (it.children ? { ...it, children: it.children.filter(Boolean) } : it))
+      .filter((it) => !it.children || it.children.length > 0);
+  })();
 
   useEffect(() => {
     if (loading) return;
@@ -40,7 +55,7 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar items={NAV} user={user} />
+      <Sidebar items={nav} user={user} />
       <div className="flex-1">{children}</div>
     </div>
   );

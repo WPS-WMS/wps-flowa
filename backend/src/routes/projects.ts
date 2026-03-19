@@ -198,10 +198,6 @@ projectsRouter.get("/:id", async (req, res) => {
 
 projectsRouter.post("/", requireFeature("projeto.novo"), async (req, res) => {
   const user = (req as Request & { user: { id: string; tenantId: string; role: string } }).user;
-  if (user.role !== "ADMIN" && user.role !== "GESTOR_PROJETOS") {
-    res.status(403).json({ error: "Apenas administradores e gestores podem criar projetos." });
-    return;
-  }
   const {
     name,
     clientId,
@@ -335,10 +331,6 @@ projectsRouter.post("/", requireFeature("projeto.novo"), async (req, res) => {
 
 projectsRouter.patch("/:id", requireFeature("projeto.editar"), async (req, res) => {
   const user = (req as Request & { user: { id: string; tenantId: string; role: string } }).user;
-  if (user.role !== "ADMIN" && user.role !== "GESTOR_PROJETOS") {
-    res.status(403).json({ error: "Apenas administradores e gestores podem editar projetos." });
-    return;
-  }
 
   const projectId = req.params.id;
   const existing = await prisma.project.findFirst({
@@ -519,10 +511,6 @@ projectsRouter.patch("/:id", requireFeature("projeto.editar"), async (req, res) 
 
 projectsRouter.patch("/:id/archive", requireFeature("projeto.editar"), async (req, res) => {
   const user = (req as Request & { user: { id: string; tenantId: string; role: string } }).user;
-  if (user.role !== "ADMIN" && user.role !== "GESTOR_PROJETOS") {
-    res.status(403).json({ error: "Apenas administradores e gestores podem arquivar projetos." });
-    return;
-  }
 
   const projectId = req.params.id;
   const { arquivado } = req.body;
@@ -569,10 +557,6 @@ projectsRouter.patch("/:id/archive", requireFeature("projeto.editar"), async (re
 
 projectsRouter.delete("/:id", requireFeature("projeto.excluir"), async (req, res) => {
   const user = (req as Request & { user: { id: string; tenantId: string; role: string } }).user;
-  if (user.role !== "ADMIN" && user.role !== "GESTOR_PROJETOS") {
-    res.status(403).json({ error: "Apenas administradores e gestores podem excluir projetos." });
-    return;
-  }
   const projectId = req.params.id;
   const project = await prisma.project.findFirst({
     where: { id: projectId, client: { tenantId: user.tenantId } },

@@ -122,9 +122,20 @@ type ProjectCardProps = {
   onDeleteSubproject?: (ticket: PackageTicket) => void;
   /** Função chamada após criar um tópico (usado na Opção 1). */
   onSubprojectCreated?: () => void;
+  /** Controle de ações por feature flag */
+  canEditProject?: boolean;
+  canDeleteProject?: boolean;
 };
 
-export function ProjectCard({ project, onNavigate, onDelete, onDeleteSubproject, onSubprojectCreated }: ProjectCardProps) {
+export function ProjectCard({
+  project,
+  onNavigate,
+  onDelete,
+  onDeleteSubproject,
+  onSubprojectCreated,
+  canEditProject = true,
+  canDeleteProject = true,
+}: ProjectCardProps) {
   const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<PackageTicket | null>(null);
@@ -159,6 +170,9 @@ export function ProjectCard({ project, onNavigate, onDelete, onDeleteSubproject,
   const finalizadas = tarefas.filter((t) => t.status === "ENCERRADO").length;
   const percentual = totalTarefas > 0 ? Math.round((finalizadas / totalTarefas) * 100) : 0;
   
+  const canEdit = !!canEditProject;
+  const canDelete = !!canDeleteProject && !!onDelete;
+
   // Determina se está na Opção 1 (sem onNavigate)
   const isOpcao1 = !onNavigate;
 
@@ -374,7 +388,7 @@ export function ProjectCard({ project, onNavigate, onDelete, onDeleteSubproject,
       </div>
       
       {/* Menu de ações posicionado fixo fora do card */}
-      {onDelete && showActionsMenu && menuPosition && (
+      {(canEdit || canDelete) && showActionsMenu && menuPosition && (
         <div
           className="fixed z-[100] w-44 rounded-lg border border-slate-200 bg-white shadow-lg py-1 text-sm"
           style={{
@@ -396,68 +410,76 @@ export function ProjectCard({ project, onNavigate, onDelete, onDeleteSubproject,
                   <Eye className="h-4 w-4 text-slate-400" />
                   Ver detalhes
                 </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowActionsMenu(false);
-                    setMenuPosition(null);
-                    setShowEditProjectModal(true);
-                  }}
-                  className="flex w-full items-center gap-2 px-3 py-1.5 text-slate-700 hover:bg-slate-50"
-                >
-                  <Pencil className="h-4 w-4 text-slate-400" />
-                  Editar
-                </button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    setShowActionsMenu(false);
-                    setMenuPosition(null);
-                    try {
-                      const isArquivado = project.arquivado ?? false;
-                      const res = await apiFetch(`/api/projects/${project.id}/archive`, {
-                        method: "PATCH",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ arquivado: !isArquivado }),
-                      });
-                      if (res.ok) {
-                        onSubprojectCreated?.();
-                      } else {
-                        const data = await res.json().catch(() => ({}));
-                        alert(data?.error ?? `Erro ao ${isArquivado ? "desarquivar" : "arquivar"} projeto`);
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowActionsMenu(false);
+                      setMenuPosition(null);
+                      setShowEditProjectModal(true);
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-1.5 text-slate-700 hover:bg-slate-50"
+                  >
+                    <Pencil className="h-4 w-4 text-slate-400" />
+                    Editar
+                  </button>
+                )}
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setShowActionsMenu(false);
+                      setMenuPosition(null);
+                      try {
+                        const isArquivado = project.arquivado ?? false;
+                        const res = await apiFetch(`/api/projects/${project.id}/archive`, {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ arquivado: !isArquivado }),
+                        });
+                        if (res.ok) {
+                          onSubprojectCreated?.();
+                        } else {
+                          const data = await res.json().catch(() => ({}));
+                          alert(data?.error ?? `Erro ao ${isArquivado ? "desarquivar" : "arquivar"} projeto`);
+                        }
+                      } catch (err) {
+                        alert(`Erro ao ${project.arquivado ? "desarquivar" : "arquivar"} projeto`);
                       }
-                    } catch (err) {
-                      alert(`Erro ao ${project.arquivado ? "desarquivar" : "arquivar"} projeto`);
-                    }
-                  }}
-                  className="flex w-full items-center gap-2 px-3 py-1.5 text-slate-700 hover:bg-slate-50"
-                >
-                  {project.arquivado ? (
-                    <>
-                      <RotateCcw className="h-4 w-4 text-slate-400" />
-                      Desarquivar
-                    </>
-                  ) : (
-                    <>
-                      <Archive className="h-4 w-4 text-slate-400" />
-                      Arquivar
-                    </>
-                  )}
-                </button>
-                <div className="my-1 border-t border-slate-100" />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowActionsMenu(false);
-                    setMenuPosition(null);
-                    setDeleteTarget(project as unknown as PackageTicket);
-                    setDeleteType("project");
-                  }}
-                  className="flex w-full items-center gap-2 px-3 py-1.5 text-red-600 hover:bg-red-50"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Excluir
-                </button>
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-1.5 text-slate-700 hover:bg-slate-50"
+                  >
+                    {project.arquivado ? (
+                      <>
+                        <RotateCcw className="h-4 w-4 text-slate-400" />
+                        Desarquivar
+                      </>
+                    ) : (
+                      <>
+                        <Archive className="h-4 w-4 text-slate-400" />
+                        Arquivar
+                      </>
+                    )}
+                  </button>
+                )}
+                {canDelete && (
+                  <>
+                    <div className="my-1 border-t border-slate-100" />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowActionsMenu(false);
+                        setMenuPosition(null);
+                        setDeleteTarget(project as unknown as PackageTicket);
+                        setDeleteType("project");
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-1.5 text-red-600 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Excluir
+                    </button>
+                  </>
+                )}
               </div>
             )}
 
@@ -842,7 +864,7 @@ export function ProjectCard({ project, onNavigate, onDelete, onDeleteSubproject,
         />
       )}
 
-      {showEditProjectModal && (
+      {canEdit && showEditProjectModal && (
         <NewProjectModal
           mode="edit"
           projectId={project.id}

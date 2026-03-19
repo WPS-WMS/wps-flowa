@@ -4,25 +4,35 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Sidebar, type NavItem } from "@/components/Sidebar";
-import { Home, FolderKanban, Clock, Banknote } from "lucide-react";
-
-const NAV: NavItem[] = [
-  { href: "/consultor", label: "Home", icon: Home },
-  {
-    label: "Projetos",
-    icon: FolderKanban,
-    children: [
-      { href: "/consultor/projetos", label: "Lista de Projetos" },
-      { href: "/consultor/projetos/dashboard-daily", label: "Dashboard Daily" },
-    ],
-  },
-  { href: "/consultor/apontamento", label: "Apontamento", icon: Clock },
-  { href: "/consultor/banco-horas", label: "Banco de horas", icon: Banknote },
-];
+import { Home, FolderKanban, Clock, Banknote, Settings } from "lucide-react";
 
 export default function ConsultorLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, can } = useAuth();
   const router = useRouter();
+
+  const nav: NavItem[] = (() => {
+    const items: NavItem[] = [{ href: "/consultor", label: "Home", icon: Home }];
+    if (can("projeto")) {
+      items.push({
+        label: "Projetos",
+        icon: FolderKanban,
+        children: [
+          ...(can("projeto.lista") ? [{ href: "/consultor/projetos", label: "Lista de Projetos" }] : []),
+          ...(can("projeto.dashboardDaily")
+            ? [{ href: "/consultor/projetos/dashboard-daily", label: "Dashboard Daily" }]
+            : []),
+        ],
+      });
+    }
+    if (can("apontamentos")) items.push({ href: "/consultor/apontamento", label: "Apontamento", icon: Clock });
+    if (can("hora-banco")) items.push({ href: "/consultor/banco-horas", label: "Banco de horas", icon: Banknote });
+    if (can("configuracoes")) {
+      items.push({ href: "/consultor/configuracoes", label: "Configurações", icon: Settings });
+    }
+    return items
+      .map((it) => (it.children ? { ...it, children: it.children.filter(Boolean) } : it))
+      .filter((it) => !it.children || it.children.length > 0);
+  })();
 
   useEffect(() => {
     if (loading) return;
@@ -49,7 +59,7 @@ export default function ConsultorLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar items={NAV} user={user} />
+      <Sidebar items={nav} user={user} />
       <div className="flex-1">{children}</div>
     </div>
   );

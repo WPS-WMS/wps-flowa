@@ -6,8 +6,10 @@ import { Link } from "@/components/Link";
 import { apiFetch } from "@/lib/api";
 import { ProjectCard, type ProjectForCard } from "@/components/ProjectCard";
 import { NewProjectModal } from "@/components/NewProjectModal";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function ProjetosPage() {
+  const { can } = useAuth();
   const [projects, setProjects] = useState<ProjectForCard[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [showNewModal, setShowNewModal] = useState(false);
@@ -51,14 +53,16 @@ export default function ProjetosPage() {
                 <Archive className="h-4 w-4" />
                 Projetos Arquivados
               </Link>
-              <button
-                type="button"
-                onClick={() => setShowNewModal(true)}
-                className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
-              >
-                <Plus className="h-4 w-4" />
-                Novo Projeto
-              </button>
+              {can("projeto.novo") && (
+                <button
+                  type="button"
+                  onClick={() => setShowNewModal(true)}
+                  className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
+                >
+                  <Plus className="h-4 w-4" />
+                  Novo Projeto
+                </button>
+              )}
             </div>
           </div>
           {projects.length === 0 && !error && (
@@ -71,10 +75,16 @@ export default function ProjetosPage() {
             <ProjectCard
               key={p.id}
               project={p}
-              onDelete={async (proj) => {
-                const res = await apiFetch(`/api/projects/${proj.id}`, { method: "DELETE" });
-                if (res.ok) setProjects((prev) => prev.filter((x) => x.id !== proj.id));
-              }}
+              canEditProject={can("projeto.editar")}
+              canDeleteProject={can("projeto.excluir")}
+              onDelete={
+                can("projeto.excluir")
+                  ? async (proj) => {
+                      const res = await apiFetch(`/api/projects/${proj.id}`, { method: "DELETE" });
+                      if (res.ok) setProjects((prev) => prev.filter((x) => x.id !== proj.id));
+                    }
+                  : undefined
+              }
               onDeleteSubproject={async (ticket) => {
                 try {
                   const res = await apiFetch(`/api/tickets/${ticket.id}`, { method: "DELETE" });
@@ -110,7 +120,7 @@ export default function ProjetosPage() {
             ))}
           </div>
         </div>
-        {showNewModal && (
+        {showNewModal && can("projeto.novo") && (
           <NewProjectModal
             onClose={() => setShowNewModal(false)}
             onSaved={() => {
