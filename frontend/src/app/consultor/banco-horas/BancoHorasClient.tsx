@@ -34,6 +34,13 @@ export function BancoHorasClient({ isAdmin = false }: { isAdmin?: boolean }) {
   const [editingRow, setEditingRow] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<Record<string, { observacao: string }>>({});
 
+  async function loadHourBank() {
+    const url = `/api/hour-bank?year=${year}${isAdmin && selectedUserId ? `&userId=${selectedUserId}` : ""}`;
+    const r = await apiFetch(url);
+    const json = await r.json();
+    setData(Array.isArray(json) ? json : []);
+  }
+
   useEffect(() => {
     if (isAdmin) {
       // Usar for-select para compatibilidade com ADMIN e GESTOR_PROJETOS (GET /api/users é só ADMIN)
@@ -46,8 +53,16 @@ export function BancoHorasClient({ isAdmin = false }: { isAdmin?: boolean }) {
   }, [isAdmin]);
 
   useEffect(() => {
-    const url = `/api/hour-bank?year=${year}${isAdmin && selectedUserId ? `&userId=${selectedUserId}` : ""}`;
-    apiFetch(url).then((r) => r.json()).then(setData);
+    loadHourBank().catch(() => setData([]));
+  }, [year, selectedUserId, isAdmin]);
+
+  // Atualiza automaticamente se o consultor/admin mudar apontamentos em outra tela.
+  useEffect(() => {
+    function onTimeEntriesChanged() {
+      loadHourBank().catch(() => setData([]));
+    }
+    window.addEventListener("wps_time_entries_changed", onTimeEntriesChanged);
+    return () => window.removeEventListener("wps_time_entries_changed", onTimeEntriesChanged);
   }, [year, selectedUserId, isAdmin]);
 
   function rowKey(row: BancoRow) {

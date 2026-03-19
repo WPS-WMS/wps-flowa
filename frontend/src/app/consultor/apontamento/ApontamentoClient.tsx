@@ -109,6 +109,13 @@ export function ApontamentoClient() {
   const entriesRequestIdRef = useRef(0);
   const requestsRequestIdRef = useRef(0);
 
+  function notifyTimeEntriesChanged() {
+    // Usado para atualizar telas que dependem de TimeEntry (ex.: Banco de Horas)
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("wps_time_entries_changed"));
+    }
+  }
+
   function loadEntries() {
     const requestId = ++entriesRequestIdRef.current;
     apiFetch(`/api/time-entries?start=${dom.toISOString()}&end=${sab.toISOString()}`)
@@ -379,7 +386,10 @@ export function ApontamentoClient() {
                               ev.stopPropagation();
                               if (!confirm("Excluir este apontamento?")) return;
                               apiFetch(`/api/time-entries/${e.id}`, { method: "DELETE" })
-                                .then(() => loadEntries())
+                                .then(() => {
+                                  loadEntries();
+                                  notifyTimeEntriesChanged();
+                                })
                                 .catch((err) => console.error("Erro ao excluir:", err));
                             }}
                             className="shrink-0 p-1.5 rounded-md hover:bg-red-100 text-red-600 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
@@ -450,6 +460,7 @@ export function ApontamentoClient() {
                                 .then(() => {
                                   loadRequests();
                                   loadEntries();
+                                  notifyTimeEntriesChanged();
                                 })
                                 .catch((err) => console.error("Erro ao excluir solicitação:", err));
                             }}
@@ -480,6 +491,7 @@ export function ApontamentoClient() {
             setRequestToFix(null);
             loadEntries();
             loadRequests();
+            notifyTimeEntriesChanged();
           }}
         />
       )}
@@ -499,6 +511,7 @@ export function ApontamentoClient() {
             setEditEntry(null);
             loadEntries();
             loadRequests();
+            notifyTimeEntriesChanged();
           }}
         />
       )}
