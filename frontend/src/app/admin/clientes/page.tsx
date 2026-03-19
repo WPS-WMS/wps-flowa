@@ -37,7 +37,11 @@ export default function ClientesPage() {
   const filteredClients = useMemo(() => {
     if (!searchTerm.trim()) return clients;
     const term = searchTerm.toLowerCase();
-    return clients.filter((c) => c.name.toLowerCase().includes(term));
+    return clients.filter(
+      (c) =>
+        c.name.toLowerCase().includes(term) ||
+        (c.email ?? "").toLowerCase().includes(term),
+    );
   }, [clients, searchTerm]);
 
   function loadClients() {
@@ -184,9 +188,17 @@ export default function ClientesPage() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => setDeletingId(client.id)}
-                            className="p-2 rounded-lg text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors"
-                            title="Excluir"
+                            onClick={() => {
+                              if (client._count.projects > 0) return;
+                              setDeletingId(client.id);
+                            }}
+                            disabled={client._count.projects > 0}
+                            className="p-2 rounded-lg text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-500"
+                            title={
+                              client._count.projects > 0
+                                ? "Não é possível excluir cliente com projetos associados"
+                                : "Excluir"
+                            }
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>

@@ -190,6 +190,9 @@ export function EditClientModal({ client, onClose, onSaved }: EditClientModalPro
                     placeholder="Ex: Empresa ABC Ltda"
                     required
                   />
+                  {fieldErrors.name && (
+                    <p className="mt-1 text-xs text-red-600">Campo obrigatório.</p>
+                  )}
                 </div>
                 <div>
                   <label className={labelClass}>E-mail de contato</label>

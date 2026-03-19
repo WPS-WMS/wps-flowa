@@ -175,6 +175,9 @@ export function NewClientModal({ onClose, onSaved }: NewClientModalProps) {
                     placeholder="Ex: Empresa ABC Ltda"
                     required
                   />
+                  {fieldErrors.name && (
+                    <p className="mt-1 text-xs text-red-600">Campo obrigatório.</p>
+                  )}
                 </div>
                 <div>
                   <label className={labelClass}>E-mail de contato</label>
@@ -314,7 +317,7 @@ export function NewClientModal({ onClose, onSaved }: NewClientModalProps) {
               disabled={saving}
               className="px-5 py-2 rounded-full bg-blue-600 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {saving ? "Criando..." : "Criar cliente"}
+              {saving ? "Salvando..." : "Salvar"}
             </button>
           </div>
         </form>
