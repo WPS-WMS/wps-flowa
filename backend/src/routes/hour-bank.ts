@@ -114,10 +114,14 @@ hourBankRouter.get("/", async (req, res) => {
     // Evita divergência por timezone:
     // - Apontamentos agrupam por YMD (slice "YYYY-MM-DD") na UI.
     // - Aqui, também derivamos o mês a partir da string YMD em vez de getMonth() (timezone local).
-    const iso = String(e.date);
-    const datePart = iso.length >= 10 ? iso.slice(0, 10) : null;
+    // Prisma retorna `Date` para DateTime.
+    // A UI agrupa apontamentos por `YYYY-MM-DD` usando `slice(0,10)` sobre ISO.
+    // Então aqui também extraímos YMD via `toISOString()` para não depender do `toString()` local.
+    const datePart =
+      e.date instanceof Date ? e.date.toISOString().slice(0, 10) : String(e.date).slice(0, 10);
     if (!datePart) continue;
     const m = parseInt(datePart.slice(5, 7), 10);
+    if (!Number.isFinite(m) || m < 1 || m > 12) continue;
     byMonth[m] = (byMonth[m] || 0) + e.totalHoras;
   }
 
@@ -210,7 +214,7 @@ hourBankRouter.get("/debug-time-entries", async (req, res) => {
     totalHoras,
     entries: entries.map((e) => ({
       id: e.id,
-      date: String(e.date).slice(0, 10),
+      date: e.date instanceof Date ? e.date.toISOString().slice(0, 10) : String(e.date).slice(0, 10),
       horaInicio: e.horaInicio,
       horaFim: e.horaFim,
       totalHoras: e.totalHoras,
