@@ -364,7 +364,7 @@ export function ProjectCard({
             {cardContent}
           </button>
         )}
-        {onDelete && (
+        {(canEdit || canDelete) && (
           <div className="relative shrink-0">
             <button
               ref={menuButtonRef}
