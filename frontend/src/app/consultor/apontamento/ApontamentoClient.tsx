@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { TimeEntryPermissionModal, type TimeEntryPermissionPayload } from "@/components/TimeEntryPermissionModal";
@@ -104,7 +104,13 @@ export function ApontamentoClient() {
   const { dom, sab } = getWeekBounds(weekStart);
   const { user, loading: authLoading, can, permissionsReady } = useAuth();
 
+  // Protege contra "race condition" ao trocar semanas.
+  // Requisições antigas podem resolver depois e sobrescrever o estado.
+  const entriesRequestIdRef = useRef(0);
+  const requestsRequestIdRef = useRef(0);
+
   function loadEntries() {
+    const requestId = ++entriesRequestIdRef.current;
     apiFetch(`/api/time-entries?start=${dom.toISOString()}&end=${sab.toISOString()}`)
       .then(async (r) => {
         if (!r.ok) {
@@ -116,10 +122,12 @@ export function ApontamentoClient() {
         return data as TimeEntryFull[];
       })
       .then((list) => {
+        if (requestId !== entriesRequestIdRef.current) return;
         setEntries(list);
         setLoadError(null);
       })
       .catch((err) => {
+        if (requestId !== entriesRequestIdRef.current) return;
         console.error("Erro ao carregar apontamentos:", err);
         setEntries([]);
         setLoadError(String(err?.message || "Erro ao carregar apontamentos."));
@@ -127,6 +135,7 @@ export function ApontamentoClient() {
   }
 
   function loadRequests() {
+    const requestId = ++requestsRequestIdRef.current;
     apiFetch("/api/permission-requests?scope=own")
       .then(async (r) => {
         if (!r.ok) {
@@ -137,6 +146,7 @@ export function ApontamentoClient() {
       })
       .then((data: any[]) => {
         if (!Array.isArray(data)) {
+          if (requestId !== requestsRequestIdRef.current) return;
           setRequests([]);
           return;
         }
@@ -167,10 +177,12 @@ export function ApontamentoClient() {
               }
             : undefined,
         }));
+        if (requestId !== requestsRequestIdRef.current) return;
         setRequests(mapped);
         setLoadError(null);
       })
       .catch((err) => {
+        if (requestId !== requestsRequestIdRef.current) return;
         console.error("Erro ao carregar solicitações de apontamento:", err);
         setRequests([]);
         setLoadError(String(err?.message || "Erro ao carregar solicitações de apontamento."));
