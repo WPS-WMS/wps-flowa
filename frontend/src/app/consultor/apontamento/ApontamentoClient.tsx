@@ -121,7 +121,7 @@ export function ApontamentoClient() {
     }
   }
 
-  function loadEntries() {
+  function loadEntries(silent = false) {
     const requestId = ++entriesRequestIdRef.current;
     apiFetch(`/api/time-entries?start=${dom.toISOString()}&end=${sab.toISOString()}`)
       .then(async (r) => {
@@ -136,17 +136,18 @@ export function ApontamentoClient() {
       .then((list) => {
         if (requestId !== entriesRequestIdRef.current) return;
         setEntries(list);
-        setLoadError(null);
+        if (!silent) setLoadError(null);
       })
       .catch((err) => {
         if (requestId !== entriesRequestIdRef.current) return;
+        if (silent) return;
         console.error("Erro ao carregar apontamentos:", err);
         setEntries([]);
         setLoadError(String(err?.message || "Erro ao carregar apontamentos."));
       });
   }
 
-  function loadRequests() {
+  function loadRequests(silent = false) {
     const requestId = ++requestsRequestIdRef.current;
     apiFetch("/api/permission-requests?scope=own")
       .then(async (r) => {
@@ -159,7 +160,7 @@ export function ApontamentoClient() {
       .then((data: any[]) => {
         if (!Array.isArray(data)) {
           if (requestId !== requestsRequestIdRef.current) return;
-          setRequests([]);
+          if (!silent) setRequests([]);
           return;
         }
         const mapped: TimeEntryRequest[] = data.map((req) => ({
@@ -191,10 +192,11 @@ export function ApontamentoClient() {
         }));
         if (requestId !== requestsRequestIdRef.current) return;
         setRequests(mapped);
-        setLoadError(null);
+        if (!silent) setLoadError(null);
       })
       .catch((err) => {
         if (requestId !== requestsRequestIdRef.current) return;
+        if (silent) return;
         console.error("Erro ao carregar solicitações de apontamento:", err);
         setRequests([]);
         setLoadError(String(err?.message || "Erro ao carregar solicitações de apontamento."));
@@ -207,6 +209,24 @@ export function ApontamentoClient() {
     if (permissionsReady && !can("apontamentos")) return;
     loadEntries();
     loadRequests();
+  }, [dom.toISOString(), sab.toISOString(), authLoading, user, permissionsReady, can]);
+
+  // Atualiza periodicamente para garantir que, quando ADMIN/GESTOR aprovarem um pedido,
+  // ele não fique "sumido" na tela do consultor.
+  // Atualização silenciosa: não limpa o estado nem exibe banners.
+  useEffect(() => {
+    if (authLoading || !user) return;
+    if (!permissionsReady) return;
+    if (!can("apontamentos")) return;
+
+    const intervalMs = 15_000;
+    const id = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      loadEntries(true);
+      loadRequests(true);
+    }, intervalMs);
+
+    return () => window.clearInterval(id);
   }, [dom.toISOString(), sab.toISOString(), authLoading, user, permissionsReady, can]);
 
   const days = Array.from({ length: 7 }, (_, i) => {
