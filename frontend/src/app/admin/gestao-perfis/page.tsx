@@ -246,15 +246,6 @@ export default function GestaoPerfisPage() {
     <div className="flex-1 flex flex-col min-h-0 bg-slate-50">
       <header className="flex-shrink-0 bg-white border-b border-slate-200 px-6 py-4">
         <div className="max-w-6xl mx-auto">
-          <div className="flex items-center gap-3 mb-2">
-            <Link
-              href={`${basePath}/configuracoes`}
-              className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 hover:border-blue-200 transition"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              <span>Voltar</span>
-            </Link>
-          </div>
           <h1 className="text-xl md:text-2xl font-semibold text-slate-900">Gestão de perfis</h1>
           <p className="text-xs md:text-sm text-slate-500 mt-1">
             Configure, por perfil, o acesso às telas e principais funcionalidades do sistema.
@@ -263,30 +254,14 @@ export default function GestaoPerfisPage() {
       </header>
       <main className="flex-1 px-4 md:px-6 py-4 min-h-0 overflow-auto">
         <div className="max-w-6xl mx-auto space-y-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="flex-1">
-              <div className="rounded-xl border border-slate-200 bg-blue-50/80 px-4 py-3 text-xs text-slate-600">
-                Quando uma funcionalidade estiver marcada como <span className="font-semibold">“Sem acesso”</span>{" "}
-                para um perfil, esse perfil não poderá ver a tela ou usar aquela ação.
-                As alterações só são aplicadas definitivamente após clicar em{" "}
-                <span className="font-semibold">“Salvar alterações”</span>.
-              </div>
-              {hasPendingChanges && (
-                <p className="mt-2 text-[11px] text-amber-700">
-                  Existem alterações de permissão ainda não salvas.
-                </p>
-              )}
-              {saveMessage && !hasPendingChanges && (
-                <p className="mt-2 text-[11px] text-emerald-700">
-                  {saveMessage}
-                </p>
-              )}
-              {loadError && (
-                <p className="mt-2 text-[11px] text-red-700">
-                  {loadError}
-                </p>
-              )}
-            </div>
+          <div className="flex items-center justify-between gap-3">
+            <Link
+              href={`${basePath}/configuracoes`}
+              className="inline-flex items-center justify-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium shadow-sm transition-colors bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span>Voltar</span>
+            </Link>
             <button
               type="button"
               onClick={handleSave}
@@ -296,6 +271,21 @@ export default function GestaoPerfisPage() {
               Salvar alterações
             </button>
           </div>
+          {hasPendingChanges && (
+            <p className="text-[11px] text-amber-700">
+              Existem alterações de permissão ainda não salvas.
+            </p>
+          )}
+          {saveMessage && !hasPendingChanges && (
+            <p className="text-[11px] text-emerald-700">
+              {saveMessage}
+            </p>
+          )}
+          {loadError && (
+            <p className="text-[11px] text-red-700">
+              {loadError}
+            </p>
+          )}
 
           <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
             <div className="min-w-[720px]">

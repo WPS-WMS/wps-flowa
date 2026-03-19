@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Eye, Pencil, Trash2, Search } from "lucide-react";
+import { Plus, Eye, Pencil, Trash2, Search, ArrowLeft } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { NewClientModal } from "@/components/NewClientModal";
 import { EditClientModal } from "@/components/EditClientModal";
@@ -76,15 +76,25 @@ export default function ClientesPage() {
         <div className="max-w-6xl mx-auto space-y-4">
           {/* Barra de ações */}
           <div className="flex items-center justify-between gap-4">
-            <div className="relative w-full md:w-64">
-              <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Buscar clientes..."
-                className="w-full rounded-full border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
+            <div className="flex w-full items-center gap-3 md:w-auto">
+              <button
+                type="button"
+                onClick={() => router.push("/admin/configuracoes")}
+                className="inline-flex items-center gap-1.5 rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Voltar
+              </button>
+              <div className="relative w-full md:w-64">
+                <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Buscar clientes..."
+                  className="w-full rounded-full border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
             </div>
             <button
               type="button"
