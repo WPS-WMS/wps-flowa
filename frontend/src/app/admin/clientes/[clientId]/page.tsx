@@ -1,7 +1,7 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { use, useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { ChevronLeft, Plus, Pencil, Trash2 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { NewContactModal } from "@/components/NewContactModal";
@@ -41,6 +41,7 @@ type Client = {
 export default function ClienteDetalhePage({ params }: PageProps) {
   const { clientId } = use(params);
   const router = useRouter();
+  const pathname = usePathname();
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -48,10 +49,23 @@ export default function ClienteDetalhePage({ params }: PageProps) {
   const [editingContact, setEditingContact] = useState<ClientContact | null>(null);
   const [deletingContactId, setDeletingContactId] = useState<string | null>(null);
 
+  const resolvedClientId = useMemo(() => {
+    if (clientId && clientId !== "_") return clientId;
+    const parts = pathname.split("/").filter(Boolean);
+    const idFromPath = parts[parts.length - 1];
+    return idFromPath && idFromPath !== "_" ? idFromPath : "";
+  }, [clientId, pathname]);
+
   function loadClient() {
+    if (!resolvedClientId) {
+      setClient(null);
+      setError("Cliente inválido.");
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
-    apiFetch(`/api/clients/${clientId}`)
+    apiFetch(`/api/clients/${resolvedClientId}`)
       .then((r) => {
         if (!r.ok) throw new Error("Erro ao carregar cliente");
         return r.json();
@@ -63,7 +77,7 @@ export default function ClienteDetalhePage({ params }: PageProps) {
 
   useEffect(() => {
     loadClient();
-  }, [clientId]);
+  }, [resolvedClientId]);
 
   if (loading) {
     return (
@@ -231,7 +245,7 @@ export default function ClienteDetalhePage({ params }: PageProps) {
 
       {showNewContactModal && (
         <NewContactModal
-          clientId={clientId}
+          clientId={resolvedClientId}
           onClose={() => setShowNewContactModal(false)}
           onSaved={() => {
             setShowNewContactModal(false);
