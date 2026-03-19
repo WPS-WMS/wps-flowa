@@ -156,6 +156,73 @@ hourBankRouter.get("/", async (req, res) => {
   return res.json(result);
 });
 
+// Debug: lista TimeEntry efetivamente usados no cálculo do banco de horas.
+// Útil para verificar divergências (ex.: "apontamentos do mês sumiram, mas banco ainda mostra horas").
+hourBankRouter.get("/debug-time-entries", async (req, res) => {
+  const user = req.user;
+  const { userId, year, month } = req.query;
+
+  if (!year || !month) {
+    res.status(400).json({ error: "Informe `year` e `month` (ex.: year=2026&month=3)." });
+    return;
+  }
+
+  const y = parseInt(String(year), 10);
+  const m = parseInt(String(month), 10);
+  if (!y || m < 1 || m > 12) {
+    res.status(400).json({ error: "Parâmetros inválidos: use year inteiro e month entre 1 e 12." });
+    return;
+  }
+
+  let targetUserId = user.id;
+  if ((user.role === "ADMIN" || user.role === "GESTOR_PROJETOS") && userId) {
+    const targetUser = await prisma.user.findFirst({
+      where: { id: String(userId), tenantId: user.tenantId },
+    });
+    if (!targetUser) {
+      res.status(404).json({ error: "Usuário não encontrado" });
+      return;
+    }
+    targetUserId = targetUser.id;
+  }
+
+  // Intervalo do mês em UTC para não divergenciar por timezone.
+  const start = new Date(Date.UTC(y, m - 1, 1, 0, 0, 0, 0));
+  const end = new Date(Date.UTC(y, m, 0, 23, 59, 59, 999));
+
+  const entries = await prisma.timeEntry.findMany({
+    where: { userId: targetUserId, date: { gte: start, lte: end } },
+    orderBy: [{ date: "desc" }, { horaInicio: "asc" }],
+    include: {
+      project: { select: { id: true, name: true, client: { select: { id: true, name: true } } } },
+      ticket: { select: { id: true, code: true, title: true } },
+      activity: { select: { id: true, name: true } },
+    },
+  });
+
+  const totalHoras = Math.round(entries.reduce((s, e) => s + e.totalHoras, 0) * 100) / 100;
+
+  res.json({
+    userId: targetUserId,
+    year: y,
+    month: m,
+    count: entries.length,
+    totalHoras,
+    entries: entries.map((e) => ({
+      id: e.id,
+      date: String(e.date).slice(0, 10),
+      horaInicio: e.horaInicio,
+      horaFim: e.horaFim,
+      totalHoras: e.totalHoras,
+      project: e.project
+        ? { id: e.project.id, name: e.project.name, client: e.project.client ? { id: e.project.client.id, name: e.project.client.name } : null }
+        : null,
+      ticket: e.ticket ? { id: e.ticket.id, code: e.ticket.code, title: e.ticket.title } : null,
+      activity: e.activity ? { id: e.activity.id, name: e.activity.name } : null,
+    })),
+  });
+});
+
 hourBankRouter.patch("/", async (req, res) => {
   const user = req.user;
   if (user.role !== "ADMIN" && user.role !== "GESTOR_PROJETOS") {
