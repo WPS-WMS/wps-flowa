@@ -52,6 +52,7 @@ export default function PermissoesPage() {
   const [actingId, setActingId] = useState<string | null>(null);
   const [rejecting, setRejecting] = useState<PermissionRequest | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   function load() {
     if (!permissionsReady || !can("configuracoes.permissoes")) return;
@@ -67,6 +68,68 @@ export default function PermissoesPage() {
   useEffect(() => {
     load();
   }, [filter, permissionsReady, can]);
+
+  // Ao sair de "Todos", limpa seleção.
+  useEffect(() => {
+    if (filter !== "ALL") setSelectedIds([]);
+  }, [filter]);
+
+  async function handleClearSelected() {
+    if (filter !== "ALL") return;
+    if (selectedIds.length === 0) return;
+    if (!user?.tenantId) return;
+
+    const confirmMsg = `Tem certeza que deseja limpar (${selectedIds.length}) solicitação(ões) selecionada(s)?`;
+    if (!confirm(confirmMsg)) return;
+
+    try {
+      const res = await apiFetch("/api/permission-requests/bulk-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: selectedIds }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        alert(body?.error || "Erro ao limpar solicitações.");
+        return;
+      }
+
+      const now = Date.now();
+      localStorage.setItem(`permission_screen_clean_v1_${user.tenantId}`, String(now));
+      setSelectedIds([]);
+      load();
+    } catch {
+      alert("Erro ao limpar solicitações.");
+    }
+  }
+
+  // Limpeza automática a cada 3 meses (se não foi limpa manualmente).
+  useEffect(() => {
+    if (filter !== "ALL") return;
+    if (authLoading || !permissionsReady) return;
+    if (!user?.tenantId) return;
+
+    const key = `permission_screen_clean_v1_${user.tenantId}`;
+    const last = Number(localStorage.getItem(key) || "0");
+    const threeMonthsMs = 90 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+
+    if (now - last < threeMonthsMs) return;
+
+    apiFetch("/api/permission-requests/cleanup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ days: 90 }),
+    })
+      .then((r) => {
+        if (!r.ok) return;
+        localStorage.setItem(key, String(now));
+        load();
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter, authLoading, permissionsReady, user?.tenantId]);
 
   async function handleApprove(id: string) {
     setActingId(id);
@@ -164,6 +227,16 @@ export default function PermissoesPage() {
               >
                 Todos
               </button>
+              {filter === "ALL" && (
+                <button
+                  type="button"
+                  onClick={handleClearSelected}
+                  disabled={selectedIds.length === 0 || loading}
+                  className="px-4 py-2 rounded-full text-sm font-medium transition-colors bg-white border border-red-200 text-red-700 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Limpar
+                </button>
+              )}
             </div>
           </div>
 
@@ -182,6 +255,23 @@ export default function PermissoesPage() {
                   key={req.id}
                   className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4"
                 >
+                  {filter === "ALL" && (
+                    <div className="flex-shrink-0">
+                      <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(req.id)}
+                          onChange={(e) => {
+                            const checked = e.target.checked;
+                            setSelectedIds((prev) =>
+                              checked ? [...prev, req.id] : prev.filter((id) => id !== req.id),
+                            );
+                          }}
+                          className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        />
+                      </label>
+                    </div>
+                  )}
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-slate-900">{req.user.name}</p>
                     <p className="text-sm text-slate-600">{req.user.email}</p>

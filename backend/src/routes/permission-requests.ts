@@ -591,3 +591,51 @@ permissionRequestsRouter.delete("/:id", async (req, res) => {
   });
   res.status(204).end();
 });
+
+// Limpar (deletar) em lote solicitações selecionadas (ADMIN e GESTOR via feature "configuracoes.permissoes")
+permissionRequestsRouter.post(
+  "/bulk-delete",
+  requireFeature("configuracoes.permissoes"),
+  async (req, res) => {
+    const authUser = req.user;
+    const { ids } = (req.body ?? {}) as { ids?: unknown };
+    if (!Array.isArray(ids) || ids.length === 0) {
+      res.status(400).json({ error: "Informe `ids` para limpar." });
+      return;
+    }
+
+    const idList = ids.map((x) => String(x)).slice(0, 500);
+
+    const result = await prisma.timeEntryPermissionRequest.deleteMany({
+      where: {
+        id: { in: idList },
+        // Garante isolamento por tenant
+        user: { tenantId: authUser.tenantId },
+      },
+    });
+
+    res.json({ ok: true, deletedCount: result.count });
+  },
+);
+
+// Limpeza automática periódica: remove pedidos APPROVED/REJECTED mais antigos que N dias.
+permissionRequestsRouter.post(
+  "/cleanup",
+  requireFeature("configuracoes.permissoes"),
+  async (req, res) => {
+    const authUser = req.user;
+    const { days } = (req.body ?? {}) as { days?: number };
+    const nDays = typeof days === "number" && days > 0 ? Math.floor(days) : 90;
+    const cutoff = new Date(Date.now() - nDays * 24 * 60 * 60 * 1000);
+
+    const result = await prisma.timeEntryPermissionRequest.deleteMany({
+      where: {
+        user: { tenantId: authUser.tenantId },
+        createdAt: { lt: cutoff },
+        status: { in: ["APPROVED", "REJECTED"] },
+      },
+    });
+
+    res.json({ ok: true, deletedCount: result.count, days: nDays });
+  },
+);
