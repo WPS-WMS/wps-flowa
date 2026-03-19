@@ -17,6 +17,17 @@ usersRouter.get("/for-select", requireFeature("projeto"), async (req, res) => {
   res.json(users);
 });
 
+usersRouter.get("/for-project-select", requireFeature("projeto.novo"), async (req, res) => {
+  const authUser = req.user;
+  const users = await prisma.user.findMany({
+    // Clientes não devem aparecer em selects (não apontam horas e não são atribuídos em tarefas/projetos)
+    where: { tenantId: authUser.tenantId, role: { not: "CLIENTE" } },
+    select: { id: true, name: true, email: true },
+    orderBy: { name: "asc" },
+  });
+  res.json(users);
+});
+
 // Atualizar dados do próprio usuário (ex.: nome)
 usersRouter.patch("/me", async (req, res) => {
   const authUser = req.user;

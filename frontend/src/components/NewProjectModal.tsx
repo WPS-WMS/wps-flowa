@@ -110,10 +110,10 @@ export function NewProjectModal({ onClose, onSaved, mode = "create", projectId }
   const attachmentUrl = anexoUrl ? `${API_BASE_URL}${anexoUrl}` : "";
 
   useEffect(() => {
-    apiFetch("/api/clients/for-select")
+    apiFetch("/api/clients/for-project-select")
       .then((r) => (r.ok ? r.json() : []))
       .then(setClients);
-    apiFetch("/api/users/for-select")
+    apiFetch("/api/users/for-project-select")
       .then((r) => (r.ok ? r.json() : []))
       .then(setUsers);
   }, []);
