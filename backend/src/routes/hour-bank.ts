@@ -102,15 +102,22 @@ hourBankRouter.get("/", async (req, res) => {
     },
   });
 
-  const start = new Date(y, 0, 1);
-  const end = new Date(y, 11, 31, 23, 59, 59);
+  // Intervalo anual em UTC para não "pular" dias/mês por diferença de timezone.
+  const start = new Date(Date.UTC(y, 0, 1, 0, 0, 0, 0));
+  const end = new Date(Date.UTC(y, 11, 31, 23, 59, 59, 999));
   const entries = await prisma.timeEntry.findMany({
     where: { userId: targetUserId, date: { gte: start, lte: end } },
   });
   const byMonth: Record<number, number> = {};
   for (let m = 1; m <= 12; m++) byMonth[m] = 0;
   for (const e of entries) {
-    const m = new Date(e.date).getMonth() + 1;
+    // Evita divergência por timezone:
+    // - Apontamentos agrupam por YMD (slice "YYYY-MM-DD") na UI.
+    // - Aqui, também derivamos o mês a partir da string YMD em vez de getMonth() (timezone local).
+    const iso = String(e.date);
+    const datePart = iso.length >= 10 ? iso.slice(0, 10) : null;
+    if (!datePart) continue;
+    const m = parseInt(datePart.slice(5, 7), 10);
     byMonth[m] = (byMonth[m] || 0) + e.totalHoras;
   }
 
@@ -197,8 +204,8 @@ hourBankRouter.patch("/", async (req, res) => {
       },
     });
     const horasPrevistas = computeHorasPrevistasParaMes(targetUserData, y, m);
-    const start = new Date(y, m - 1, 1);
-    const end = new Date(y, m, 0, 23, 59, 59);
+    const start = new Date(Date.UTC(y, m - 1, 1, 0, 0, 0, 0));
+    const end = new Date(Date.UTC(y, m, 0, 23, 59, 59, 999));
     const entries = await prisma.timeEntry.findMany({
       where: { userId: targetUserId, date: { gte: start, lte: end } },
     });
