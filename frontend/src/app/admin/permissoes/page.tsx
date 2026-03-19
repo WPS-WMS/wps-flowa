@@ -104,6 +104,14 @@ export default function PermissoesPage() {
     }
   }
 
+  function handleSelectAll() {
+    if (filter !== "ALL") return;
+    const eligibleIds = requests
+      .filter((r) => r.status === "APPROVED" || r.status === "REJECTED")
+      .map((r) => r.id);
+    setSelectedIds(eligibleIds);
+  }
+
   // Limpeza automática a cada 3 meses (se não foi limpa manualmente).
   useEffect(() => {
     if (filter !== "ALL") return;
@@ -227,18 +235,29 @@ export default function PermissoesPage() {
               >
                 Todos
               </button>
-              {filter === "ALL" && (
-                <button
-                  type="button"
-                  onClick={handleClearSelected}
-                  disabled={selectedIds.length === 0 || loading}
-                  className="px-4 py-2 rounded-full text-sm font-medium transition-colors bg-white border border-red-200 text-red-700 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Limpar
-                </button>
-              )}
             </div>
           </div>
+
+          {filter === "ALL" && (
+            <div className="mt-3 flex items-center justify-between gap-4">
+              <button
+                type="button"
+                onClick={handleSelectAll}
+                disabled={loading || requests.filter((r) => r.status === "APPROVED" || r.status === "REJECTED").length === 0}
+                className="px-4 py-2 rounded-full text-sm font-medium transition-colors bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Selecionar todos
+              </button>
+              <button
+                type="button"
+                onClick={handleClearSelected}
+                disabled={selectedIds.length === 0 || loading}
+                className="px-4 py-2 rounded-full text-sm font-medium transition-colors bg-white border border-red-200 text-red-700 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Limpar
+              </button>
+            </div>
+          )}
 
           {loading ? (
             <div className="flex items-center justify-center py-12">
