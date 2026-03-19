@@ -6,6 +6,17 @@ import { requireFeature } from "../lib/authorizeFeature.js";
 export const usersRouter = Router();
 usersRouter.use(authMiddleware);
 
+usersRouter.get("/for-select", requireFeature("projeto"), async (req, res) => {
+  const authUser = req.user;
+  const users = await prisma.user.findMany({
+    // Clientes não devem aparecer em selects (não apontam horas e não são atribuídos em tarefas/projetos)
+    where: { tenantId: authUser.tenantId, role: { not: "CLIENTE" } },
+    select: { id: true, name: true, email: true },
+    orderBy: { name: "asc" },
+  });
+  res.json(users);
+});
+
 // Atualizar dados do próprio usuário (ex.: nome)
 usersRouter.patch("/me", async (req, res) => {
   const authUser = req.user;
@@ -66,25 +77,6 @@ usersRouter.patch("/me/password", async (req, res) => {
 
 // Gestão de usuários (Configurações)
 usersRouter.use(requireFeature("configuracoes.usuarios"));
-
-usersRouter.get("/for-select", async (req, res) => {
-  const authUser = req.user;
-  // Lista de usuários para selects de responsável/membros em projeto/tópico/tarefa.
-  // Antes era restrito só a ADMIN e GESTOR_PROJETOS; isso fazia com que CONSULTOR
-  // não conseguisse ver nem os membros atuais ao abrir o modal de edição.
-  // Mantemos o bloqueio apenas para CLIENTE.
-  if (authUser.role === "CLIENTE") {
-    res.status(403).json({ error: "Não autorizado" });
-    return;
-  }
-  const users = await prisma.user.findMany({
-    // Clientes não devem aparecer em selects (não apontam horas e não são atribuídos em tarefas/projetos)
-    where: { tenantId: authUser.tenantId, role: { not: "CLIENTE" } },
-    select: { id: true, name: true, email: true },
-    orderBy: { name: "asc" },
-  });
-  res.json(users);
-});
 
 usersRouter.get("/", async (req, res) => {
   const authUser = req.user;

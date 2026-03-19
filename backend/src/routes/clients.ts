@@ -5,9 +5,48 @@ import { requireFeature } from "../lib/authorizeFeature.js";
 
 export const clientsRouter = Router();
 clientsRouter.use(authMiddleware);
-clientsRouter.use(requireFeature("configuracoes.clientes"));
 
-clientsRouter.get("/", async (req: Request, res) => {
+clientsRouter.get("/for-select", requireFeature("projeto"), async (req: Request, res) => {
+  const user = (req as Request & { user: { id: string; role: string; tenantId: string } }).user;
+  const isAdmin = user.role === "ADMIN" || user.role === "GESTOR_PROJETOS";
+  const clients = await prisma.client.findMany({
+    where: {
+      tenantId: user.tenantId,
+      ...(isAdmin
+        ? {}
+        : {
+            OR: [
+              { users: { some: { userId: user.id } } },
+              {
+                projects: {
+                  some: {
+                    OR: [
+                      { createdById: user.id },
+                      {
+                        tickets: {
+                          some: {
+                            OR: [
+                              { assignedToId: user.id },
+                              { createdById: user.id },
+                              { responsibles: { some: { userId: user.id } } },
+                            ],
+                          },
+                        },
+                      },
+                    ],
+                  },
+                },
+              },
+            ],
+          }),
+    },
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+  });
+  res.json(clients);
+});
+
+clientsRouter.get("/", requireFeature("configuracoes.clientes"), async (req: Request, res) => {
   const user = (req as Request & { user: { id: string; role: string; tenantId: string } }).user;
   const isAdmin = user.role === "ADMIN" || user.role === "GESTOR_PROJETOS";
   const clients = await prisma.client.findMany({
@@ -54,7 +93,7 @@ clientsRouter.get("/", async (req: Request, res) => {
   res.json(clients);
 });
 
-clientsRouter.get("/:id", async (req: Request, res) => {
+clientsRouter.get("/:id", requireFeature("configuracoes.clientes"), async (req: Request, res) => {
   const user = (req as Request & { user: { id: string; role: string; tenantId: string } }).user;
   const clientId = req.params.id;
   
@@ -88,7 +127,7 @@ clientsRouter.get("/:id", async (req: Request, res) => {
   res.json(client);
 });
 
-clientsRouter.post("/", async (req, res) => {
+clientsRouter.post("/", requireFeature("configuracoes.clientes"), async (req, res) => {
   const user = (req as Request & { user: { id: string; role: string; tenantId: string } }).user;
 
   const {
@@ -134,7 +173,7 @@ clientsRouter.post("/", async (req, res) => {
   }
 });
 
-clientsRouter.patch("/:id", async (req, res) => {
+clientsRouter.patch("/:id", requireFeature("configuracoes.clientes"), async (req, res) => {
   const user = (req as Request & { user: { id: string; role: string; tenantId: string } }).user;
 
   const clientId = req.params.id;
@@ -188,7 +227,7 @@ clientsRouter.patch("/:id", async (req, res) => {
   }
 });
 
-clientsRouter.delete("/:id", async (req, res) => {
+clientsRouter.delete("/:id", requireFeature("configuracoes.clientes"), async (req, res) => {
   const user = (req as Request & { user: { id: string; role: string; tenantId: string } }).user;
 
   const clientId = req.params.id;
