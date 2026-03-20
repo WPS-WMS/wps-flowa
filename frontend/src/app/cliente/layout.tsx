@@ -52,7 +52,9 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
       return;
     }
     if (!can("home") && pathname === "/cliente") {
-      router.replace("/perfil");
+      const fallback =
+        "/cliente/abrir-chamado";
+      router.replace(fallback);
     }
   }, [user, loading, router, pathname, can]);
 

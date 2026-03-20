@@ -65,6 +65,11 @@ export default function AbrirChamadoPage() {
       setClientId("");
       return;
     }
+    if (!can("configuracoes.clientes")) {
+      setClients([]);
+      setClientId("");
+      return;
+    }
     apiFetch("/api/clients")
       .then(async (r) => {
         if (!r.ok) return [];
@@ -90,6 +95,10 @@ export default function AbrirChamadoPage() {
 
   useEffect(() => {
     if (!can("chamados.criacao")) {
+      setProjects([]);
+      return;
+    }
+    if (!can("projeto")) {
       setProjects([]);
       return;
     }
@@ -236,6 +245,9 @@ export default function AbrirChamadoPage() {
   const selectedProjectName = filteredProjects.find((p) => p.id === projectId)?.name || "";
   const pendingUploads = attachments.filter((a) => !a.uploaded).length;
   const canSubmit = Boolean(projectId && tipo && description.trim()) && !saving;
+  const hasProjectAccess = can("projeto");
+  const hasClientsAccess = can("configuracoes.clientes");
+  const canUseForm = can("chamados.criacao") && hasProjectAccess && hasClientsAccess;
   const primaryLabel = saving
     ? "Salvando..."
     : createdTicketId
@@ -547,13 +559,18 @@ export default function AbrirChamadoPage() {
                   </button>
                   <button
                     type="submit"
-                    disabled={!canSubmit}
+                    disabled={!canSubmit || !canUseForm}
                     className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
                   >
                     {saving && <Loader2 className="h-4 w-4 animate-spin" />}
                     {primaryLabel}
                   </button>
                 </div>
+                {!canUseForm && (
+                  <p className="mt-2 text-xs text-amber-700">
+                    Sem acesso aos dados necessários para abrir chamado neste perfil.
+                  </p>
+                )}
                 {createdTicketId && pendingUploads > 0 && (
                   <p className="mt-2 text-xs text-slate-600">
                     Dica: o chamado já foi criado. Ao salvar novamente, enviaremos apenas os anexos pendentes.
