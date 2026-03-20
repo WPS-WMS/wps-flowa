@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch } from "@/lib/api";
 import {
-  ArrowLeft,
   Building2,
   FolderKanban,
   Paperclip,
@@ -281,14 +280,6 @@ export default function AbrirChamadoPage() {
                 </span>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => router.back()}
-              className="inline-flex items-center gap-2 rounded-lg bg-white/10 px-3 py-2 text-sm text-white hover:bg-white/15"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Voltar
-            </button>
           </div>
         </div>
       </header>
