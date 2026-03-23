@@ -80,74 +80,49 @@ projectsRouter.get("/", async (req, res) => {
     res.json(cached);
     return;
   }
-  const projects = await prisma.project.findMany({
-    where: {
-      ...tenantFilter,
-      arquivado: showArquivados ? true : false,
-      // Admin e gestor: veem todos os projetos
-      // Consultor: só projetos criados por ele ou com alguma tarefa atribuída/criada por ele
-      // Cliente: só projetos do cliente ao qual está vinculado
-      ...(!canSeeAll && {
-        OR: [
-          { createdById: user.id },
-          { client: { users: { some: { userId: user.id } } } },
-          ...(user.role === "CONSULTOR"
-            ? [
-                {
-                  tickets: {
-                    some: {
-                      OR: [
-                        { assignedToId: user.id },
-                        { createdById: user.id },
-                        { responsibles: { some: { userId: user.id } } },
-                      ],
-                    },
+
+  const projectsWhere = {
+    ...tenantFilter,
+    arquivado: showArquivados ? true : false,
+    // Admin e gestor: veem todos os projetos
+    // Consultor: só projetos criados por ele ou com alguma tarefa atribuída/criada por ele
+    // Cliente: só projetos do cliente ao qual está vinculado
+    ...(!canSeeAll && {
+      OR: [
+        { createdById: user.id },
+        { client: { users: { some: { userId: user.id } } } },
+        ...(user.role === "CONSULTOR"
+          ? [
+              {
+                tickets: {
+                  some: {
+                    OR: [
+                      { assignedToId: user.id },
+                      { createdById: user.id },
+                      { responsibles: { some: { userId: user.id } } },
+                    ],
                   },
                 },
-              ]
-            : []),
-        ],
-      }),
-    },
-    include: lightMode
-      ? {
-          client: { select: { id: true, name: true } },
-          createdBy: { select: { id: true, name: true, email: true } },
-          responsibles: { include: { user: { select: { id: true, name: true } } } },
-          _count: { select: { tickets: true, timeEntries: true } },
-        }
-      : {
-          client: true,
-          createdBy: { select: { id: true, name: true, email: true } },
-          responsibles: { include: { user: { select: { id: true, name: true } } } },
-          _count: { select: { tickets: true, timeEntries: true } },
-          tickets: {
-            select: {
-              id: true,
-              code: true,
-              title: true,
-              description: true,
-              type: true,
-              criticidade: true,
-              status: true,
-              parentTicketId: true,
-              dataInicio: true,
-              dataFimPrevista: true,
-              estimativaHoras: true,
-              progresso: true,
-              createdAt: true,
-              assignedTo: { select: { id: true, name: true } },
-              createdBy: { select: { id: true, name: true } },
-              responsibles: { include: { user: { select: { id: true, name: true } } } },
-              _count: { select: { timeEntries: true } },
-            },
-            orderBy: { createdAt: "desc" },
-          },
-        },
-    orderBy: { createdAt: "desc" },
-  });
+              },
+            ]
+          : []),
+      ],
+    }),
+  };
+
+  // Dois findMany separados para o TypeScript inferir `tickets` só no modo full (include condicional virava união sem `tickets`).
   if (lightMode) {
-    const lightweight = projects.map((project) => ({
+    const projectsLight = await prisma.project.findMany({
+      where: projectsWhere,
+      include: {
+        client: { select: { id: true, name: true } },
+        createdBy: { select: { id: true, name: true, email: true } },
+        responsibles: { include: { user: { select: { id: true, name: true } } } },
+        _count: { select: { tickets: true, timeEntries: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    const lightweight = projectsLight.map((project) => ({
       ...project,
       tickets: [],
     }));
@@ -155,6 +130,39 @@ projectsRouter.get("/", async (req, res) => {
     res.json(lightweight);
     return;
   }
+
+  const projects = await prisma.project.findMany({
+    where: projectsWhere,
+    include: {
+      client: true,
+      createdBy: { select: { id: true, name: true, email: true } },
+      responsibles: { include: { user: { select: { id: true, name: true } } } },
+      _count: { select: { tickets: true, timeEntries: true } },
+      tickets: {
+        select: {
+          id: true,
+          code: true,
+          title: true,
+          description: true,
+          type: true,
+          criticidade: true,
+          status: true,
+          parentTicketId: true,
+          dataInicio: true,
+          dataFimPrevista: true,
+          estimativaHoras: true,
+          progresso: true,
+          createdAt: true,
+          assignedTo: { select: { id: true, name: true } },
+          createdBy: { select: { id: true, name: true } },
+          responsibles: { include: { user: { select: { id: true, name: true } } } },
+          _count: { select: { timeEntries: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
 
   // Evita N+1: agrega horas de todos os tickets em uma única consulta.
   const allTicketIds = projects.flatMap((project) => project.tickets.map((ticket) => ticket.id));
