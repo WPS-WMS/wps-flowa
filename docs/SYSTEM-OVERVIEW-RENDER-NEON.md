@@ -171,7 +171,7 @@ Exemplo de `.env` em `backend/` apontando para o Neon (desenvolvimento local con
 DATABASE_URL=postgresql://usuario:senha@ep-xxx.us-east-1.aws.neon.tech/neondb?sslmode=require
 DIRECT_URL=postgresql://usuario:senha@ep-xxx.us-east-1.aws.neon.tech/neondb?sslmode=require
 JWT_SECRET=algum_segredo_forte_aqui
-CORS_ORIGIN=http://localhost:3000,https://wps-one-frontend.web.app,https://wps-one-frontend.firebaseapp.com
+CORS_ORIGIN=http://localhost:3000,https://wpsone.com.br,https://www.wpsone.com.br,https://wps-one-frontend.web.app,https://wps-one-frontend.firebaseapp.com
 ```
 
 - `DIRECT_URL` é usado internamente pelo Prisma; para simplificar, manter o mesmo valor de `DATABASE_URL`.

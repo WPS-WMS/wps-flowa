@@ -33,6 +33,9 @@ function parseOrigins(envValue: string | undefined): string[] {
 
 const envOrigins = parseOrigins(process.env.CORS_ORIGIN);
 const productionOrigins = [
+  // Domínio customizado (Firebase Hosting)
+  "https://wpsone.com.br",
+  "https://www.wpsone.com.br",
   // Firebase Hosting — projeto atual: wps-one-frontend
   "https://wps-one-frontend.web.app",
   "https://wps-one-frontend.firebaseapp.com",
