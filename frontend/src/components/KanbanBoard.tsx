@@ -164,6 +164,9 @@ type Column = {
 type KanbanBoardProps = {
   tickets: PackageTicket[];
   projectId: string;
+  /** `parent`: nomes vêm de `topicTitlesById` (KanbanWithFilters). `self`: busca /api/tickets (ProjectCard, tópico). */
+  topicNamesMode?: "parent" | "self";
+  topicTitlesById?: Record<string, string>;
   parentTicketId?: string;
   initialCreateStatus?: string | null;
   onCreateModalClose?: () => void;
@@ -175,6 +178,8 @@ type KanbanBoardProps = {
 export function KanbanBoard({
   tickets,
   projectId,
+  topicNamesMode = "self",
+  topicTitlesById,
   parentTicketId,
   initialCreateStatus,
   onCreateModalClose,
@@ -213,8 +218,11 @@ export function KanbanBoard({
     }
   }, [projectId]);
 
-  // Buscar tópicos do projeto para mapear parentTicketId -> nome do tópico
   useEffect(() => {
+    if (topicNamesMode === "parent") {
+      setTopicsMap(topicTitlesById ?? {});
+      return;
+    }
     if (!projectId) {
       setTopicsMap({});
       return;
@@ -238,7 +246,7 @@ export function KanbanBoard({
         console.error("Erro ao buscar tópicos:", err);
         setTopicsMap({});
       });
-  }, [projectId]);
+  }, [projectId, topicNamesMode, topicTitlesById]);
 
   // Buscar horas apontadas em lote por ticket (evita N+1 requests)
   useEffect(() => {

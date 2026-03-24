@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
 import { apiFetch } from "@/lib/api";
@@ -18,7 +18,7 @@ export default function ProjetoKanbanConsultorPage({ params }: PageProps) {
   const projectId = searchParams.get("projectId") ?? routeParams.projectId;
   const router = useRouter();
   const [project, setProject] = useState<ProjectForCard | null>(null);
-  const [tickets, setTickets] = useState<PackageTicket[]>([]);
+  const [allTickets, setAllTickets] = useState<PackageTicket[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -30,7 +30,7 @@ export default function ProjetoKanbanConsultorPage({ params }: PageProps) {
 
     // Buscar projeto específico (inclusive arquivado) e suas tarefas
     Promise.all([
-      apiFetch(`/api/projects/${projectId}`).then(async (r) => {
+      apiFetch(`/api/projects/${projectId}?light=true`).then(async (r) => {
         if (!r.ok) {
           const data = await r.json().catch(() => ({}));
           throw new Error(data?.error || "Projeto não encontrado");
@@ -44,10 +44,7 @@ export default function ProjetoKanbanConsultorPage({ params }: PageProps) {
     ])
       .then(([projectData, projectTickets]: [ProjectForCard, PackageTicket[]]) => {
         setProject(projectData);
-        const tasksOnly = projectTickets.filter(
-          (t) => t.type !== "SUBPROJETO" && t.type !== "SUBTAREFA",
-        );
-        setTickets(tasksOnly);
+        setAllTickets(Array.isArray(projectTickets) ? projectTickets : []);
         setLoading(false);
       })
       .catch((err) => {
@@ -60,11 +57,22 @@ export default function ProjetoKanbanConsultorPage({ params }: PageProps) {
     const res = await apiFetch(`/api/tickets?projectId=${projectId}&light=true`);
     if (res.ok) {
       const projectTickets: PackageTicket[] = await res.json();
-      // Filtra apenas tarefas, excluindo tópicos e subtarefas
-      const tasksOnly = projectTickets.filter((t) => t.type !== "SUBPROJETO" && t.type !== "SUBTAREFA");
-      setTickets(tasksOnly);
+      setAllTickets(Array.isArray(projectTickets) ? projectTickets : []);
     }
   };
+
+  const tickets = useMemo(
+    () => allTickets.filter((t) => t.type !== "SUBPROJETO" && t.type !== "SUBTAREFA"),
+    [allTickets],
+  );
+
+  const kanbanSubprojectsFromParent = useMemo(
+    () =>
+      allTickets
+        .filter((t) => t.type === "SUBPROJETO")
+        .map((t) => ({ id: t.id, code: t.code, title: t.title })),
+    [allTickets],
+  );
 
   const handleDeleteTicket = async (ticket: PackageTicket) => {
     try {
@@ -153,6 +161,7 @@ export default function ProjetoKanbanConsultorPage({ params }: PageProps) {
           <KanbanWithFilters
             tickets={filteredBySearch}
             projectId={project.id}
+            kanbanSubprojectsFromParent={kanbanSubprojectsFromParent}
             onTicketClick={() => {}}
             onTicketDelete={handleDeleteTicket}
             onTicketCreated={refetchTickets}

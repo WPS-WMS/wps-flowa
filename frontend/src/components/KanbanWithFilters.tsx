@@ -42,6 +42,8 @@ function getStatusBgClass(color: string): string {
 type KanbanWithFiltersProps = {
   tickets: PackageTicket[];
   projectId: string;
+  /** Tópicos (SUBPROJETO) já carregados com a lista de tickets — evita GET /api/tickets duplicado. */
+  kanbanSubprojectsFromParent?: Array<{ id: string; code: string; title: string }>;
   openNewCard?: boolean;
   onCloseNewCard?: () => void;
   onBack?: () => void;
@@ -54,6 +56,7 @@ type KanbanWithFiltersProps = {
 export function KanbanWithFilters({
   tickets,
   projectId,
+  kanbanSubprojectsFromParent,
   openNewCard = false,
   onCloseNewCard,
   onBack,
@@ -94,9 +97,18 @@ export function KanbanWithFilters({
     return tickets.filter((t) => t.type !== "SUBPROJETO" && t.type !== "SUBTAREFA");
   }, [tickets]);
 
-  // Extrai tópicos disponíveis do projeto para filtrar tarefas
-  const [subprojects, setSubprojects] = useState<Array<{ id: string; code: string; title: string }>>([]);
-  
+  const [internalSubprojects, setInternalSubprojects] = useState<Array<{ id: string; code: string; title: string }>>(
+    [],
+  );
+
+  const subprojects =
+    kanbanSubprojectsFromParent !== undefined ? kanbanSubprojectsFromParent : internalSubprojects;
+
+  const topicTitlesById = useMemo(
+    () => Object.fromEntries(subprojects.map((s) => [s.id, s.title])),
+    [subprojects],
+  );
+
   // Carrega colunas customizadas do localStorage (igual ao KanbanBoard)
   useEffect(() => {
     const storageKey = `kanban_columns_${projectId}`;
@@ -110,9 +122,9 @@ export function KanbanWithFilters({
       }
     }
   }, [projectId]);
-  
+
   useEffect(() => {
-    // Busca todos os tópicos do projeto
+    if (kanbanSubprojectsFromParent !== undefined) return;
     apiFetch(`/api/tickets?projectId=${projectId}&light=true`)
       .then((r) => {
         if (r.ok) return r.json();
@@ -122,12 +134,12 @@ export function KanbanWithFilters({
         const subs = allTickets
           .filter((t) => t.type === "SUBPROJETO")
           .map((t) => ({ id: t.id, code: t.code, title: t.title }));
-        setSubprojects(subs);
+        setInternalSubprojects(subs);
       })
       .catch((err) => {
         console.error("Erro ao carregar tópicos:", err);
       });
-  }, [projectId]);
+  }, [projectId, kanbanSubprojectsFromParent]);
 
   // Mapeamento de status para colunas (igual ao KanbanBoard)
   const STATUS_TO_COLUMN: Record<string, string> = {
@@ -439,6 +451,8 @@ export function KanbanWithFilters({
       <KanbanBoard
         tickets={filteredTickets}
         projectId={projectId}
+        topicNamesMode="parent"
+        topicTitlesById={topicTitlesById}
         initialCreateStatus={openNewCard ? "ABERTO" : null}
         onCreateModalClose={onCloseNewCard}
         onTicketClick={onTicketClick}

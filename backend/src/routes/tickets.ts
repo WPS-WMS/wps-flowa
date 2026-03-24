@@ -36,6 +36,29 @@ const TICKET_LIST_LIGHT_SELECT = {
   responsibles: { select: { user: { select: { id: true, name: true } } } },
 } as const;
 
+/** Mesmo payload útil ao Kanban, sem join em `project` (redundante quando já filtramos por projectId). */
+const TICKET_LIST_LIGHT_IN_PROJECT = {
+  id: true,
+  code: true,
+  title: true,
+  type: true,
+  criticidade: true,
+  status: true,
+  projectId: true,
+  parentTicketId: true,
+  createdById: true,
+  assignedToId: true,
+  dataInicio: true,
+  dataFimPrevista: true,
+  estimativaHoras: true,
+  progresso: true,
+  createdAt: true,
+  updatedAt: true,
+  assignedTo: { select: { id: true, name: true } },
+  createdBy: { select: { id: true, name: true } },
+  responsibles: { select: { user: { select: { id: true, name: true } } } },
+} as const;
+
 const TICKET_LIST_FULL_INCLUDE = {
   project: { include: { client: true } },
   assignedTo: { select: { id: true, name: true } },
@@ -110,10 +133,17 @@ ticketsRouter.get("/", async (req, res) => {
   const orderBy = { createdAt: "desc" as const };
   const pagination = take !== undefined ? { take, ...(skip !== undefined && skip > 0 ? { skip } : {}) } : {};
 
+  const lightSelect =
+    light && projectId
+      ? TICKET_LIST_LIGHT_IN_PROJECT
+      : light
+        ? TICKET_LIST_LIGHT_SELECT
+        : null;
+
   const tickets = light
     ? await prisma.ticket.findMany({
         where,
-        select: TICKET_LIST_LIGHT_SELECT,
+        select: lightSelect!,
         orderBy,
         ...pagination,
       })

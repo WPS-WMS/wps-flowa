@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search, RefreshCw } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { KanbanWithFilters } from "@/components/KanbanWithFilters";
@@ -14,7 +14,8 @@ import { type ProjectForCard } from "@/components/ProjectCard";
 export function DashboardDailyContent() {
   const [projects, setProjects] = useState<ProjectForCard[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
-  const [tickets, setTickets] = useState<PackageTicket[]>([]);
+  const [allTickets, setAllTickets] = useState<PackageTicket[]>([]);
+  const [ticketsLoading, setTicketsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [backendError, setBackendError] = useState<string | null>(null);
@@ -45,22 +46,38 @@ export function DashboardDailyContent() {
 
   useEffect(() => {
     if (!selectedProjectId) {
-      setTickets([]);
+      setAllTickets([]);
+      setTicketsLoading(false);
       return;
     }
+    setTicketsLoading(true);
     apiFetch(`/api/tickets?projectId=${selectedProjectId}&light=true`)
       .then((r) => {
         if (!r.ok) throw new Error("Erro ao carregar tarefas");
         return r.json();
       })
-      .then((allTickets: PackageTicket[]) => {
-        const tasksOnly = allTickets.filter((t) => t.type !== "SUBPROJETO" && t.type !== "SUBTAREFA");
-        setTickets(tasksOnly);
+      .then((data: PackageTicket[]) => {
+        setAllTickets(Array.isArray(data) ? data : []);
       })
       .catch((err) => {
         console.error("Erro ao carregar tarefas:", err);
-      });
+        setAllTickets([]);
+      })
+      .finally(() => setTicketsLoading(false));
   }, [selectedProjectId]);
+
+  const tickets = useMemo(
+    () => allTickets.filter((t) => t.type !== "SUBPROJETO" && t.type !== "SUBTAREFA"),
+    [allTickets],
+  );
+
+  const kanbanSubprojectsFromParent = useMemo(
+    () =>
+      allTickets
+        .filter((t) => t.type === "SUBPROJETO")
+        .map((t) => ({ id: t.id, code: t.code, title: t.title })),
+    [allTickets],
+  );
 
   const filteredBySearch = searchQuery.trim()
     ? tickets.filter(
@@ -72,11 +89,15 @@ export function DashboardDailyContent() {
 
   const refetchTickets = async () => {
     if (!selectedProjectId) return;
-    const res = await apiFetch(`/api/tickets?projectId=${selectedProjectId}&light=true`);
-    if (res.ok) {
-      const allTickets: PackageTicket[] = await res.json();
-      const tasksOnly = allTickets.filter((t) => t.type !== "SUBPROJETO" && t.type !== "SUBTAREFA");
-      setTickets(tasksOnly);
+    setTicketsLoading(true);
+    try {
+      const res = await apiFetch(`/api/tickets?projectId=${selectedProjectId}&light=true`);
+      if (res.ok) {
+        const data: PackageTicket[] = await res.json();
+        setAllTickets(Array.isArray(data) ? data : []);
+      }
+    } finally {
+      setTicketsLoading(false);
     }
   };
 
@@ -181,11 +202,16 @@ export function DashboardDailyContent() {
             </button>
           </div>
 
-          {selectedProjectId ? (
+          {selectedProjectId && ticketsLoading ? (
+            <div className="w-full rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-500 text-sm">
+              Carregando tarefas do projeto…
+            </div>
+          ) : selectedProjectId ? (
             <div className="w-full">
               <KanbanWithFilters
                 tickets={filteredBySearch}
                 projectId={selectedProjectId}
+                kanbanSubprojectsFromParent={kanbanSubprojectsFromParent}
                 onTicketClick={() => {}}
                 onTicketDelete={handleDeleteTicket}
                 onTicketCreated={refetchTickets}

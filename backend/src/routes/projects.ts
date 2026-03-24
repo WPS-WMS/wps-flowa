@@ -13,7 +13,7 @@ type ProjectsCacheEntry = {
   payload: unknown;
 };
 
-const PROJECTS_LIST_CACHE_TTL_MS = 3000;
+const PROJECTS_LIST_CACHE_TTL_MS = 12_000;
 const projectsListCache = new Map<string, ProjectsCacheEntry>();
 
 function buildProjectsCacheKey(params: {
@@ -190,8 +190,51 @@ projectsRouter.get("/", async (req, res) => {
 projectsRouter.get("/:id", async (req, res) => {
   const user = (req as Request & { user: { id: string; role: string; tenantId: string } }).user;
   const projectId = req.params.id;
+  const lightDetail = req.query.light === "true";
   const canSeeAll = user.role === "ADMIN" || user.role === "GESTOR_PROJETOS";
   const tenantFilter = { client: { tenantId: user.tenantId } };
+
+  if (lightDetail) {
+    const projectLight = await prisma.project.findFirst({
+      where: {
+        id: projectId,
+        ...tenantFilter,
+        ...(!canSeeAll && {
+          OR: [
+            { createdById: user.id },
+            { client: { users: { some: { userId: user.id } } } },
+            ...(user.role === "CONSULTOR"
+              ? [
+                  {
+                    tickets: {
+                      some: {
+                        OR: [
+                          { assignedToId: user.id },
+                          { createdById: user.id },
+                          { responsibles: { some: { userId: user.id } } },
+                        ],
+                      },
+                    },
+                  },
+                ]
+              : []),
+          ],
+        }),
+      },
+      include: {
+        client: { select: { id: true, name: true } },
+        createdBy: { select: { id: true, name: true, email: true } },
+        responsibles: { include: { user: { select: { id: true, name: true } } } },
+        _count: { select: { tickets: true, timeEntries: true } },
+      },
+    });
+    if (!projectLight) {
+      res.status(404).json({ error: "Projeto não encontrado" });
+      return;
+    }
+    res.json({ ...projectLight, tickets: [] });
+    return;
+  }
 
   const baseProject = await prisma.project.findFirst({
     where: {

@@ -1,4 +1,5 @@
 import "dotenv/config";
+import compression from "compression";
 import express from "express";
 import { join } from "path";
 import { authRouter } from "./routes/auth.js";
@@ -20,6 +21,7 @@ import { reportsRouter } from "./routes/reports.js";
 import { accessControlRouter } from "./routes/access-control.js";
 
 const app = express();
+app.use(compression());
 const PORT = process.env.PORT || 4000;
 
 // Normalizar origens: remover aspas que o Railway (ou .env) pode incluir no valor

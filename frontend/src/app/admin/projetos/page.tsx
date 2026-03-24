@@ -42,7 +42,8 @@ export default function AdminProjetosPage() {
     try {
       const [projetosRes, arquivadosRes] = await Promise.all([
         apiFetch("/api/projects"),
-        apiFetch("/api/projects?arquivado=true"),
+        // Só precisamos da quantidade na página principal; light evita carregar todos os tickets arquivados.
+        apiFetch("/api/projects?arquivado=true&light=true"),
       ]);
       if (!projetosRes.ok) throw new Error("Erro ao carregar projetos");
       const projetos = await projetosRes.json();
