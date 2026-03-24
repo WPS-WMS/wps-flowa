@@ -62,6 +62,27 @@ async function buildHoursByTicketMap(ticketIds: string[]) {
   return map;
 }
 
+/** Listagem inicial: campos necessários para métricas, status e regra do consultor — sem description nem anexos. */
+const TICKET_SUMMARY_FOR_LIST_SELECT = {
+  id: true,
+  code: true,
+  title: true,
+  type: true,
+  criticidade: true,
+  status: true,
+  parentTicketId: true,
+  dataInicio: true,
+  dataFimPrevista: true,
+  estimativaHoras: true,
+  progresso: true,
+  createdAt: true,
+  projectId: true,
+  assignedTo: { select: { id: true, name: true } },
+  createdBy: { select: { id: true, name: true } },
+  responsibles: { include: { user: { select: { id: true, name: true } } } },
+  _count: { select: { timeEntries: true } },
+} as const;
+
 projectsRouter.get("/", async (req, res) => {
   const user = (req as Request & { user: { id: string; role: string; tenantId: string } }).user;
   const canSeeAll = user.role === "ADMIN" || user.role === "GESTOR_PROJETOS";
@@ -122,10 +143,33 @@ projectsRouter.get("/", async (req, res) => {
       },
       orderBy: { createdAt: "desc" },
     });
-    const lightweight = projectsLight.map((project) => ({
-      ...project,
-      tickets: [],
-    }));
+    const projectIds = projectsLight.map((p) => p.id);
+    const summaryRows =
+      projectIds.length === 0
+        ? []
+        : await prisma.ticket.findMany({
+            where: { projectId: { in: projectIds } },
+            select: TICKET_SUMMARY_FOR_LIST_SELECT,
+            orderBy: { createdAt: "desc" },
+          });
+    type SummaryTicket = (typeof summaryRows)[number];
+    const ticketsByProjectId = new Map<string, SummaryTicket[]>();
+    for (const row of summaryRows) {
+      const list = ticketsByProjectId.get(row.projectId) ?? [];
+      list.push(row);
+      ticketsByProjectId.set(row.projectId, list);
+    }
+    const lightweight = projectsLight.map((project) => {
+      let tickets: SummaryTicket[] = ticketsByProjectId.get(project.id) ?? [];
+      if (user.role === "CONSULTOR") {
+        tickets = filterTicketsForConsultant(tickets, user.id);
+      }
+      return {
+        ...project,
+        tickets,
+        listMode: "summary" as const,
+      };
+    });
     setProjectsCache(cacheKey, lightweight);
     res.json(lightweight);
     return;
@@ -180,6 +224,7 @@ projectsRouter.get("/", async (req, res) => {
     return {
       ...project,
       tickets: ticketsWithHours,
+      listMode: "full" as const,
     };
   });
 
@@ -232,7 +277,7 @@ projectsRouter.get("/:id", async (req, res) => {
       res.status(404).json({ error: "Projeto não encontrado" });
       return;
     }
-    res.json({ ...projectLight, tickets: [] });
+    res.json({ ...projectLight, tickets: [], listMode: "summary" as const });
     return;
   }
 
@@ -312,6 +357,7 @@ projectsRouter.get("/:id", async (req, res) => {
   const project = {
     ...baseProject,
     tickets: ticketsWithHours,
+    listMode: "full" as const,
   };
 
   res.json(project);

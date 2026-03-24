@@ -101,7 +101,7 @@ export default function AbrirChamadoPage() {
       setProjects([]);
       return;
     }
-    apiFetch("/api/projects")
+    apiFetch("/api/projects?light=true")
       .then(async (r) => {
         if (!r.ok) return [];
         const data = await r.json().catch(() => []);

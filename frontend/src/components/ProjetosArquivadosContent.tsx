@@ -22,7 +22,7 @@ export function ProjetosArquivadosContent({ basePath }: ProjetosArquivadosConten
     setApiError(null);
     setLoading(true);
     try {
-      const r = await apiFetch("/api/projects?arquivado=true");
+      const r = await apiFetch("/api/projects?arquivado=true&light=true");
       if (!r.ok) throw new Error("Erro ao carregar projetos arquivados");
       const data = await r.json();
       setProjects(Array.isArray(data) ? data : []);

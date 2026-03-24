@@ -36,6 +36,8 @@ export type ProjectForCard = {
   arquivado?: boolean;
   _count: { tickets: number; timeEntries: number };
   tickets: PackageTicket[];
+  /** Lista inicial enxuta da API; expandir o card carrega o projeto completo. */
+  listMode?: "summary" | "full";
 };
 
 // Status dos tópicos baseado nas tarefas filhas:
@@ -149,8 +151,54 @@ export function ProjectCard({
   const [showActionsMenu, setShowActionsMenu] = useState(false);
   const [menuPosition, setMenuPosition] = useState<{ top: number; right: number } | null>(null);
   const [showEditProjectModal, setShowEditProjectModal] = useState(false);
+  const [detailProject, setDetailProject] = useState<ProjectForCard | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState(false);
   const actionsRef = useRef<HTMLDivElement | null>(null);
   const menuButtonRef = useRef<HTMLButtonElement | null>(null);
+  const needsFullDetail = project.listMode === "summary";
+  const expandedProject = needsFullDetail && detailProject ? detailProject : project;
+  const exTickets = expandedProject.tickets ?? [];
+  const exTopicos = exTickets.filter((t) => t.type === "SUBPROJETO");
+  const exTopicIds = new Set(exTopicos.map((t) => t.id));
+  const exTarefas = exTickets.filter(
+    (t) =>
+      t.type !== "SUBPROJETO" &&
+      t.type !== "SUBTAREFA" &&
+      t.parentTicketId &&
+      exTopicIds.has(t.parentTicketId),
+  );
+  const totalTarefasExpanded = exTarefas.length;
+
+  useEffect(() => {
+    if (!isExpanded) {
+      setDetailProject(null);
+      setDetailLoading(false);
+      setDetailError(false);
+      return;
+    }
+    if (!needsFullDetail) return;
+
+    const ac = new AbortController();
+    setDetailError(false);
+    setDetailLoading(true);
+    apiFetch(`/api/projects/${project.id}`, { signal: ac.signal })
+      .then(async (r) => {
+        if (!r.ok) throw new Error("load");
+        return r.json() as Promise<ProjectForCard>;
+      })
+      .then((p) => setDetailProject({ ...p, listMode: "full" }))
+      .catch((e: unknown) => {
+        const name =
+          e && typeof e === "object" && "name" in e ? String((e as { name?: string }).name) : "";
+        if (name === "AbortError") return;
+        setDetailError(true);
+      })
+      .finally(() => setDetailLoading(false));
+
+    return () => ac.abort();
+  }, [isExpanded, project.id, needsFullDetail, project._count?.tickets]);
+
   const statusInfo = getProjectStatus(project);
   // Filtrar tópicos e tarefas:
   // - Tópicos: type === "SUBPROJETO"
@@ -175,12 +223,6 @@ export function ProjectCard({
 
   // Determina se está na Opção 1 (sem onNavigate)
   const isOpcao1 = !onNavigate;
-
-  // Garante que quando os tickets mudarem, o componente seja atualizado
-  useEffect(() => {
-    // Este useEffect força uma atualização quando os tickets mudarem
-    // Isso garante que novas tarefas apareçam imediatamente após serem criadas
-  }, [project.tickets]);
 
   const handleViewKanban = () => {
     // Determina a rota base baseado no contexto (se tem onNavigate, é Opção 2, senão é Opção 1)
@@ -485,6 +527,16 @@ export function ProjectCard({
 
       {isExpanded && (
         <div className="mt-3 ml-2 pl-4 border-l-2 border-slate-200">
+          {needsFullDetail && detailLoading && (
+            <p className="text-sm text-slate-500 py-6">Carregando detalhes do projeto…</p>
+          )}
+          {needsFullDetail && !detailLoading && detailError && (
+            <p className="text-sm text-red-600 py-6">
+              Não foi possível carregar os detalhes. Tente fechar e abrir o card novamente.
+            </p>
+          )}
+          {(!needsFullDetail || detailProject) && (
+          <>
           {isOpcao1 ? (
             // Opção 1: Tópicos horizontais em cascata
             <div className="space-y-3">
@@ -516,15 +568,15 @@ export function ProjectCard({
                     </button>
                   </div>
                 </div>
-                {project.tickets && project.tickets.filter((t) => t.type === "SUBPROJETO").length > 0 ? (
+                {expandedProject.tickets && expandedProject.tickets.filter((t) => t.type === "SUBPROJETO").length > 0 ? (
                   <div className="space-y-2">
-                    {project.tickets
+                    {expandedProject.tickets
                       .filter((t) => t.type === "SUBPROJETO")
                       .map((ticket) => (
                         <div key={ticket.id}>
                         <SubprojectCardHorizontal
                           ticket={ticket}
-                          allTickets={project.tickets}
+                          allTickets={expandedProject.tickets}
                           onClick={handlePackageClick}
                           onEdit={(t) => {
                             setEditingSubproject(t);
@@ -557,7 +609,7 @@ export function ProjectCard({
                               </div>
                               <div className="space-y-2">
                                 {(() => {
-                                  const tarefasDoTopico = project.tickets.filter(
+                                  const tarefasDoTopico = expandedProject.tickets.filter(
                                     (t) => t.parentTicketId === selectedPackage.id && t.type !== "SUBPROJETO" && t.type !== "SUBTAREFA",
                                   );
                                   return tarefasDoTopico.length > 0 ? (
@@ -565,7 +617,7 @@ export function ProjectCard({
                                       <TaskCardHorizontal
                                         key={task.id}
                                         ticket={task}
-                                        projectName={project.name}
+                                        projectName={expandedProject.name}
                                         onClick={(task) => {
                                           setEditingTask(task);
                                         }}
@@ -638,16 +690,16 @@ export function ProjectCard({
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <p className="text-slate-500">Cliente</p>
-                    <p className="font-medium text-slate-800">{project.client?.name ?? "—"}</p>
+                    <p className="font-medium text-slate-800">{expandedProject.client?.name ?? "—"}</p>
                   </div>
                   <div>
                     <p className="text-slate-500">Responsável</p>
-                    <p className="font-medium text-slate-800">{project.createdBy?.name ?? "—"}</p>
+                    <p className="font-medium text-slate-800">{expandedProject.createdBy?.name ?? "—"}</p>
                   </div>
                   <div>
                     <p className="text-slate-500">Data de Criação</p>
                     <p className="font-medium text-slate-800">
-                      {new Date(project.createdAt).toLocaleDateString("pt-BR", {
+                      {new Date(expandedProject.createdAt).toLocaleDateString("pt-BR", {
                         day: "2-digit",
                         month: "long",
                         year: "numeric",
@@ -656,7 +708,7 @@ export function ProjectCard({
                   </div>
                   <div>
                     <p className="text-slate-500">Total de Tarefas</p>
-                    <p className="font-medium text-slate-800">{totalTarefas}</p>
+                    <p className="font-medium text-slate-800">{totalTarefasExpanded}</p>
                   </div>
                 </div>
               </div>
@@ -665,9 +717,9 @@ export function ProjectCard({
                 <>
                   <div>
                   <h4 className="text-base font-semibold text-slate-800 mb-3">Tópicos</h4>
-                    {project.tickets && project.tickets.filter((t) => t.type === "SUBPROJETO").length > 0 ? (
+                    {expandedProject.tickets && expandedProject.tickets.filter((t) => t.type === "SUBPROJETO").length > 0 ? (
                       <div className="flex gap-3 overflow-x-auto pb-2" style={{ scrollbarGutter: "stable" }}>
-                        {project.tickets
+                        {expandedProject.tickets
                           .filter((t) => t.type === "SUBPROJETO")
                           .map((ticket) => (
                             <PackageCard key={ticket.id} ticket={ticket} onClick={handlePackageClick} />
@@ -725,7 +777,7 @@ export function ProjectCard({
                   </div>
                   {viewMode === "kanban" ? (
                     <KanbanBoard
-                      tickets={project.tickets.filter((t) => t.parentTicketId === selectedPackage.id && t.type !== "SUBTAREFA")}
+                      tickets={expandedProject.tickets.filter((t) => t.parentTicketId === selectedPackage.id && t.type !== "SUBTAREFA")}
                       projectId={project.id}
                       parentTicketId={selectedPackage.id}
                       onTicketClick={(ticket) => {
@@ -739,7 +791,7 @@ export function ProjectCard({
                     />
                   ) : (
                     <TaskListView
-                      tickets={project.tickets.filter((t) => t.parentTicketId === selectedPackage.id && t.type !== "SUBTAREFA")}
+                      tickets={expandedProject.tickets.filter((t) => t.parentTicketId === selectedPackage.id && t.type !== "SUBTAREFA")}
                       onTicketClick={(ticket) => {
                         setEditingTask(ticket);
                       }}
@@ -752,6 +804,8 @@ export function ProjectCard({
                 </div>
               )}
             </div>
+          )}
+          </>
           )}
         </div>
       )}

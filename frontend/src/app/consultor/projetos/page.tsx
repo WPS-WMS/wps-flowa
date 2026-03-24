@@ -16,7 +16,7 @@ export default function ProjetosPage() {
 
   useEffect(() => {
     setError(null);
-    apiFetch("/api/projects")
+    apiFetch("/api/projects?light=true")
       .then((r) => {
         if (!r.ok) throw new Error("Erro ao carregar projetos");
         return r.json();
@@ -90,7 +90,7 @@ export default function ProjetosPage() {
                   const res = await apiFetch(`/api/tickets/${ticket.id}`, { method: "DELETE" });
                   if (res.ok || res.status === 204) {
                     // Atualiza a lista de projetos para refletir a exclusão
-                    const updatedProjects = await apiFetch("/api/projects")
+                    const updatedProjects = await apiFetch("/api/projects?light=true")
                       .then((r) => (r.ok ? r.json() : []))
                       .catch(() => projects);
                     setProjects(updatedProjects);
@@ -111,7 +111,7 @@ export default function ProjetosPage() {
               }}
               onSubprojectCreated={async () => {
                 // Atualiza a lista de projetos após criar subprojeto
-                const updatedProjects = await apiFetch("/api/projects")
+                const updatedProjects = await apiFetch("/api/projects?light=true")
                   .then((r) => (r.ok ? r.json() : []))
                   .catch(() => projects);
                 setProjects(updatedProjects);
@@ -125,7 +125,7 @@ export default function ProjetosPage() {
             onClose={() => setShowNewModal(false)}
             onSaved={() => {
               setShowNewModal(false);
-              apiFetch("/api/projects")
+              apiFetch("/api/projects?light=true")
                 .then((r) => (r.ok ? r.json() : []))
                 .then(setProjects);
             }}
