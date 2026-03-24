@@ -48,7 +48,7 @@ export function DashboardDailyContent() {
       setTickets([]);
       return;
     }
-    apiFetch(`/api/tickets?projectId=${selectedProjectId}`)
+    apiFetch(`/api/tickets?projectId=${selectedProjectId}&light=true`)
       .then((r) => {
         if (!r.ok) throw new Error("Erro ao carregar tarefas");
         return r.json();
@@ -72,7 +72,7 @@ export function DashboardDailyContent() {
 
   const refetchTickets = async () => {
     if (!selectedProjectId) return;
-    const res = await apiFetch(`/api/tickets?projectId=${selectedProjectId}`);
+    const res = await apiFetch(`/api/tickets?projectId=${selectedProjectId}&light=true`);
     if (res.ok) {
       const allTickets: PackageTicket[] = await res.json();
       const tasksOnly = allTickets.filter((t) => t.type !== "SUBPROJETO" && t.type !== "SUBTAREFA");

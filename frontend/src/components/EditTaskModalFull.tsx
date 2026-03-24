@@ -206,7 +206,7 @@ export function EditTaskModalFull({
         });
       
       // Buscar tópicos do projeto através da API de tickets
-      apiFetch(`/api/tickets?projectId=${projectId}`)
+      apiFetch(`/api/tickets?projectId=${projectId}&light=true`)
         .then((r) => (r.ok ? r.json() : []))
         .then((tickets) => {
           const topicos = tickets

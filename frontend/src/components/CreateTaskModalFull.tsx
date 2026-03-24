@@ -19,11 +19,18 @@ type CreateTaskModalFullProps = {
 
 type Tab = "descricao" | "horas" | "historico" | "anexos";
 
-const PRIORIDADES = [
-  { value: "Baixa", label: "Baixa", color: "bg-green-100 text-green-700 border-green-300" },
-  { value: "Média", label: "Média", color: "bg-yellow-100 text-yellow-700 border-yellow-300" },
-  { value: "Alta", label: "Alta", color: "bg-orange-100 text-orange-700 border-orange-300" },
-  { value: "Urgente", label: "Urgente", color: "bg-red-100 text-red-700 border-red-300" },
+const PRIORIDADES_DEFAULT = [
+  { value: "BAIXA", label: "Baixa", color: "bg-green-100 text-green-700 border-green-300" },
+  { value: "MEDIA", label: "Média", color: "bg-yellow-100 text-yellow-700 border-yellow-300" },
+  { value: "ALTA", label: "Alta", color: "bg-orange-100 text-orange-700 border-orange-300" },
+  { value: "URGENTE", label: "Urgente", color: "bg-red-100 text-red-700 border-red-300" },
+];
+
+const PRIORIDADES_AMS = [
+  { value: "BAIXA", label: "Baixa", color: "bg-green-100 text-green-700 border-green-300" },
+  { value: "MEDIA", label: "Média", color: "bg-yellow-100 text-yellow-700 border-yellow-300" },
+  { value: "ALTA", label: "Alta", color: "bg-orange-100 text-orange-700 border-orange-300" },
+  { value: "CRITICA", label: "Crítica", color: "bg-red-100 text-red-700 border-red-300" },
 ];
 
 function getIniciais(name: string): string {
@@ -49,6 +56,7 @@ function getPrioridadePillClass(prioridade: string): string {
   if (!prioridade) return "bg-slate-100 text-slate-600 border-slate-200";
   const map: Record<string, string> = {
     Urgente: "bg-red-50 text-red-700 border-red-200", URGENTE: "bg-red-50 text-red-700 border-red-200",
+    Crítica: "bg-red-50 text-red-700 border-red-200", CRITICA: "bg-red-50 text-red-700 border-red-200",
     Alta: "bg-orange-50 text-orange-700 border-orange-200", ALTA: "bg-orange-50 text-orange-700 border-orange-200",
     Média: "bg-amber-50 text-amber-700 border-amber-200", MEDIA: "bg-amber-50 text-amber-700 border-amber-200",
     Baixa: "bg-blue-50 text-blue-700 border-blue-200", BAIXA: "bg-blue-50 text-blue-700 border-blue-200",
@@ -61,6 +69,7 @@ function getPrioridadeDotClass(prioridade: string): string {
   if (!prioridade) return "bg-slate-400";
   const map: Record<string, string> = {
     Urgente: "bg-red-500", URGENTE: "bg-red-500",
+    Crítica: "bg-red-500", CRITICA: "bg-red-500",
     Alta: "bg-orange-500", ALTA: "bg-orange-500",
     Média: "bg-amber-500", MEDIA: "bg-amber-500",
     Baixa: "bg-blue-500", BAIXA: "bg-blue-500",
@@ -103,6 +112,7 @@ export function CreateTaskModalFull({
   // Configurações do projeto
   const [obrigatoriosHoras, setObrigatoriosHoras] = useState(false);
   const [obrigatoriosDataEntrega, setObrigatoriosDataEntrega] = useState(false);
+  const [tipoProjeto, setTipoProjeto] = useState("INTERNO");
   
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -123,6 +133,7 @@ export function CreateTaskModalFull({
         if (project) {
           setObrigatoriosHoras(project.obrigatoriosHoras || false);
           setObrigatoriosDataEntrega(project.obrigatoriosDataEntrega || false);
+          setTipoProjeto(project.tipoProjeto || "INTERNO");
         }
       })
       .catch(() => {
@@ -130,7 +141,7 @@ export function CreateTaskModalFull({
       });
     
     // Buscar tópicos do projeto através da API de tickets
-    apiFetch(`/api/tickets?projectId=${projectId}`)
+    apiFetch(`/api/tickets?projectId=${projectId}&light=true`)
       .then((r) => (r.ok ? r.json() : []))
       .then((tickets) => {
         const topicos = tickets
@@ -153,6 +164,7 @@ export function CreateTaskModalFull({
 
   const selectedUsers = users.filter((u) => responsibleIds.includes(u.id));
   const availableToAdd = users.filter((u) => !responsibleIds.includes(u.id));
+  const prioridades = tipoProjeto === "AMS" ? PRIORIDADES_AMS : PRIORIDADES_DEFAULT;
 
   function addResponsible(userId: string) {
     if (!responsibleIds.includes(userId)) setResponsibleIds((ids) => [...ids, userId]);
@@ -695,7 +707,7 @@ export function CreateTaskModalFull({
                           {prioridade ? (
                             <>
                               <span className={`h-2.5 w-2.5 rounded-full flex-shrink-0 ${getPrioridadeDotClass(prioridade)}`} aria-hidden />
-                              <span>{PRIORIDADES.find((p) => p.value === prioridade)?.label ?? prioridade}</span>
+                              <span>{prioridades.find((p) => p.value === prioridade)?.label ?? prioridade}</span>
                             </>
                           ) : (
                             <span className="text-slate-400">Selecione...</span>
@@ -714,7 +726,7 @@ export function CreateTaskModalFull({
                             >
                               Selecione...
                             </button>
-                            {PRIORIDADES.map((p) => (
+                            {prioridades.map((p) => (
                               <button
                                 key={p.value}
                                 type="button"

@@ -125,7 +125,7 @@ async function workerLoop(workerId, session, endAt, stats) {
     const scenarios = [
       { key: "GET /api/auth/me", path: "/api/auth/me" },
       { key: "GET /api/projects?light", path: "/api/projects?light=true" },
-      { key: "GET /api/tickets", path: "/api/tickets" },
+      { key: "GET /api/tickets?light", path: "/api/tickets?light=true" },
       { key: "GET /api/time-entries", path: `/api/time-entries?start=${startDate}&end=${endDate}` },
     ];
 
@@ -133,7 +133,7 @@ async function workerLoop(workerId, session, endAt, stats) {
       const project = projectsCache[randomBetween(0, projectsCache.length - 1)];
       scenarios.push({
         key: "GET /api/tickets?projectId",
-        path: `/api/tickets?projectId=${project.id}`,
+        path: `/api/tickets?projectId=${project.id}&light=true`,
       });
       scenarios.push({
         key: "GET /api/time-entries?projectId",

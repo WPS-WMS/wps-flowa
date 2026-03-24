@@ -26,7 +26,7 @@ export default function TopicoKanbanConsultorPage({ params }: PageProps) {
   const fromTab = searchParams.get("from") ?? "op2";
 
   const refetchTickets = async () => {
-    const res = await apiFetch(`/api/tickets?projectId=${projectId}`);
+    const res = await apiFetch(`/api/tickets?projectId=${projectId}&light=true`);
     if (res.ok) {
       const projectTickets: PackageTicket[] = await res.json();
       setTickets(projectTickets);
@@ -61,7 +61,7 @@ export default function TopicoKanbanConsultorPage({ params }: PageProps) {
     setError(null);
     
     // Buscar todos os tickets do projeto
-    apiFetch(`/api/tickets?projectId=${projectId}`)
+    apiFetch(`/api/tickets?projectId=${projectId}&light=true`)
       .then((r) => {
         if (!r.ok) throw new Error("Erro ao carregar tickets");
         return r.json();

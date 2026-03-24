@@ -90,7 +90,7 @@ export function HomeDashboard({ basePath }: HomeDashboardProps) {
 
   useEffect(() => {
     if (!user?.id) return;
-    apiFetch("/api/tickets")
+    apiFetch("/api/tickets?light=true")
       .then((r) => r.json())
       .then((data: TicketForHome[]) => {
         const userId = user.id;
@@ -315,7 +315,7 @@ export function HomeDashboard({ basePath }: HomeDashboardProps) {
             setSelectedTicket(null);
             // Atualizar lista após salvar (refetch)
             if (user?.id) {
-              apiFetch("/api/tickets")
+              apiFetch("/api/tickets?light=true")
                 .then((r) => r.json())
                 .then((data: TicketForHome[]) => {
                   const userId = user.id;

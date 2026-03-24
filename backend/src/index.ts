@@ -33,6 +33,10 @@ function parseOrigins(envValue: string | undefined): string[] {
 
 const envOrigins = parseOrigins(process.env.CORS_ORIGIN);
 const productionOrigins = [
+  // Firebase Hosting — projeto atual: wps-one-frontend
+  "https://wps-one-frontend.web.app",
+  "https://wps-one-frontend.firebaseapp.com",
+  // Legado / outros projetos Firebase (remover quando não forem mais usados)
   "https://wps-flowa.web.app",
   "https://wps-flowa.firebaseapp.com",
   "https://wps-one.web.app",
@@ -40,7 +44,8 @@ const productionOrigins = [
   "http://localhost:3000",
 ];
 const allowedOrigins = [...new Set([...productionOrigins, ...envOrigins])];
-const CORS_FALLBACK_ORIGIN = process.env.CORS_FALLBACK_ORIGIN || "https://wps-one.web.app";
+const CORS_FALLBACK_ORIGIN =
+  process.env.CORS_FALLBACK_ORIGIN || "https://wps-one-frontend.web.app";
 
 // CORS: primeiro handler da app — headers em toda resposta e OPTIONS respondido aqui
 app.use((req, res, next) => {

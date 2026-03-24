@@ -113,7 +113,7 @@ export function KanbanWithFilters({
   
   useEffect(() => {
     // Busca todos os tópicos do projeto
-    apiFetch(`/api/tickets?projectId=${projectId}`)
+    apiFetch(`/api/tickets?projectId=${projectId}&light=true`)
       .then((r) => {
         if (r.ok) return r.json();
         throw new Error("Erro ao carregar tópicos");

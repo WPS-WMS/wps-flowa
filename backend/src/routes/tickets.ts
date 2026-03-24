@@ -6,42 +6,124 @@ import { filterTicketsForConsultant } from "../lib/ticketVisibility.js";
 export const ticketsRouter = Router();
 ticketsRouter.use(authMiddleware);
 
+/** Listagem enxuta: menos colunas e relações (detalhe continua em GET /:id). */
+const TICKET_LIST_LIGHT_SELECT = {
+  id: true,
+  code: true,
+  title: true,
+  type: true,
+  criticidade: true,
+  status: true,
+  projectId: true,
+  parentTicketId: true,
+  createdById: true,
+  assignedToId: true,
+  dataInicio: true,
+  dataFimPrevista: true,
+  estimativaHoras: true,
+  progresso: true,
+  createdAt: true,
+  updatedAt: true,
+  project: {
+    select: {
+      id: true,
+      name: true,
+      client: { select: { name: true } },
+    },
+  },
+  assignedTo: { select: { id: true, name: true } },
+  createdBy: { select: { id: true, name: true } },
+  responsibles: { select: { user: { select: { id: true, name: true } } } },
+} as const;
+
+const TICKET_LIST_FULL_INCLUDE = {
+  project: { include: { client: true } },
+  assignedTo: { select: { id: true, name: true } },
+  createdBy: { select: { id: true, name: true } },
+  responsibles: { include: { user: { select: { id: true, name: true } } } },
+} as const;
+
+function normalizeAmsPriority(value: string | null | undefined): "BAIXA" | "MEDIA" | "ALTA" | "CRITICA" | null {
+  if (!value) return null;
+  const raw = String(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toUpperCase();
+  if (raw === "BAIXA" || raw === "MEDIA" || raw === "ALTA" || raw === "CRITICA") return raw;
+  if (raw === "URGENTE" || raw === "CRITICO") return "CRITICA";
+  return null;
+}
+
+function addHours(date: Date, hours: number): Date {
+  const d = new Date(date);
+  d.setTime(d.getTime() + hours * 60 * 60 * 1000);
+  return d;
+}
+
 ticketsRouter.get("/", async (req, res) => {
   const user = (req as Request & { user: { id: string; role: string; tenantId: string } }).user;
-  const { projectId, assignedTo, status, parentTicketId, createdBy } = req.query;
+  const { projectId, assignedTo, status, parentTicketId, createdBy, type: typeQuery } = req.query;
+  const light =
+    String(req.query.light || "") === "true" || String(req.query.light || "") === "1";
   const tenantFilter = { project: { client: { tenantId: user.tenantId } } };
   const consultantWithProject =
     user.role === "CONSULTOR" && projectId;
-  const tickets = await prisma.ticket.findMany({
-    where: {
-      ...tenantFilter,
-      ...(projectId && { projectId: String(projectId) }),
-      ...(assignedTo && { assignedToId: String(assignedTo) }),
-      ...(status && { status: String(status) }),
-      ...(parentTicketId && { parentTicketId: String(parentTicketId) }),
-      // Consultor com projectId: busca todos do projeto e filtra em memória (regra tópico/tarefa)
-      // Consultor sem projectId: só vê tickets onde é membro direto
-      ...(user.role === "CONSULTOR" && !consultantWithProject && {
-        OR: [
-          { assignedToId: user.id },
-          { createdById: user.id },
-          { responsibles: { some: { userId: user.id } } },
-        ],
-      }),
-      // Cliente: vê tickets dos projetos do seu cliente; createdBy=me para "chamados que abri"
-      ...(user.role === "CLIENTE" && {
-        project: { client: { users: { some: { userId: user.id } } } },
-        ...(createdBy === "me" && { createdById: user.id }),
-      }),
-    },
-    include: {
-      project: { include: { client: true } },
-      assignedTo: { select: { id: true, name: true } },
-      createdBy: { select: { id: true, name: true } },
-      responsibles: { include: { user: { select: { id: true, name: true } } } },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+
+  const rawLimit = req.query.limit;
+  const rawOffset = req.query.offset;
+  let take: number | undefined;
+  let skip: number | undefined;
+  // Paginação só no DB quando não há filtro extra do consultor por projeto (senão o slice seria incorreto)
+  if (!consultantWithProject && rawLimit !== undefined && String(rawLimit) !== "") {
+    const n = parseInt(String(rawLimit), 10);
+    if (!Number.isNaN(n) && n > 0) {
+      take = Math.min(500, n);
+      const off = parseInt(String(rawOffset ?? "0"), 10);
+      skip = Number.isNaN(off) || off < 0 ? 0 : off;
+    }
+  }
+
+  const where = {
+    ...tenantFilter,
+    ...(projectId && { projectId: String(projectId) }),
+    ...(assignedTo && { assignedToId: String(assignedTo) }),
+    ...(status && { status: String(status) }),
+    ...(parentTicketId && { parentTicketId: String(parentTicketId) }),
+    ...(typeQuery && String(typeQuery).trim() !== "" && { type: String(typeQuery) }),
+    // Consultor com projectId: busca todos do projeto e filtra em memória (regra tópico/tarefa)
+    // Consultor sem projectId: só vê tickets onde é membro direto
+    ...(user.role === "CONSULTOR" && !consultantWithProject && {
+      OR: [
+        { assignedToId: user.id },
+        { createdById: user.id },
+        { responsibles: { some: { userId: user.id } } },
+      ],
+    }),
+    // Cliente: vê tickets dos projetos do seu cliente; createdBy=me para "chamados que abri"
+    ...(user.role === "CLIENTE" && {
+      project: { client: { users: { some: { userId: user.id } } } },
+      ...(createdBy === "me" && { createdById: user.id }),
+    }),
+  };
+
+  const orderBy = { createdAt: "desc" as const };
+  const pagination = take !== undefined ? { take, ...(skip !== undefined && skip > 0 ? { skip } : {}) } : {};
+
+  const tickets = light
+    ? await prisma.ticket.findMany({
+        where,
+        select: TICKET_LIST_LIGHT_SELECT,
+        orderBy,
+        ...pagination,
+      })
+    : await prisma.ticket.findMany({
+        where,
+        include: TICKET_LIST_FULL_INCLUDE,
+        orderBy,
+        ...pagination,
+      });
+
   const list = consultantWithProject
     ? filterTicketsForConsultant(tickets, user.id)
     : tickets;
@@ -111,6 +193,33 @@ ticketsRouter.post("/", async (req, res) => {
     }
   }
 
+  const normalizedAmsPriority = normalizeAmsPriority(criticidade);
+  const slaRespostaHoras =
+    project.tipoProjeto === "AMS" && normalizedAmsPriority === "BAIXA"
+      ? project.slaRespostaBaixa
+      : project.tipoProjeto === "AMS" && normalizedAmsPriority === "MEDIA"
+        ? project.slaRespostaMedia
+        : project.tipoProjeto === "AMS" && normalizedAmsPriority === "ALTA"
+          ? project.slaRespostaAlta
+          : project.tipoProjeto === "AMS" && normalizedAmsPriority === "CRITICA"
+            ? project.slaRespostaCritica
+            : null;
+  const slaSolucaoHoras =
+    project.tipoProjeto === "AMS" && normalizedAmsPriority === "BAIXA"
+      ? project.slaSolucaoBaixa
+      : project.tipoProjeto === "AMS" && normalizedAmsPriority === "MEDIA"
+        ? project.slaSolucaoMedia
+        : project.tipoProjeto === "AMS" && normalizedAmsPriority === "ALTA"
+          ? project.slaSolucaoAlta
+          : project.tipoProjeto === "AMS" && normalizedAmsPriority === "CRITICA"
+            ? project.slaSolucaoCritica
+            : null;
+  const dataFimPrevistaResolved = dataFimPrevista
+    ? new Date(dataFimPrevista)
+    : slaSolucaoHoras != null
+      ? addHours(new Date(), slaSolucaoHoras)
+      : null;
+
   const ticket = await prisma.ticket.create({
     data: {
       code: nextCode,
@@ -127,8 +236,10 @@ ticketsRouter.post("/", async (req, res) => {
         estimativaHoras != null && estimativaHoras !== ""
           ? Number(estimativaHoras)
           : null,
-      dataFimPrevista: dataFimPrevista ? new Date(dataFimPrevista) : null,
+      dataFimPrevista: dataFimPrevistaResolved,
       dataInicio: dataInicio ? new Date(dataInicio) : null,
+      slaRespostaHoras: slaRespostaHoras != null ? Number(slaRespostaHoras) : null,
+      slaSolucaoHoras: slaSolucaoHoras != null ? Number(slaSolucaoHoras) : null,
     },
     include: {
       project: { include: { client: true } },

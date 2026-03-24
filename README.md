@@ -64,7 +64,9 @@ cd frontend && npm run dev
 
 Acesse: **http://localhost:3000**
 
-### Usuários de teste (senha: 123456)
+### Usuários de teste (após `npm run db:seed` no backend)
+
+O seed (`backend/prisma/seed.ts`) cria os usuários abaixo com a **mesma senha definida no seed** (por padrão `123456`). Isso vale **só** para a base local recém-semeada.
 
 | E-mail | Perfil |
 |--------|--------|
@@ -72,6 +74,23 @@ Acesse: **http://localhost:3000**
 | gestor@wpsconsult.com.br | Gestor de Projetos |
 | andre.nunes@wpsconsult.com.br | Consultor |
 | almir@dellamed.com.br | Cliente |
+
+**Ambientes em produção** (Render, Railway, etc.) usam outro banco: as senhas são independentes e podem ter sido alteradas. **Não** documente nem commite senhas reais no repositório.
+
+### Teste de carga leve (opcional)
+
+Na raiz do projeto:
+
+```bash
+# Windows PowerShell — use credenciais válidas para a API alvo (não commite senhas)
+$env:LOADTEST_API_BASE="https://sua-api.example.com"   # ou http://localhost:4000
+$env:LOADTEST_USERS_JSON='[{"email":"...","password":"..."}]'  # um ou mais usuários JSON
+$env:LOADTEST_CONCURRENCY="15"   # opcional
+$env:LOADTEST_DURATION_SEC="60"  # opcional
+npm run load:test:lite
+```
+
+Variáveis: ver comentários em `scripts/load-test-lite.mjs`.
 
 ---
 

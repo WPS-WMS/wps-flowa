@@ -6,7 +6,7 @@ import { apiFetch, setToken } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 
 const BACKEND_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "https://wps-flowa-production.up.railway.app";
+  process.env.NEXT_PUBLIC_API_URL ?? "https://wps-one-backend.onrender.com";
 
 export default function LoginPage() {
   const router = useRouter();

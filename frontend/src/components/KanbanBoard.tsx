@@ -220,7 +220,7 @@ export function KanbanBoard({
       return;
     }
 
-    apiFetch(`/api/tickets?projectId=${projectId}`)
+    apiFetch(`/api/tickets?projectId=${projectId}&light=true`)
       .then((r) => {
         if (!r.ok) return [];
         return r.json();

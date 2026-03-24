@@ -37,7 +37,7 @@ export default function ProjetoKanbanAdminPage({ params }: PageProps) {
         }
         return r.json();
       }),
-      apiFetch(`/api/tickets?projectId=${projectId}`).then((r) => {
+      apiFetch(`/api/tickets?projectId=${projectId}&light=true`).then((r) => {
         if (!r.ok) throw new Error("Erro ao carregar tarefas");
         return r.json();
       }),
@@ -57,7 +57,7 @@ export default function ProjetoKanbanAdminPage({ params }: PageProps) {
   }, [projectId]);
 
   const refetchTickets = async () => {
-    const res = await apiFetch(`/api/tickets?projectId=${projectId}`);
+    const res = await apiFetch(`/api/tickets?projectId=${projectId}&light=true`);
     if (res.ok) {
       const projectTickets: PackageTicket[] = await res.json();
       // Filtra apenas tarefas, excluindo tópicos e subtarefas

@@ -635,7 +635,7 @@ function ApontamentoModal({
     const hasEntry = !!entry;
     const hasRequest = !!requestToFix;
     const isEditSameProject = hasEntry && projectId === entry.project?.id;
-    apiFetch(`/api/tickets?projectId=${projectId}`)
+    apiFetch(`/api/tickets?projectId=${projectId}&light=true`)
       .then((r) => r.json())
       .then((list) => {
         const arr = Array.isArray(list) ? list : [];

@@ -162,6 +162,14 @@ model Project {
   horasMensaisAMS Float?
   bancoHorasInicial Float?
   slaAMS Int? // dias
+  slaRespostaBaixa Int?
+  slaSolucaoBaixa Int?
+  slaRespostaMedia Int?
+  slaSolucaoMedia Int?
+  slaRespostaAlta Int?
+  slaSolucaoAlta Int?
+  slaRespostaCritica Int?
+  slaSolucaoCritica Int?
   
   // Configurações Time & Material
   periodoAprovacaoTM String? // MENSAL, QUINZENAL
@@ -210,6 +218,8 @@ model Ticket {
   dataInicio      DateTime? // Data de início da tarefa
   dataFimPrevista DateTime? // Data de entrega prevista
   estimativaHoras Float?    // Estimativa de horas (número de horas)
+  slaRespostaHoras Int?     // SLA de resposta aplicado na criação (AMS)
+  slaSolucaoHoras Int?      // SLA de solução aplicado na criação (AMS)
   progresso       Int?      @default(0) // Progresso em porcentagem (0-100)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

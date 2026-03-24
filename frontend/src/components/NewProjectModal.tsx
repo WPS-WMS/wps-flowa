@@ -20,24 +20,6 @@ const PRIORIDADE_OPCOES = [
   { value: "ALTA", label: "Alta" },
 ];
 
-const AMS_CRITICIDADE_OPCOES = [
-  { value: "BAIXO", label: "Baixo", slaHoras: 16 },
-  { value: "MEDIO", label: "Médio", slaHoras: 8 },
-  { value: "ALTO", label: "Alto", slaHoras: 4 },
-  { value: "CRITICO", label: "Crítico", slaHoras: 2 },
-] as const;
-
-function getSlaHorasByCriticidade(criticidade: string): number | null {
-  const found = AMS_CRITICIDADE_OPCOES.find((item) => item.value === criticidade);
-  return found ? found.slaHoras : null;
-}
-
-function getCriticidadeBySlaHoras(slaHoras?: number | null): string {
-  if (slaHoras == null) return "";
-  const found = AMS_CRITICIDADE_OPCOES.find((item) => item.slaHoras === Number(slaHoras));
-  return found ? found.value : "";
-}
-
 function getIniciais(name: string): string {
   return name
     .split(/\s+/)
@@ -69,6 +51,14 @@ type ProjectForEdit = {
   horasMensaisAMS?: number | null;
   bancoHorasInicial?: number | null;
   slaAMS?: number | null;
+  slaRespostaBaixa?: number | null;
+  slaSolucaoBaixa?: number | null;
+  slaRespostaMedia?: number | null;
+  slaSolucaoMedia?: number | null;
+  slaRespostaAlta?: number | null;
+  slaSolucaoAlta?: number | null;
+  slaRespostaCritica?: number | null;
+  slaSolucaoCritica?: number | null;
   // Anexo
   anexoNomeArquivo?: string | null;
   anexoUrl?: string | null;
@@ -110,8 +100,14 @@ export function NewProjectModal({ onClose, onSaved, mode = "create", projectId }
   // AMS
   const [horasMensaisAMS, setHorasMensaisAMS] = useState("");
   const [bancoHorasInicial, setBancoHorasInicial] = useState("");
-  const [slaAMS, setSlaAMS] = useState("");
-  const [criticidadeAMS, setCriticidadeAMS] = useState("");
+  const [slaRespostaBaixa, setSlaRespostaBaixa] = useState("");
+  const [slaSolucaoBaixa, setSlaSolucaoBaixa] = useState("");
+  const [slaRespostaMedia, setSlaRespostaMedia] = useState("");
+  const [slaSolucaoMedia, setSlaSolucaoMedia] = useState("");
+  const [slaRespostaAlta, setSlaRespostaAlta] = useState("");
+  const [slaSolucaoAlta, setSlaSolucaoAlta] = useState("");
+  const [slaRespostaCritica, setSlaRespostaCritica] = useState("");
+  const [slaSolucaoCritica, setSlaSolucaoCritica] = useState("");
   // Anexo
   const [anexoArquivo, setAnexoArquivo] = useState<File | null>(null);
   const [anexoNomeArquivo, setAnexoNomeArquivo] = useState("");
@@ -172,8 +168,14 @@ export function NewProjectModal({ onClose, onSaved, mode = "create", projectId }
         // AMS
         setHorasMensaisAMS(p.horasMensaisAMS != null ? String(p.horasMensaisAMS) : "");
         setBancoHorasInicial(p.bancoHorasInicial != null ? String(p.bancoHorasInicial) : "");
-        setSlaAMS(p.slaAMS != null ? String(p.slaAMS) : "");
-        setCriticidadeAMS(getCriticidadeBySlaHoras(p.slaAMS));
+        setSlaRespostaBaixa(p.slaRespostaBaixa != null ? String(p.slaRespostaBaixa) : "");
+        setSlaSolucaoBaixa(p.slaSolucaoBaixa != null ? String(p.slaSolucaoBaixa) : "");
+        setSlaRespostaMedia(p.slaRespostaMedia != null ? String(p.slaRespostaMedia) : "");
+        setSlaSolucaoMedia(p.slaSolucaoMedia != null ? String(p.slaSolucaoMedia) : "");
+        setSlaRespostaAlta(p.slaRespostaAlta != null ? String(p.slaRespostaAlta) : "");
+        setSlaSolucaoAlta(p.slaSolucaoAlta != null ? String(p.slaSolucaoAlta) : "");
+        setSlaRespostaCritica(p.slaRespostaCritica != null ? String(p.slaRespostaCritica) : "");
+        setSlaSolucaoCritica(p.slaSolucaoCritica != null ? String(p.slaSolucaoCritica) : "");
 
         // Anexo (arquivo existente)
         setAnexoArquivo(null);
@@ -314,11 +316,6 @@ export function NewProjectModal({ onClose, onSaved, mode = "create", projectId }
       errors.dataInicio = true;
       missingFields.push("Data de início");
     }
-    if (tipoProjeto === "AMS" && !criticidadeAMS) {
-      errors.criticidadeAMS = true;
-      missingFields.push("Criticidade (AMS)");
-    }
-
     if (Object.keys(errors).length > 0) {
       const errorMessage = `Por favor, preencha os seguintes campos obrigatórios: ${missingFields.join(", ")}.`;
       // Atualizar estados - criar novo objeto para garantir re-render
@@ -358,8 +355,9 @@ export function NewProjectModal({ onClose, onSaved, mode = "create", projectId }
         dataInicio,
         description: description.trim() || undefined,
         dataFimPrevista: dataFimPrevista || undefined,
-        prioridade: prioridade || undefined,
-        totalHorasPlanejadas: totalHorasPlanejadas ? Number(totalHorasPlanejadas) : undefined,
+        prioridade: tipoProjeto === "AMS" ? undefined : prioridade || undefined,
+        totalHorasPlanejadas:
+          tipoProjeto === "AMS" ? undefined : totalHorasPlanejadas ? Number(totalHorasPlanejadas) : undefined,
         obrigatoriosHoras,
         obrigatoriosDataEntrega,
         tipoProjeto,
@@ -379,7 +377,14 @@ export function NewProjectModal({ onClose, onSaved, mode = "create", projectId }
         // AMS
         horasMensaisAMS: tipoProjeto === "AMS" && horasMensaisAMS ? Number(horasMensaisAMS) : undefined,
         bancoHorasInicial: tipoProjeto === "AMS" && bancoHorasInicial ? Number(bancoHorasInicial) : undefined,
-        slaAMS: tipoProjeto === "AMS" && slaAMS ? Number(slaAMS) : undefined,
+        slaRespostaBaixa: tipoProjeto === "AMS" && slaRespostaBaixa ? Number(slaRespostaBaixa) : undefined,
+        slaSolucaoBaixa: tipoProjeto === "AMS" && slaSolucaoBaixa ? Number(slaSolucaoBaixa) : undefined,
+        slaRespostaMedia: tipoProjeto === "AMS" && slaRespostaMedia ? Number(slaRespostaMedia) : undefined,
+        slaSolucaoMedia: tipoProjeto === "AMS" && slaSolucaoMedia ? Number(slaSolucaoMedia) : undefined,
+        slaRespostaAlta: tipoProjeto === "AMS" && slaRespostaAlta ? Number(slaRespostaAlta) : undefined,
+        slaSolucaoAlta: tipoProjeto === "AMS" && slaSolucaoAlta ? Number(slaSolucaoAlta) : undefined,
+        slaRespostaCritica: tipoProjeto === "AMS" && slaRespostaCritica ? Number(slaRespostaCritica) : undefined,
+        slaSolucaoCritica: tipoProjeto === "AMS" && slaSolucaoCritica ? Number(slaSolucaoCritica) : undefined,
       };
 
       // Anexo
@@ -653,14 +658,24 @@ export function NewProjectModal({ onClose, onSaved, mode = "create", projectId }
                   onChange={(e) => {
                     const novo = e.target.value as typeof tipoProjeto;
                     setTipoProjeto(novo);
+                    if (novo === "AMS") {
+                      setPrioridade("");
+                      setTotalHorasPlanejadas("");
+                    }
                     // Limpar campos específicos ao mudar tipo
                     setValorContrato("");
                     setEscopoInicial("");
                     setLimiteHorasEscopo("");
                     setHorasMensaisAMS("");
                     setBancoHorasInicial("");
-                    setSlaAMS("");
-                    setCriticidadeAMS("");
+                    setSlaRespostaBaixa("");
+                    setSlaSolucaoBaixa("");
+                    setSlaRespostaMedia("");
+                    setSlaSolucaoMedia("");
+                    setSlaRespostaAlta("");
+                    setSlaSolucaoAlta("");
+                    setSlaRespostaCritica("");
+                    setSlaSolucaoCritica("");
                   }}
                   className={getInputClass(false) + " appearance-none pr-10 cursor-pointer font-medium"}
                 >
@@ -755,50 +770,39 @@ export function NewProjectModal({ onClose, onSaved, mode = "create", projectId }
                     <p className="text-xs text-slate-500 mt-1">Horas iniciais no banco (opcional)</p>
                   </div>
                 </div>
-                <div>
-                  <label className={labelClass}>
-                    Criticidade <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={criticidadeAMS}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setCriticidadeAMS(value);
-                        const slaHoras = getSlaHorasByCriticidade(value);
-                        setSlaAMS(slaHoras != null ? String(slaHoras) : "");
-                        if (fieldErrors.criticidadeAMS) {
-                          setFieldErrors((prev) => ({ ...prev, criticidadeAMS: false }));
-                        }
-                      }}
-                      className={getInputClass(!!fieldErrors.criticidadeAMS) + " appearance-none pr-10 cursor-pointer"}
-                    >
-                      <option value="">Selecione a criticidade</option>
-                      {AMS_CRITICIDADE_OPCOES.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label} ({opt.slaHoras}h)
-                        </option>
-                      ))}
-                    </select>
-                    <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-400">
-                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </span>
+                <div className="space-y-3">
+                  <p className="text-xs font-semibold text-slate-700">Cadastro de SLA por prioridade (opcional)</p>
+                  <div className="grid grid-cols-3 gap-2 text-xs font-semibold text-slate-700">
+                    <span>Prioridade</span>
+                    <span>Tempo de resposta (h)</span>
+                    <span>Tempo de solução (h)</span>
                   </div>
-                  <p className="text-xs text-slate-500 mt-1">O SLA é definido automaticamente pela criticidade.</p>
-                </div>
-                <div>
-                  <label className={labelClass}>SLA (horas)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={slaAMS}
-                    readOnly
-                    className={getInputClass(false) + " bg-slate-50 text-slate-600 cursor-not-allowed"}
-                    placeholder="Selecione a criticidade"
-                  />
-                  <p className="text-xs text-slate-500 mt-1">Prazo de atendimento em horas</p>
+                  {[
+                    { label: "Baixa", r: slaRespostaBaixa, s: slaSolucaoBaixa, setR: setSlaRespostaBaixa, setS: setSlaSolucaoBaixa },
+                    { label: "Média", r: slaRespostaMedia, s: slaSolucaoMedia, setR: setSlaRespostaMedia, setS: setSlaSolucaoMedia },
+                    { label: "Alta", r: slaRespostaAlta, s: slaSolucaoAlta, setR: setSlaRespostaAlta, setS: setSlaSolucaoAlta },
+                    { label: "Crítica", r: slaRespostaCritica, s: slaSolucaoCritica, setR: setSlaRespostaCritica, setS: setSlaSolucaoCritica },
+                  ].map((row) => (
+                    <div key={row.label} className="grid grid-cols-3 gap-2 items-center">
+                      <span className="text-sm text-slate-700">{row.label}</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={row.r}
+                        onChange={(e) => row.setR(e.target.value)}
+                        className={getInputClass(false)}
+                        placeholder="Ex: 8"
+                      />
+                      <input
+                        type="number"
+                        min={0}
+                        value={row.s}
+                        onChange={(e) => row.setS(e.target.value)}
+                        className={getInputClass(false)}
+                        placeholder="Ex: 12"
+                      />
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -823,7 +827,7 @@ export function NewProjectModal({ onClose, onSaved, mode = "create", projectId }
                   placeholder="Descreva o escopo, objetivos e principais entregas..."
                 />
               </div>
-              <div className="space-y-3">
+              {tipoProjeto !== "AMS" && <div className="space-y-3">
                 <div>
                   <label className={labelClass}>Prioridade</label>
                   <select
@@ -851,7 +855,7 @@ export function NewProjectModal({ onClose, onSaved, mode = "create", projectId }
                     placeholder="Ex: 120"
                   />
                 </div>
-              </div>
+              </div>}
             </div>
             
             {/* Checkboxes para campos obrigatórios nas tarefas */}

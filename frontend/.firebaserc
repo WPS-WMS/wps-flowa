@@ -1,5 +1,7 @@
 {
   "projects": {
-    "default": "wps-flowa"
-  }
+    "default": "wps-one-frontend"
+  },
+  "targets": {},
+  "etags": {}
 }

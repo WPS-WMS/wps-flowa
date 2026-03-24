@@ -105,12 +105,12 @@ export default function ClienteHomePage() {
       return;
     }
     Promise.all([
-      apiFetch("/api/tickets").then(async (r) => {
+      apiFetch("/api/tickets?light=true").then(async (r) => {
         if (!r.ok) return [];
         const data = await r.json().catch(() => []);
         return Array.isArray(data) ? data : [];
       }),
-      apiFetch("/api/projects").then(async (r) => {
+      apiFetch("/api/projects?light=true").then(async (r) => {
         if (!r.ok) return [];
         const data = await r.json().catch(() => []);
         return Array.isArray(data) ? data : [];
