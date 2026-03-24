@@ -186,6 +186,10 @@ timeEntriesRouter.get("/", async (req, res) => {
 timeEntriesRouter.post("/", async (req, res) => {
   try {
   const user = (req as Request & { user: { id: string; tenantId: string; permitirMaisHoras?: boolean; limiteHorasDiarias?: number | null; limiteHorasPorDia?: string | null; permitirOutroPeriodo?: boolean | null; permitirFimDeSemana?: boolean | null } }).user;
+    if ((req as Request & { user: { role?: string } }).user.role === "CLIENTE") {
+      res.status(403).json({ error: "Cliente não pode criar apontamentos." });
+      return;
+    }
     const {
       date,
       horaInicio,
@@ -427,6 +431,10 @@ timeEntriesRouter.post("/", async (req, res) => {
 
 timeEntriesRouter.patch("/:id", async (req, res) => {
   const user = (req as Request & { user: { id: string; role: string; tenantId: string; permitirMaisHoras?: boolean; limiteHorasDiarias?: number | null; limiteHorasPorDia?: string | null; permitirOutroPeriodo?: boolean | null } }).user;
+  if (user.role === "CLIENTE") {
+    res.status(403).json({ error: "Cliente não pode editar apontamentos." });
+    return;
+  }
   const { id } = req.params;
   const {
     date,
@@ -634,6 +642,10 @@ timeEntriesRouter.patch("/:id", async (req, res) => {
 
 timeEntriesRouter.delete("/:id", async (req, res) => {
   const user = (req as Request & { user: { id: string; role: string; tenantId: string } }).user;
+  if (user.role === "CLIENTE") {
+    res.status(403).json({ error: "Cliente não pode excluir apontamentos." });
+    return;
+  }
   const { id } = req.params;
 
   const existing = await prisma.timeEntry.findFirst({

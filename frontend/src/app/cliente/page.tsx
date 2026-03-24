@@ -36,10 +36,29 @@ type TicketForClient = {
 
 type ProjectForClient = {
   id: string;
+  name?: string;
   tipoProjeto?: string | null;
   horasMensaisAMS?: number | null;
   bancoHorasInicial?: number | null;
   estimativaInicialTM?: number | null;
+  dataInicio?: string | null;
+  createdAt?: string | null;
+};
+
+type TimeEntryForClient = {
+  projectId: string;
+  totalHoras: number;
+  date: string;
+};
+
+type AmsProjectSummary = {
+  projectId: string;
+  projectName: string;
+  contratadasMes: number;
+  usadasMes: number;
+  saldoMes: number;
+  excedenteMes: number;
+  disponivelMes: number;
 };
 
 const PRIORITY_ORDER: Record<string, number> = {
@@ -55,68 +74,42 @@ export default function ClienteHomePage() {
   const [hours, setHours] = useState({ hoje: 0, semana: 0, mes: 0 });
   const [tickets, setTickets] = useState<TicketForClient[]>([]);
   const [projects, setProjects] = useState<ProjectForClient[]>([]);
+  const [entriesClient, setEntriesClient] = useState<TimeEntryForClient[]>([]);
 
-  // Horas apontadas pela equipe (consultores, gestores etc.) nos projetos do cliente
+  // Dados base da Home do cliente (não depende de permissão de telas de projeto/apontamento)
   useEffect(() => {
     if (!user?.id) return;
-    if (!can("hora-banco")) {
-      setHours({ hoje: 0, semana: 0, mes: 0 });
-      return;
-    }
-    const now = new Date();
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
-    apiFetch(
-      `/api/time-entries?view=client&start=${firstDayOfMonth.toISOString()}&end=${endOfToday.toISOString()}`
-    )
+    apiFetch("/api/auth/client-home-summary")
       .then(async (r) => {
-        if (!r.ok) return [];
-        const data = await r.json().catch(() => []);
-        return Array.isArray(data) ? data : [];
+        if (!r.ok) return null;
+        return r.json().catch(() => null);
       })
-      .then((entries: Array<{ totalHoras: number; date: string }>) => {
-        const todayStr = now.toISOString().slice(0, 10);
-        const seg = new Date(now);
-        seg.setDate(seg.getDate() - seg.getDay() + 1);
-        const dom = new Date(seg);
-        dom.setDate(dom.getDate() + 6);
-        const weekStartStr = seg.toISOString().slice(0, 10);
-        const weekEndStr = dom.toISOString().slice(0, 10);
-        let hojeH = 0,
-          semH = 0,
-          mesH = 0;
-        for (const e of entries) {
-          const d = String(e.date).slice(0, 10);
-          mesH += e.totalHoras;
-          if (d === todayStr) hojeH += e.totalHoras;
-          if (d >= weekStartStr && d <= weekEndStr) semH += e.totalHoras;
-        }
-        setHours({ hoje: hojeH, semana: semH, mes: mesH });
+      .then((data: { projects?: ProjectForClient[]; entries?: TimeEntryForClient[]; hours?: { hoje: number; semana: number; mes: number } } | null) => {
+        setProjects(Array.isArray(data?.projects) ? data!.projects : []);
+        setEntriesClient(Array.isArray(data?.entries) ? data!.entries : []);
+        setHours(data?.hours ?? { hoje: 0, semana: 0, mes: 0 });
       })
-      .catch(() => setHours({ hoje: 0, semana: 0, mes: 0 }));
+      .catch(() => {
+        setProjects([]);
+        setEntriesClient([]);
+        setHours({ hoje: 0, semana: 0, mes: 0 });
+      });
   }, [user?.id, can]);
 
   useEffect(() => {
     if (!user?.id) return;
     if (!can("projeto")) {
       setTickets([]);
-      setProjects([]);
       setLoading(false);
       return;
     }
-    Promise.all([
-      apiFetch("/api/tickets?light=true").then(async (r) => {
+    apiFetch("/api/tickets?light=true")
+      .then(async (r) => {
         if (!r.ok) return [];
         const data = await r.json().catch(() => []);
         return Array.isArray(data) ? data : [];
-      }),
-      apiFetch("/api/projects?light=true").then(async (r) => {
-        if (!r.ok) return [];
-        const data = await r.json().catch(() => []);
-        return Array.isArray(data) ? data : [];
-      }),
-    ])
-      .then(([ticketsData, projectsData]: [TicketForClient[], ProjectForClient[]]) => {
+      })
+      .then((ticketsData: TicketForClient[]) => {
         const tasksOnly = (ticketsData || []).filter(
           (t) =>
             t.project &&
@@ -124,11 +117,9 @@ export default function ClienteHomePage() {
             t.type !== "SUBTAREFA"
         );
         setTickets(tasksOnly);
-        setProjects(projectsData || []);
       })
       .catch(() => {
         setTickets([]);
-        setProjects([]);
       })
       .finally(() => setLoading(false));
   }, [user?.id, can]);
@@ -179,6 +170,58 @@ export default function ClienteHomePage() {
     }
     return { emExecucao, finalizadas, slaLabel, horasContratadas: totalContratadas };
   }, [tickets, projects]);
+
+  const amsSummaries = useMemo<AmsProjectSummary[]>(() => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    const monthKey = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}`;
+
+    const usageByProjectMonth = new Map<string, number>();
+    for (const e of entriesClient) {
+      if (!e?.projectId) continue;
+      const d = new Date(e.date);
+      if (Number.isNaN(d.getTime())) continue;
+      const key = `${e.projectId}:${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      usageByProjectMonth.set(key, (usageByProjectMonth.get(key) ?? 0) + (e.totalHoras ?? 0));
+    }
+
+    const summaries: AmsProjectSummary[] = [];
+    for (const p of projects) {
+      if (p.tipoProjeto !== "AMS") continue;
+      const contracted = p.horasMensaisAMS ?? 0;
+      const startRef = p.dataInicio || p.createdAt;
+      const startDate = startRef ? new Date(startRef) : now;
+      const startMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+      const prevMonth = new Date(currentYear, currentMonth - 1, 1);
+      let saldoAcumulado = p.bancoHorasInicial ?? 0;
+      if (contracted > 0 && startMonth <= prevMonth) {
+        const cursor = new Date(startMonth);
+        while (cursor <= prevMonth) {
+          const k = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`;
+          const used = usageByProjectMonth.get(`${p.id}:${k}`) ?? 0;
+          saldoAcumulado += contracted - used;
+          cursor.setMonth(cursor.getMonth() + 1);
+        }
+      }
+
+      const usedCurrent = usageByProjectMonth.get(`${p.id}:${monthKey}`) ?? 0;
+      const disponivelMes = saldoAcumulado + contracted;
+      const saldoMes = Math.max(0, disponivelMes - usedCurrent);
+      const excedenteMes = Math.max(0, usedCurrent - disponivelMes);
+
+      summaries.push({
+        projectId: p.id,
+        projectName: p.name || "Projeto AMS",
+        contratadasMes: contracted,
+        usadasMes: usedCurrent,
+        saldoMes,
+        excedenteMes,
+        disponivelMes,
+      });
+    }
+    return summaries.sort((a, b) => a.projectName.localeCompare(b.projectName));
+  }, [projects, entriesClient]);
 
   const now = new Date();
   const mesAtual = now.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
@@ -290,6 +333,78 @@ export default function ClienteHomePage() {
                   <p className="text-slate-400 text-sm">Hoje é {hojeFormatado}</p>
                 </div>
               </div>
+            </div>
+          </section>
+
+          <section className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+              <h2 className="text-lg font-semibold text-slate-800">Projetos vinculados</h2>
+              <p className="text-sm text-slate-500 mt-0.5">Projetos associados ao seu cliente</p>
+            </div>
+            <div className="divide-y divide-slate-100">
+              {projects.length === 0 ? (
+                <div className="px-6 py-8 text-center text-slate-500">
+                  Nenhum projeto vinculado encontrado.
+                </div>
+              ) : (
+                projects.map((p) => (
+                  <div key={p.id} className="px-6 py-4 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="font-medium text-slate-800">{p.name || "Projeto sem nome"}</p>
+                      <p className="text-xs text-slate-500">
+                        Tipo: {p.tipoProjeto || "INTERNO"}
+                      </p>
+                    </div>
+                    {p.tipoProjeto === "AMS" && (
+                      <span className="text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-1 rounded">
+                        AMS
+                      </span>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
+
+          <section className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+              <h2 className="text-lg font-semibold text-slate-800">Resumo AMS do mês</h2>
+              <p className="text-sm text-slate-500 mt-0.5">
+                Horas contratadas, utilizadas e saldo/excedente por projeto AMS
+              </p>
+            </div>
+            <div className="divide-y divide-slate-100">
+              {amsSummaries.length === 0 ? (
+                <div className="px-6 py-8 text-center text-slate-500">
+                  Nenhum projeto AMS para exibir neste cliente.
+                </div>
+              ) : (
+                amsSummaries.map((s) => (
+                  <div key={s.projectId} className="px-6 py-4">
+                    <p className="font-medium text-slate-800 mb-2">{s.projectName}</p>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-sm">
+                      <div className="rounded-lg border border-slate-200 p-3">
+                        <p className="text-slate-500">Contratadas (mês)</p>
+                        <p className="font-semibold tabular-nums">{formatHours(s.contratadasMes)}</p>
+                      </div>
+                      <div className="rounded-lg border border-slate-200 p-3">
+                        <p className="text-slate-500">Utilizadas (mês)</p>
+                        <p className="font-semibold tabular-nums">{formatHours(s.usadasMes)}</p>
+                      </div>
+                      <div className="rounded-lg border border-slate-200 p-3">
+                        <p className="text-slate-500">Saldo disponível</p>
+                        <p className="font-semibold tabular-nums">{formatHours(s.saldoMes)}</p>
+                      </div>
+                      <div className="rounded-lg border border-slate-200 p-3">
+                        <p className="text-slate-500">Excedente</p>
+                        <p className={`font-semibold tabular-nums ${s.excedenteMes > 0 ? "text-red-600" : "text-slate-800"}`}>
+                          {s.excedenteMes > 0 ? formatHours(s.excedenteMes) : "00:00"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </section>
 

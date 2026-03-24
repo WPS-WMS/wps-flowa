@@ -146,6 +146,113 @@ authRouter.get("/me", async (req, res) => {
   res.json({ ...user, allowedFeatures });
 });
 
+authRouter.get("/client-home-summary", async (req, res) => {
+  const auth = req.headers.authorization;
+  const token = auth?.startsWith("Bearer ") ? auth.slice(7) : null;
+  if (!token) {
+    res.status(401).json({ error: "Não autenticado" });
+    return;
+  }
+  const { verifyToken } = await import("../lib/auth.js");
+  const payload = verifyToken(token);
+  if (!payload) {
+    res.status(401).json({ error: "Token inválido" });
+    return;
+  }
+  const user = await prisma.user.findUnique({
+    where: { id: payload.id },
+    select: { id: true, role: true, tenantId: true, ativo: true },
+  });
+  if (!user || user.ativo === false) {
+    res.status(403).json({ error: "Não autorizado." });
+    return;
+  }
+  if (user.role !== "CLIENTE") {
+    res.status(403).json({ error: "Endpoint disponível apenas para cliente." });
+    return;
+  }
+
+  const clientIds = (
+    await prisma.clientUser.findMany({
+      where: { userId: user.id },
+      select: { clientId: true },
+    })
+  ).map((x) => x.clientId);
+
+  const projects = await prisma.project.findMany({
+    where: {
+      clientId: { in: clientIds },
+      arquivado: false,
+      client: { tenantId: user.tenantId },
+    },
+    select: {
+      id: true,
+      name: true,
+      tipoProjeto: true,
+      horasMensaisAMS: true,
+      bancoHorasInicial: true,
+      estimativaInicialTM: true,
+      dataInicio: true,
+      createdAt: true,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const projectIds = projects.map((p) => p.id);
+  if (projectIds.length === 0) {
+    res.json({
+      projects: [],
+      entries: [],
+      hours: { hoje: 0, semana: 0, mes: 0 },
+    });
+    return;
+  }
+
+  const entries = await prisma.timeEntry.findMany({
+    where: {
+      projectId: { in: projectIds },
+      project: { client: { tenantId: user.tenantId } },
+    },
+    select: {
+      projectId: true,
+      totalHoras: true,
+      date: true,
+    },
+  });
+
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
+  const seg = new Date(now);
+  seg.setDate(seg.getDate() - seg.getDay() + 1);
+  const dom = new Date(seg);
+  dom.setDate(dom.getDate() + 6);
+  const weekStartStr = seg.toISOString().slice(0, 10);
+  const weekEndStr = dom.toISOString().slice(0, 10);
+  const monthPrefix = now.toISOString().slice(0, 7);
+
+  let hoje = 0;
+  let semana = 0;
+  let mes = 0;
+  const mappedEntries = entries.map((e) => {
+    const dateStr = e.date.toISOString().slice(0, 10);
+    const h = e.totalHoras ?? 0;
+    if (dateStr.startsWith(monthPrefix)) mes += h;
+    if (dateStr === todayStr) hoje += h;
+    if (dateStr >= weekStartStr && dateStr <= weekEndStr) semana += h;
+    return {
+      projectId: e.projectId,
+      totalHoras: h,
+      date: dateStr,
+    };
+  });
+
+  res.json({
+    projects,
+    entries: mappedEntries,
+    hours: { hoje, semana, mes },
+  });
+});
+
 // Endpoint para iniciar fluxo de recuperação de senha.
 // Gera um token de reset e (em produção) enviaria um e-mail ao usuário.
 authRouter.post("/forgot-password", async (req, res) => {
