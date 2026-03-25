@@ -147,6 +147,8 @@ type ProjectCardProps = {
   onDeleteSubproject?: (ticket: PackageTicket) => void;
   /** Função chamada após criar um tópico (usado na Opção 1). */
   onSubprojectCreated?: () => void;
+  /** Incrementado pelo pai ao recarregar a lista; força novo GET de detalhe se o card estiver expandido. */
+  listRevision?: number;
   /** Controle de ações por feature flag */
   canEditProject?: boolean;
   canDeleteProject?: boolean;
@@ -158,6 +160,7 @@ export function ProjectCard({
   onDelete,
   onDeleteSubproject,
   onSubprojectCreated,
+  listRevision = 0,
   canEditProject = true,
   canDeleteProject = true,
 }: ProjectCardProps) {
@@ -178,6 +181,7 @@ export function ProjectCard({
   const [detailProject, setDetailProject] = useState<ProjectForCard | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState(false);
+  const detailProjectRef = useRef<ProjectForCard | null>(null);
   const actionsRef = useRef<HTMLDivElement | null>(null);
   const menuButtonRef = useRef<HTMLButtonElement | null>(null);
   const needsFullDetail = project.listMode === "summary";
@@ -195,33 +199,57 @@ export function ProjectCard({
   const totalTarefasExpanded = exTarefas.length;
 
   useEffect(() => {
+    detailProjectRef.current = detailProject;
+  }, [detailProject]);
+
+  /** Novo id na lista → descarta cache de detalhe (evita misturar projetos). */
+  useEffect(() => {
+    setDetailProject(null);
+  }, [project.id]);
+
+  useEffect(() => {
     if (!isExpanded) {
-      setDetailProject(null);
       setDetailLoading(false);
       setDetailError(false);
       return;
     }
     if (!needsFullDetail) return;
 
-    const ac = new AbortController();
-    setDetailError(false);
-    setDetailLoading(true);
-    apiFetch(`/api/projects/${project.id}`, { signal: ac.signal })
-      .then(async (r) => {
-        if (!r.ok) throw new Error("load");
-        return r.json() as Promise<ProjectForCard>;
-      })
-      .then((p) => setDetailProject({ ...p, listMode: "full" }))
-      .catch((e: unknown) => {
-        const name =
-          e && typeof e === "object" && "name" in e ? String((e as { name?: string }).name) : "";
-        if (name === "AbortError") return;
-        setDetailError(true);
-      })
-      .finally(() => setDetailLoading(false));
+    const cached = detailProjectRef.current;
+    const hasFullCache = cached?.id === project.id && cached.listMode === "full";
 
-    return () => ac.abort();
-  }, [isExpanded, project.id, needsFullDetail, project._count?.tickets]);
+    const runFetch = (opts: { showSpinner: boolean }) => {
+      const ac = new AbortController();
+      if (opts.showSpinner) {
+        setDetailError(false);
+        setDetailLoading(true);
+      }
+      apiFetch(`/api/projects/${project.id}`, { signal: ac.signal })
+        .then(async (r) => {
+          if (!r.ok) throw new Error("load");
+          return r.json() as Promise<ProjectForCard>;
+        })
+        .then((p) => setDetailProject({ ...p, listMode: "full" }))
+        .catch((e: unknown) => {
+          const name =
+            e && typeof e === "object" && "name" in e ? String((e as { name?: string }).name) : "";
+          if (name === "AbortError") return;
+          if (opts.showSpinner) setDetailError(true);
+        })
+        .finally(() => {
+          if (opts.showSpinner) setDetailLoading(false);
+        });
+      return () => ac.abort();
+    };
+
+    if (hasFullCache) {
+      setDetailLoading(false);
+      setDetailError(false);
+      return runFetch({ showSpinner: false });
+    }
+
+    return runFetch({ showSpinner: true });
+  }, [isExpanded, project.id, needsFullDetail, listRevision]);
 
   const statusInfo = getProjectStatus(project);
   // Filtrar tópicos e tarefas:

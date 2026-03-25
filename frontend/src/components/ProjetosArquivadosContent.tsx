@@ -13,6 +13,7 @@ type ProjetosArquivadosContentProps = {
 
 export function ProjetosArquivadosContent({ basePath }: ProjetosArquivadosContentProps) {
   const [projects, setProjects] = useState<ProjectForCard[]>([]);
+  const [listRevision, setListRevision] = useState(0);
   const [apiError, setApiError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
@@ -26,6 +27,7 @@ export function ProjetosArquivadosContent({ basePath }: ProjetosArquivadosConten
       if (!r.ok) throw new Error("Erro ao carregar projetos arquivados");
       const data = await r.json();
       setProjects(Array.isArray(data) ? data : []);
+      setListRevision((n) => n + 1);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Erro ao carregar projetos arquivados";
       setApiError(message);
@@ -108,6 +110,7 @@ export function ProjetosArquivadosContent({ basePath }: ProjetosArquivadosConten
                 <ProjectCard
                   key={p.id}
                   project={p}
+                  listRevision={listRevision}
                   onDelete={async (proj) => {
                     const res = await apiFetch(`/api/projects/${proj.id}`, { method: "DELETE" });
                     if (res.ok) await refreshArchived();

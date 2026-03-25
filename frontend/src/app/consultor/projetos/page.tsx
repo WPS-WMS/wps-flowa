@@ -11,8 +11,14 @@ import { useAuth } from "@/contexts/AuthContext";
 export default function ProjetosPage() {
   const { can } = useAuth();
   const [projects, setProjects] = useState<ProjectForCard[]>([]);
+  const [listRevision, setListRevision] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [showNewModal, setShowNewModal] = useState(false);
+
+  function applyProjectsFromApi(data: unknown) {
+    setProjects(Array.isArray(data) ? data : []);
+    setListRevision((n) => n + 1);
+  }
 
   useEffect(() => {
     setError(null);
@@ -21,7 +27,7 @@ export default function ProjetosPage() {
         if (!r.ok) throw new Error("Erro ao carregar projetos");
         return r.json();
       })
-      .then((data: ProjectForCard[]) => setProjects(Array.isArray(data) ? data : []))
+      .then((data: ProjectForCard[]) => applyProjectsFromApi(data))
       .catch((err) => setError(err?.message ?? "Erro ao carregar projetos"));
   }, []);
 
@@ -75,6 +81,7 @@ export default function ProjetosPage() {
             <ProjectCard
               key={p.id}
               project={p}
+              listRevision={listRevision}
               canEditProject={can("projeto.editar")}
               canDeleteProject={can("projeto.excluir")}
               onDelete={
@@ -93,7 +100,7 @@ export default function ProjetosPage() {
                     const updatedProjects = await apiFetch("/api/projects?light=true")
                       .then((r) => (r.ok ? r.json() : []))
                       .catch(() => projects);
-                    setProjects(updatedProjects);
+                    applyProjectsFromApi(updatedProjects);
                   } else {
                     // Tenta ler o erro apenas se houver conteúdo
                     const contentType = res.headers.get("content-type");
@@ -114,7 +121,7 @@ export default function ProjetosPage() {
                 const updatedProjects = await apiFetch("/api/projects?light=true")
                   .then((r) => (r.ok ? r.json() : []))
                   .catch(() => projects);
-                setProjects(updatedProjects);
+                applyProjectsFromApi(updatedProjects);
               }}
             />
             ))}
@@ -127,7 +134,7 @@ export default function ProjetosPage() {
               setShowNewModal(false);
               apiFetch("/api/projects?light=true")
                 .then((r) => (r.ok ? r.json() : []))
-                .then(setProjects);
+                .then(applyProjectsFromApi);
             }}
           />
         )}

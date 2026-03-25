@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, RefreshCw } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { KanbanWithFilters } from "@/components/KanbanWithFilters";
@@ -20,6 +20,8 @@ export function DashboardDailyContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [backendError, setBackendError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  /** Tarefas por projeto: reabrir o mesmo projeto mostra na hora e revalida em background. */
+  const ticketsByProjectRef = useRef<Map<string, PackageTicket[]>>(new Map());
 
   useEffect(() => {
     setBackendError(null);
@@ -50,20 +52,39 @@ export function DashboardDailyContent() {
       setTicketsLoading(false);
       return;
     }
-    setTicketsLoading(true);
-    apiFetch(`/api/tickets?projectId=${selectedProjectId}&light=true`)
-      .then((r) => {
+
+    const hadCache = ticketsByProjectRef.current.has(selectedProjectId);
+    const snapshot = hadCache ? ticketsByProjectRef.current.get(selectedProjectId)! : undefined;
+    if (hadCache) {
+      setAllTickets(snapshot!);
+      setTicketsLoading(false);
+    } else {
+      setTicketsLoading(true);
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await apiFetch(`/api/tickets?projectId=${selectedProjectId}&light=true`);
+        if (cancelled) return;
         if (!r.ok) throw new Error("Erro ao carregar tarefas");
-        return r.json();
-      })
-      .then((data: PackageTicket[]) => {
-        setAllTickets(Array.isArray(data) ? data : []);
-      })
-      .catch((err) => {
+        const data: PackageTicket[] = await r.json();
+        if (cancelled) return;
+        const arr = Array.isArray(data) ? data : [];
+        ticketsByProjectRef.current.set(selectedProjectId, arr);
+        setAllTickets(arr);
+      } catch (err) {
+        if (cancelled) return;
         console.error("Erro ao carregar tarefas:", err);
-        setAllTickets([]);
-      })
-      .finally(() => setTicketsLoading(false));
+        if (!hadCache) setAllTickets([]);
+      } finally {
+        if (!cancelled) setTicketsLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [selectedProjectId]);
 
   const tickets = useMemo(
@@ -89,12 +110,14 @@ export function DashboardDailyContent() {
 
   const refetchTickets = async () => {
     if (!selectedProjectId) return;
-    setTicketsLoading(true);
+    if (!ticketsByProjectRef.current.has(selectedProjectId)) setTicketsLoading(true);
     try {
       const res = await apiFetch(`/api/tickets?projectId=${selectedProjectId}&light=true`);
       if (res.ok) {
         const data: PackageTicket[] = await res.json();
-        setAllTickets(Array.isArray(data) ? data : []);
+        const arr = Array.isArray(data) ? data : [];
+        ticketsByProjectRef.current.set(selectedProjectId, arr);
+        setAllTickets(arr);
       }
     } finally {
       setTicketsLoading(false);

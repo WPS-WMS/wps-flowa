@@ -32,6 +32,7 @@ export default function AdminProjetosPage() {
         : "/admin";
   const arquivadosHref = `${basePath}/projetos/arquivados`;
   const [projects, setProjects] = useState<ProjectForCard[]>([]);
+  const [listRevision, setListRevision] = useState(0);
   const [apiError, setApiError] = useState<string | null>(null);
   const [showNewModal, setShowNewModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -48,6 +49,7 @@ export default function AdminProjetosPage() {
       const projetos = await projetosRes.json();
       const arquivados = arquivadosRes.ok ? await arquivadosRes.json() : [];
       setProjects(projetos);
+      setListRevision((n) => n + 1);
       setArquivadosCount(Array.isArray(arquivados) ? arquivados.length : 0);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Erro ao carregar projetos";
@@ -223,6 +225,7 @@ export default function AdminProjetosPage() {
                   <ProjectCard
                     key={p.id}
                     project={p}
+                    listRevision={listRevision}
                     canEditProject={can("projeto.editar")}
                     canDeleteProject={can("projeto.excluir")}
                     onDelete={
