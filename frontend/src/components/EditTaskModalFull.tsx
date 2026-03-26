@@ -1149,6 +1149,7 @@ export function EditTaskModalFull({
                         placeholder="Ex: Implementar relatório de vendas"
                         required
                         autoFocus
+                        readOnly={isReadOnly}
                       />
                     </div>
 
@@ -1162,6 +1163,7 @@ export function EditTaskModalFull({
                             value={selectedTopicId}
                             onChange={(e) => setSelectedTopicId(e.target.value)}
                             className={inputClass + " appearance-none pr-9"}
+                            disabled={isReadOnly}
                           >
                             <option value="">Selecione um tópico</option>
                             {topics.map((topic) => (
@@ -1185,6 +1187,7 @@ export function EditTaskModalFull({
                           value={dataInicio}
                           onChange={(e) => setDataInicio(e.target.value)}
                           className={inputClass}
+                          disabled={isReadOnly}
                         />
                       </div>
 
@@ -1206,6 +1209,7 @@ export function EditTaskModalFull({
                               ? " border-red-300 focus:ring-red-500 focus:border-red-500 bg-red-50/50"
                               : "")
                           }
+                          disabled={isReadOnly}
                         />
                         {obrigatoriosDataEntrega && dataEntregaError && (
                           <p className="mt-1 text-xs text-red-600">
@@ -1235,18 +1239,18 @@ export function EditTaskModalFull({
                             <span className="text-sm text-slate-700 max-w-[100px] truncate">
                               {u.name}
                             </span>
-                            <button
+                            {!isReadOnly && <button
                               type="button"
                               onClick={() => removeResponsible(u.id)}
                               className="ml-0.5 text-slate-400 hover:text-red-600 p-0.5"
                               aria-label="Remover"
                             >
                               ×
-                            </button>
+                            </button>}
                           </div>
                         ))}
                         <div className="relative">
-                          <button
+                          {!isReadOnly && <button
                             type="button"
                             onClick={() => setShowUserPicker(!showUserPicker)}
                             className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg border-2 border-dashed border-slate-300 bg-white text-slate-600 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 text-sm font-semibold transition-all duration-200"
@@ -1254,8 +1258,8 @@ export function EditTaskModalFull({
                           >
                             <Plus className="h-4 w-4" />
                             Adicionar
-                          </button>
-                          {showUserPicker && (
+                          </button>}
+                          {!isReadOnly && showUserPicker && (
                             <div className="absolute left-0 top-full mt-1 z-10 w-56 rounded-lg border border-slate-200 bg-white shadow-lg py-1 max-h-48 overflow-y-auto">
                               {availableToAdd.length === 0 ? (
                                 <p className="px-3 py-2 text-xs text-slate-500">
@@ -1303,6 +1307,7 @@ export function EditTaskModalFull({
                             : "")
                         }
                         placeholder="Ex: 8h"
+                        readOnly={isReadOnly}
                       />
                       {obrigatoriosHoras && estimativaError && (
                         <p className="mt-1 text-xs text-red-600">
@@ -1318,6 +1323,7 @@ export function EditTaskModalFull({
                           value={status}
                           onChange={(e) => setStatus(e.target.value)}
                           className={inputClass}
+                          disabled={isReadOnly}
                         >
                           <option value="ABERTO">Backlog</option>
                           <option value="EXECUCAO">Em execução</option>
@@ -1331,6 +1337,7 @@ export function EditTaskModalFull({
                           type="button"
                           onClick={() => setShowPrioridadeOpen(!showPrioridadeOpen)}
                           className={`w-full flex items-center gap-2 px-4 py-2.5 rounded-lg border bg-white text-left text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 ${showPrioridadeOpen ? "border-blue-500 ring-2 ring-blue-500 shadow-sm" : "border-slate-200 hover:border-slate-300"}`}
+                          disabled={isReadOnly}
                         >
                           {prioridade ? (
                             <>
@@ -1342,7 +1349,7 @@ export function EditTaskModalFull({
                           )}
                           <span className="ml-auto text-slate-400 pointer-events-none">▼</span>
                         </button>
-                        {showPrioridadeOpen && (
+                        {!isReadOnly && showPrioridadeOpen && (
                           <div className="absolute left-0 right-0 top-full mt-2 z-20 rounded-lg border border-slate-200 bg-white shadow-xl py-1 max-h-56 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
                             <button
                               type="button"
@@ -1385,6 +1392,7 @@ export function EditTaskModalFull({
                           setProgresso(Math.max(0, Math.min(100, val)));
                         }}
                         className={inputClass}
+                        disabled={isReadOnly}
                       />
                       <div className="mt-3 h-2 bg-slate-200 rounded-full overflow-hidden shadow-inner">
                         <div
@@ -1418,6 +1426,7 @@ export function EditTaskModalFull({
                     placeholder="Descreva os detalhes da tarefa..."
                     rows={8}
                     maxLength={1000}
+                    readOnly={isReadOnly}
                   />
                 </div>
 
@@ -1453,7 +1462,7 @@ export function EditTaskModalFull({
                                   })}
                                 </span>
                               </div>
-                              {canEditOrDelete && !isEditing && (
+                              {!isReadOnly && canEditOrDelete && !isEditing && (
                                 <div className="flex items-center gap-1">
                                   <button
                                     type="button"
@@ -1520,7 +1529,7 @@ export function EditTaskModalFull({
                   )}
                   
                   {/* Editor de novo comentário */}
-                  <div className="mt-6 pt-6 border-t border-slate-200">
+                  {!isReadOnly && <div className="mt-6 pt-6 border-t border-slate-200">
                     <label className={labelClass}>Novo comentário</label>
                     <RichTextEditor
                       value={comment}
@@ -1539,7 +1548,7 @@ export function EditTaskModalFull({
                         {savingComment ? "Enviando..." : "Enviar comentário"}
                       </button>
                     </div>
-                  </div>
+                  </div>}
                 </div>
               </div>
             )}
@@ -1547,7 +1556,7 @@ export function EditTaskModalFull({
             {activeTab === "horas" && (
               <div className="space-y-6">
                 {/* Formulário de apontamento */}
-                <div
+                {!isReadOnly && <div
                   ref={timeEntryFormRef}
                   className="bg-white rounded-xl border border-slate-200 px-5 py-5 shadow-sm hover:shadow-md transition-shadow duration-200"
                 >
@@ -1710,7 +1719,7 @@ export function EditTaskModalFull({
                       </button>
                     </div>
                   </div>
-                </div>
+                </div>}
 
                 {/* Tabela de apontamentos */}
                 <div className="bg-white rounded-xl border border-slate-200 px-5 py-5 shadow-sm hover:shadow-md transition-shadow duration-200">
@@ -1966,7 +1975,7 @@ export function EditTaskModalFull({
                 </div>
 
                 {/* Área de Upload com Drag & Drop */}
-                <div
+                {!isReadOnly && <div
                   className={`relative border-2 border-dashed rounded-xl p-8 transition-all duration-200 ${
                     dragActive
                       ? "border-blue-500 bg-blue-50"
@@ -2011,7 +2020,7 @@ export function EditTaskModalFull({
                       Escolher arquivo
                     </label>
                   </div>
-                </div>
+                </div>}
 
                 {/* Lista de Anexos */}
                 {loadingAttachments ? (
