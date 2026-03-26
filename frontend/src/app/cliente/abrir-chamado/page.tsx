@@ -161,11 +161,10 @@ export default function AbrirChamadoPage() {
       const belongs = (p.clientId || p.client?.id) === clientId;
       const tipoProjeto = String(p.tipoProjeto || "");
       const isAllowed = tipoProjeto === "AMS" || tipoProjeto === "TIME_MATERIAL";
-      const isMember =
-        user?.role !== "CLIENTE"
-          ? true
-          : (p.responsibles ?? []).some((r) => r.user?.id && r.user.id === user.id);
-      return belongs && isAllowed && isMember;
+      // Para perfil CLIENTE, o vínculo disponível no sistema é user↔empresa (ClientUser).
+      // Não há um "membro do projeto" específico no schema, então o cliente pode abrir chamado
+      // em qualquer projeto AMS/T&M da sua empresa.
+      return belongs && isAllowed;
     });
   }, [clientId, projects, user?.id, user?.role]);
 
