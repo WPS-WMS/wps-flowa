@@ -98,7 +98,10 @@ export default function ClienteHomePage() {
 
   useEffect(() => {
     if (!user?.id) return;
-    if (!can("projeto")) {
+    const isCliente = user.role === "CLIENTE";
+    // Cliente é vinculado a uma empresa: deve ver todos os chamados/tarefas dos projetos da empresa.
+    // Outros perfis seguem respeitando a permissão de "projeto".
+    if (!isCliente && !can("projeto")) {
       setTickets([]);
       setLoading(false);
       return;
@@ -450,14 +453,14 @@ export default function ClienteHomePage() {
             <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
               <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
                 <ListTodo className="h-5 w-5 text-slate-600" />
-                Chamados dos seus projetos
+                Chamados de todos os projetos
               </h2>
-              <p className="text-sm text-slate-500 mt-0.5">Visão geral de todas as tarefas dos seus projetos</p>
+              <p className="text-sm text-slate-500 mt-0.5">Visão geral de todas as tarefas dos projetos da sua empresa</p>
             </div>
             <div className="divide-y divide-slate-100">
               {tickets.length === 0 ? (
                 <div className="px-6 py-12 text-center text-slate-500">
-                  Nenhum chamado nos seus projetos no momento.
+                  Nenhum chamado nos projetos da sua empresa no momento.
                 </div>
               ) : (
                 ticketsOrdenadosPorPrioridade.slice(0, 20).map((t) => (

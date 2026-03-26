@@ -91,12 +91,14 @@ export default function AdminProjetosPage() {
     const hoje = new Date();
     const projetosAtrasados = projects.filter((p) => {
       if (!p.dataFimPrevista) return false;
-      const fim = new Date(p.dataFimPrevista);
+      // Comparação por data (YYYY-MM-DD) para não marcar como atrasado "no meio do dia" por timezone/horário.
+      const todayStr = hoje.toISOString().slice(0, 10);
+      const fimStr = String(p.dataFimPrevista).slice(0, 10);
       const tarefas = p.tickets?.filter((t) => t.type !== "SUBPROJETO" && t.type !== "SUBTAREFA") ?? [];
       const todasConcluidas =
         tarefas.length > 0 &&
         tarefas.every((t) => t.status === "ENCERRADO");
-      return fim < hoje && !todasConcluidas;
+      return fimStr < todayStr && !todasConcluidas;
     }).length;
 
     return {
