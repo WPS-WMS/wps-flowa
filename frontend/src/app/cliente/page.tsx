@@ -132,6 +132,26 @@ export default function ClienteHomePage() {
     [tickets, user?.id]
   );
 
+  const chamadosQueAbriOrdenadosPorPrioridade = useMemo(() => {
+    return [...chamadosQueAbri].sort((a, b) => {
+      const pa =
+        PRIORITY_ORDER[String((a as { criticidade?: string | null }).criticidade ?? "").toUpperCase()] ?? 0;
+      const pb =
+        PRIORITY_ORDER[String((b as { criticidade?: string | null }).criticidade ?? "").toUpperCase()] ?? 0;
+      if (pb !== pa) return pb - pa;
+      return String(a.code).localeCompare(String(b.code), undefined, { numeric: true });
+    });
+  }, [chamadosQueAbri]);
+
+  function getPriorityDotClass(raw: unknown): string {
+    const v = String(raw ?? "").toUpperCase();
+    if (v === "URGENTE") return "bg-red-700";
+    if (v === "ALTA") return "bg-red-500";
+    if (v === "MEDIA") return "bg-amber-500";
+    if (v === "BAIXA") return "bg-emerald-500";
+    return "bg-slate-300";
+  }
+
   const ticketsOrdenadosPorPrioridade = useMemo(() => {
     return [...tickets].sort((a, b) => {
       const pa = PRIORITY_ORDER[String((a as { criticidade?: string | null }).criticidade ?? "").toUpperCase()] ?? 0;
@@ -420,16 +440,23 @@ export default function ClienteHomePage() {
               <p className="text-sm text-slate-500 mt-0.5">Chamados abertos por você</p>
             </div>
             <div className="divide-y divide-slate-100">
-              {chamadosQueAbri.length === 0 ? (
+              {chamadosQueAbriOrdenadosPorPrioridade.length === 0 ? (
                 <div className="px-6 py-8 text-center text-slate-500">
                   Você ainda não abriu nenhum chamado.
                 </div>
               ) : (
-                chamadosQueAbri.map((t) => (
+                chamadosQueAbriOrdenadosPorPrioridade.map((t) => (
                   <div
                     key={t.id}
                     className="px-6 py-4 flex items-center gap-4 text-left"
                   >
+                    <span
+                      className={`h-2.5 w-2.5 shrink-0 rounded-full ${getPriorityDotClass(
+                        (t as { criticidade?: string | null }).criticidade,
+                      )}`}
+                      aria-hidden
+                      title={String((t as { criticidade?: string | null }).criticidade ?? "Sem prioridade")}
+                    />
                     <span className="font-mono font-semibold text-blue-600">{t.code}</span>
                     <span className="flex-1 text-slate-800 truncate">
                       {t.project?.client?.name} - {t.project?.name} - {t.title}
@@ -469,18 +496,11 @@ export default function ClienteHomePage() {
                     className="px-6 py-4 flex items-center gap-4 text-left"
                   >
                     <span
-                      className={`h-2.5 w-2.5 shrink-0 rounded-full ${
-                        t.criticidade === "URGENTE"
-                          ? "bg-red-700"
-                          : t.criticidade === "ALTA"
-                            ? "bg-red-500"
-                            : t.criticidade === "MEDIA"
-                              ? "bg-amber-500"
-                              : t.criticidade === "BAIXA"
-                                ? "bg-emerald-500"
-                                : "bg-slate-300"
-                      }`}
+                      className={`h-2.5 w-2.5 shrink-0 rounded-full ${getPriorityDotClass(
+                        (t as { criticidade?: string | null }).criticidade,
+                      )}`}
                       aria-hidden
+                      title={String((t as { criticidade?: string | null }).criticidade ?? "Sem prioridade")}
                     />
                     <span className="font-mono font-semibold text-blue-600">{t.code}</span>
                     <span className="flex-1 text-slate-800 truncate">

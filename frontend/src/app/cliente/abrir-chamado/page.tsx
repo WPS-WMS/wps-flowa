@@ -131,7 +131,7 @@ export default function AbrirChamadoPage() {
         setClients([]);
         setClientId("");
       });
-  }, [can]);
+  }, [can, user?.role]);
 
   useEffect(() => {
     if (!can("chamados.criacao")) {
@@ -153,7 +153,7 @@ export default function AbrirChamadoPage() {
         list: Array<{ id: string; name: string; tipoProjeto?: string; clientId?: string; client?: { id: string } }>
       ) => setProjects(list))
       .catch(() => setProjects([]));
-  }, [can]);
+  }, [can, user?.role]);
 
   const filteredProjects = useMemo(() => {
     if (!clientId) return [];
