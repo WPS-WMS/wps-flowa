@@ -1058,6 +1058,7 @@ export function EditTaskModalFull({
 
   const inputClass =
     "w-full px-4 py-2.5 rounded-lg border border-slate-200 bg-white text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-slate-300";
+  const readOnlyNoFocusClass = "focus:ring-0 focus:border-slate-200 focus:outline-none hover:border-slate-200 cursor-default";
   const labelClass = "block text-sm font-semibold text-slate-700 mb-2";
 
   const tabs: { id: Tab; label: string }[] = [
@@ -1154,7 +1155,7 @@ export function EditTaskModalFull({
                         type="text"
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
-                        className={inputClass}
+                        className={`${inputClass} ${isReadOnly ? readOnlyNoFocusClass : ""}`}
                         placeholder="Ex: Implementar relatório de vendas"
                         required
                         autoFocus
@@ -1313,7 +1314,8 @@ export function EditTaskModalFull({
                           inputClass +
                           (obrigatoriosHoras && estimativaError
                             ? " border-red-300 focus:ring-red-500 focus:border-red-500 bg-red-50/50"
-                            : "")
+                            : "") +
+                          (isReadOnly ? ` ${readOnlyNoFocusClass}` : "")
                         }
                         placeholder="Ex: 8h"
                         readOnly={isReadOnly}
@@ -1431,7 +1433,7 @@ export function EditTaskModalFull({
                         setDescription(e.target.value);
                       }
                     }}
-                    className={inputClass + " min-h-[150px] resize-y"}
+                    className={`${inputClass} min-h-[150px] resize-y ${isReadOnly ? readOnlyNoFocusClass : ""}`}
                     placeholder="Descreva os detalhes da tarefa..."
                     rows={8}
                     maxLength={1000}
