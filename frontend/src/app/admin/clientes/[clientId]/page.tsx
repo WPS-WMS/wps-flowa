@@ -7,6 +7,7 @@ import { apiFetch } from "@/lib/api";
 import { NewContactModal } from "@/components/NewContactModal";
 import { EditContactModal } from "@/components/EditContactModal";
 import { ConfirmarExclusaoModal } from "@/components/ConfirmarExclusaoModal";
+import { useAuth } from "@/contexts/AuthContext";
 
 type PageProps = {
   params: Promise<{ clientId: string }>;
@@ -42,12 +43,22 @@ export default function ClienteDetalhePage({ params }: PageProps) {
   const { clientId } = use(params);
   const router = useRouter();
   const pathname = usePathname();
+  const { user } = useAuth();
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showNewContactModal, setShowNewContactModal] = useState(false);
   const [editingContact, setEditingContact] = useState<ClientContact | null>(null);
   const [deletingContactId, setDeletingContactId] = useState<string | null>(null);
+
+  const basePath =
+    user?.role === "ADMIN"
+      ? "/admin"
+      : user?.role === "GESTOR_PROJETOS"
+        ? "/gestor"
+        : user?.role === "CONSULTOR"
+          ? "/consultor"
+          : "/admin";
 
   const resolvedClientId = useMemo(() => {
     if (clientId && clientId !== "_") return clientId;
@@ -92,7 +103,7 @@ export default function ClienteDetalhePage({ params }: PageProps) {
       <div className="flex-1 flex flex-col gap-4 p-6">
         <button
           type="button"
-          onClick={() => router.push("/admin/clientes")}
+          onClick={() => router.push(`${basePath}/clientes`)}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50 transition-colors self-end"
         >
           <ChevronLeft className="h-4 w-4" />
@@ -123,7 +134,7 @@ export default function ClienteDetalhePage({ params }: PageProps) {
           <div className="flex justify-end">
             <button
               type="button"
-              onClick={() => router.push("/admin/clientes")}
+              onClick={() => router.push(`${basePath}/clientes`)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50 transition-colors"
             >
               <ChevronLeft className="h-4 w-4" />

@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Sidebar, type NavItem } from "@/components/Sidebar";
-import { Home, FolderKanban, Clock, Banknote, Settings, PlusCircle } from "lucide-react";
+import { Home, FolderKanban, Clock, Banknote, Settings, PlusCircle, BarChart3 } from "lucide-react";
 
 export default function ConsultorLayout({ children }: { children: React.ReactNode }) {
   const { user, loading, can } = useAuth();
@@ -29,6 +29,19 @@ export default function ConsultorLayout({ children }: { children: React.ReactNod
     }
     if (can("apontamentos")) items.push({ href: "/consultor/apontamento", label: "Apontamento", icon: Clock });
     if (can("hora-banco")) items.push({ href: "/consultor/banco-horas", label: "Banco de horas", icon: Banknote });
+    if (can("relatorios")) {
+      items.push({
+        label: "Relatórios",
+        icon: BarChart3,
+        children: [
+          ...(can("relatorios") ? [{ href: "/consultor/relatorios", label: "Visão geral" }] : []),
+          ...(can("relatorios.horas") ? [{ href: "/consultor/relatorios/gestao-horas", label: "Gestão de horas" }] : []),
+          ...(can("relatorios.horas") ? [{ href: "/consultor/relatorios/horas", label: "Horas (período/projeto/cliente)" }] : []),
+          ...(can("relatorios.chamados") ? [{ href: "/consultor/relatorios/chamados", label: "Chamados" }] : []),
+          ...(can("relatorios.exportacao") ? [{ href: "/consultor/relatorios/exportacao", label: "Exportar faturamento" }] : []),
+        ],
+      });
+    }
     if (can("configuracoes")) {
       items.push({ href: "/consultor/configuracoes", label: "Configurações", icon: Settings });
     }

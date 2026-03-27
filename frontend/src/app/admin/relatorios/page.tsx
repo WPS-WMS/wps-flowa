@@ -2,17 +2,30 @@
 
 import { Link } from "@/components/Link";
 import { Clock, User, TrendingUp, FileSpreadsheet, Banknote, ArrowRight, CalendarClock } from "lucide-react";
-
-const RELATORIOS = [
-  { id: "gestao-horas", href: "/admin/relatorios/gestao-horas", title: "Gestão de horas", description: "Lista de apontamentos com filtros por usuário, período e projeto. Exportar CSV e PDF.", icon: CalendarClock },
-  { id: "horas", href: "/admin/relatorios/horas", title: "Horas por período / projeto / cliente", description: "Total de horas apontadas com filtro por datas e agrupamento por consultor, projeto ou cliente.", icon: Clock },
-  { id: "utilizacao", href: "/admin/relatorios/utilizacao", title: "Utilização", description: "Horas por consultor no período vs. capacidade (carga horária). Quem está alocado e quem tem disponibilidade.", icon: User },
-  { id: "chamados", href: "/admin/relatorios/chamados", title: "Chamados / tickets", description: "Quantidade de chamados por status e por período. Visão de demanda e throughput.", icon: TrendingUp },
-  { id: "banco-horas", href: "/admin/banco-horas", title: "Banco de horas", description: "Saldo e movimentações do banco de horas por consultor ou por ano.", icon: Banknote },
-  { id: "exportacao", href: "/admin/relatorios/exportacao", title: "Exportar faturamento", description: "Exportar horas por cliente/projeto em CSV para cobrança ou integração.", icon: FileSpreadsheet },
-];
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function RelatoriosPage() {
+  const { user } = useAuth();
+  const basePath =
+    user?.role === "ADMIN"
+      ? "/admin"
+      : user?.role === "GESTOR_PROJETOS"
+        ? "/gestor"
+        : user?.role === "CONSULTOR"
+          ? "/consultor"
+          : "/admin";
+
+  const relatorios = [
+    { id: "gestao-horas", href: `${basePath}/relatorios/gestao-horas`, title: "Gestão de horas", description: "Lista de apontamentos com filtros por usuário, período e projeto. Exportar CSV e PDF.", icon: CalendarClock },
+    { id: "horas", href: `${basePath}/relatorios/horas`, title: "Horas por período / projeto / cliente", description: "Total de horas apontadas com filtro por datas e agrupamento por consultor, projeto ou cliente.", icon: Clock },
+    ...(user?.role === "ADMIN" || user?.role === "GESTOR_PROJETOS"
+      ? [{ id: "utilizacao", href: `${basePath}/relatorios/utilizacao`, title: "Utilização", description: "Horas por consultor no período vs. capacidade (carga horária). Quem está alocado e quem tem disponibilidade.", icon: User }]
+      : []),
+    { id: "chamados", href: `${basePath}/relatorios/chamados`, title: "Chamados / tickets", description: "Quantidade de chamados por status e por período. Visão de demanda e throughput.", icon: TrendingUp },
+    { id: "banco-horas", href: `${basePath}/banco-horas`, title: "Banco de horas", description: "Saldo e movimentações do banco de horas por consultor ou por ano.", icon: Banknote },
+    { id: "exportacao", href: `${basePath}/relatorios/exportacao`, title: "Exportar faturamento", description: "Exportar horas por cliente/projeto em CSV para cobrança ou integração.", icon: FileSpreadsheet },
+  ];
+
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-slate-50">
       <header className="flex-shrink-0 bg-white border-b border-slate-200 px-6 py-4">
@@ -26,7 +39,7 @@ export default function RelatoriosPage() {
       <main className="flex-1 px-4 md:px-6 py-4 min-h-0 overflow-auto">
         <div className="max-w-6xl mx-auto">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {RELATORIOS.map((r) => {
+            {relatorios.map((r) => {
               const Icon = r.icon;
               return (
                 <Link

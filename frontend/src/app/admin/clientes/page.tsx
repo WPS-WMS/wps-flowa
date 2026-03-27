@@ -7,6 +7,7 @@ import { apiFetch } from "@/lib/api";
 import { NewClientModal } from "@/components/NewClientModal";
 import { EditClientModal } from "@/components/EditClientModal";
 import { ConfirmarExclusaoModal } from "@/components/ConfirmarExclusaoModal";
+import { useAuth } from "@/contexts/AuthContext";
 
 type Client = {
   id: string;
@@ -26,6 +27,7 @@ type Client = {
 
 export default function ClientesPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +35,15 @@ export default function ClientesPage() {
   const [showNewModal, setShowNewModal] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const basePath =
+    user?.role === "ADMIN"
+      ? "/admin"
+      : user?.role === "GESTOR_PROJETOS"
+        ? "/gestor"
+        : user?.role === "CONSULTOR"
+          ? "/consultor"
+          : "/admin";
 
   const filteredClients = useMemo(() => {
     if (!searchTerm.trim()) return clients;
@@ -79,7 +90,7 @@ export default function ClientesPage() {
             <div className="flex min-w-0 items-center gap-3">
               <button
                 type="button"
-                onClick={() => router.push("/admin/configuracoes")}
+                onClick={() => router.push(`${basePath}/configuracoes`)}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50 transition-colors"
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -182,7 +193,7 @@ export default function ClientesPage() {
                         <div className="flex items-center justify-end gap-2">
                           <button
                             type="button"
-                            onClick={() => router.push(`/admin/clientes/${client.id}`)}
+                            onClick={() => router.push(`${basePath}/clientes/${client.id}`)}
                             className="p-2 rounded-lg text-gray-500 hover:bg-blue-50 hover:text-blue-600 transition-colors"
                             title="Visualizar"
                           >
