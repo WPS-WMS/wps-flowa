@@ -4,6 +4,7 @@ import { use, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { type ProjectForCard } from "@/components/ProjectCard";
+import { ProjectAmsSlaReadonly } from "@/components/ProjectAmsSlaReadonly";
 
 type PageProps = {
   params: Promise<{ projectId: string }>;
@@ -338,6 +339,8 @@ export default function ProjetoDetalheAdminPage({ params }: PageProps) {
             </div>
           </div>
         </section>
+
+        <ProjectAmsSlaReadonly project={project} />
 
         {project.tipoProjeto === "AMS" && (
           <section className="rounded-xl border border-slate-200 bg-white p-4 md:p-5 space-y-4 w-full">

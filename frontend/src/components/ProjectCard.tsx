@@ -34,6 +34,15 @@ export type ProjectForCard = {
   // Configurações AMS (usadas em detalhes/relatórios)
   horasMensaisAMS?: number | null;
   bancoHorasInicial?: number | null;
+  /** SLA por prioridade (horas) — apenas projetos AMS */
+  slaRespostaBaixa?: number | null;
+  slaSolucaoBaixa?: number | null;
+  slaRespostaMedia?: number | null;
+  slaSolucaoMedia?: number | null;
+  slaRespostaAlta?: number | null;
+  slaSolucaoAlta?: number | null;
+  slaRespostaCritica?: number | null;
+  slaSolucaoCritica?: number | null;
   arquivado?: boolean;
   /** Soma das horas apontadas no projeto (API). */
   horasUtilizadas?: number;

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { type ProjectForCard } from "@/components/ProjectCard";
+import { ProjectAmsSlaReadonly } from "@/components/ProjectAmsSlaReadonly";
 
 type PageProps = {
   params: Promise<{ projectId: string }>;
@@ -242,6 +243,8 @@ export default function ProjetoDetalheConsultorPage({ params }: PageProps) {
             </div>
           </div>
         </section>
+
+        <ProjectAmsSlaReadonly project={project} />
 
       </main>
     </div>
