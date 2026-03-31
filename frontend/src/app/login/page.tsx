@@ -73,7 +73,15 @@ export default function LoginPage() {
         router.push("/trocar-senha");
         router.refresh();
       } else {
-        const path = data.user.role === "CLIENTE" ? "/cliente" : data.user.role === "ADMIN" ? "/admin" : "/consultor";
+        const allowed: string[] | undefined = data.user.allowedFeatures;
+        const hasPortal = Array.isArray(allowed) && allowed.includes("portal.corporativo");
+        let path: string;
+        if (data.user.role === "CLIENTE") path = "/cliente";
+        else if (hasPortal) path = "/portal";
+        else if (data.user.role === "ADMIN") path = "/admin";
+        else if (data.user.role === "GESTOR_PROJETOS") path = "/gestor";
+        else path = "/consultor";
+
         if (typeof window !== "undefined") {
           window.location.replace(window.location.origin + path);
         } else {

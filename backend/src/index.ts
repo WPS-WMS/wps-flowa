@@ -21,6 +21,7 @@ import { ticketHistoryRouter } from "./routes/ticket-history.js";
 import { ticketAttachmentsRouter } from "./routes/ticket-attachments.js";
 import { reportsRouter } from "./routes/reports.js";
 import { accessControlRouter } from "./routes/access-control.js";
+import { portalRouter } from "./routes/portal.js";
 
 const app = express();
 app.disable("x-powered-by");
@@ -114,6 +115,7 @@ app.use("/api/ticket-history", ticketHistoryRouter);
 app.use("/api/ticket-attachments", ticketAttachmentsRouter);
 app.use("/api/reports", reportsRouter);
 app.use("/api/access-control", accessControlRouter);
+app.use("/api/portal", portalRouter);
 
 // Servir arquivos estáticos de uploads
 app.use("/uploads", express.static(join(process.cwd(), "uploads")));

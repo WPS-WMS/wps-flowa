@@ -9,11 +9,14 @@ export default function LandingPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
-  // Usuário já autenticado continua indo direto para o seu dashboard.
+  // Usuário já autenticado continua indo direto para o seu dashboard / portal.
   useEffect(() => {
     if (loading) return;
     if (!user) return;
+    const allowed = user.allowedFeatures;
+    const hasPortal = Array.isArray(allowed) && allowed.includes("portal.corporativo");
     if (user.role === "CLIENTE") router.replace("/cliente");
+    else if (hasPortal) router.replace("/portal");
     else if (user.role === "ADMIN") router.replace("/admin");
     else if (user.role === "GESTOR_PROJETOS") router.replace("/gestor");
     else router.replace("/consultor");
