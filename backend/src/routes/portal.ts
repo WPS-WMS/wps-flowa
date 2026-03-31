@@ -70,11 +70,7 @@ portalRouter.get("/events", async (req, res) => {
   res.json({ events, birthdays });
 });
 
-function ensurePortalAdmin(req, res, next) {
-  const user = req.user;
-  if (user.role === "ADMIN" || user.role === "GESTOR_PROJETOS") return next();
-  return res.status(403).json({ error: "Sem permissão para editar o portal." });
-}
+const ensurePortalAdmin = requireFeature("portal.corporativo.editar");
 
 // POST /api/portal/items
 portalRouter.post("/items", ensurePortalAdmin, async (req, res) => {

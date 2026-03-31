@@ -62,6 +62,13 @@ export default function PortalPage() {
     }
   }, [user, loading, router, can]);
 
+  const basePath =
+    user?.role === "ADMIN"
+      ? "/admin"
+      : user?.role === "GESTOR_PROJETOS"
+        ? "/gestor"
+        : "/consultor";
+
   useEffect(() => {
     async function load() {
       try {
@@ -160,15 +167,26 @@ export default function PortalPage() {
               Comunicação interna, documentos e avisos organizados por seções.
             </p>
           </div>
-          <div className="text-right text-xs text-slate-500">
-            <p>
-              {today.toLocaleDateString("pt-BR", {
-                weekday: "long",
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-              })}
-            </p>
+          <div className="flex flex-col items-end gap-2">
+            <div className="text-right text-xs text-slate-500">
+              <p>
+                {today.toLocaleDateString("pt-BR", {
+                  weekday: "long",
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                })}
+              </p>
+            </div>
+            {can("apontamentos") && (
+              <button
+                type="button"
+                onClick={() => router.push(`${basePath}/apontamento`)}
+                className="inline-flex items-center gap-1.5 rounded-full bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700 transition-colors"
+              >
+                Ir para o timesheet
+              </button>
+            )}
           </div>
         </header>
 

@@ -45,6 +45,12 @@ const FEATURES: Feature[] = [
   { id: "configuracoes.permissoes", label: "Configurações \u003e Permissões", section: "Configurações" },
   { id: "configuracoes.clientes", label: "Configurações \u003e Clientes", section: "Configurações" },
   { id: "configuracoes.gestaoPerfis", label: "Configurações \u003e Gestão de perfis", section: "Configurações" },
+  { id: "portal.corporativo", label: "Portal corporativo", section: "Portal corporativo" },
+  {
+    id: "portal.corporativo.editar",
+    label: "Portal corporativo \u003e Editar conteúdos",
+    section: "Portal corporativo",
+  },
 ];
 
 type Permissions = Record<string, Record<RoleId, PermissionState>>;

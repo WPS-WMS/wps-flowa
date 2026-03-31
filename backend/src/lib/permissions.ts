@@ -25,6 +25,7 @@ export const FEATURES = [
   "configuracoes.clientes",
   "configuracoes.gestaoPerfis",
   "portal.corporativo",
+  "portal.corporativo.editar",
 ] as const;
 
 export type FeatureId = (typeof FEATURES)[number];
@@ -84,6 +85,7 @@ export function buildDefaultPermissions(): PermissionsMatrix {
       case "configuracoes.clientes":
       case "configuracoes.gestaoPerfis":
       case "portal.corporativo":
+      case "portal.corporativo.editar":
         initial[feature] = {
           ADMIN: "allow",
           GESTOR_PROJETOS: "deny",
