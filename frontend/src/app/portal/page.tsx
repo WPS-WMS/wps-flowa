@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch } from "@/lib/api";
@@ -40,6 +40,12 @@ export default function PortalPage() {
   const [sections, setSections] = useState<PortalSection[]>([]);
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
   const [items, setItems] = useState<PortalItem[]>([]);
+  const [editingItem, setEditingItem] = useState<PortalItem | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editContent, setEditContent] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [events, setEvents] = useState<PortalEvent[]>([]);
   const [birthdays, setBirthdays] = useState<Birthday[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
@@ -86,6 +92,8 @@ export default function PortalPage() {
     load();
   }, []);
 
+  const canEdit = useMemo(() => can("portal.corporativo.editar"), [can]);
+
   useEffect(() => {
     if (!selectedSectionId) {
       setItems([]);
@@ -113,6 +121,120 @@ export default function PortalPage() {
   }, [selectedSectionId]);
 
   const today = new Date();
+
+  function openCreate() {
+    if (!selectedSectionId) return;
+    setEditingItem(null);
+    setIsCreating(true);
+    setEditTitle("");
+    setEditContent("");
+    setSaveError(null);
+  }
+
+  function openEdit(item: PortalItem) {
+    setEditingItem(item);
+    setIsCreating(false);
+    setEditTitle(item.title);
+    setEditContent(item.content);
+    setSaveError(null);
+  }
+
+  function closeEditor() {
+    setEditingItem(null);
+    setIsCreating(false);
+    setEditTitle("");
+    setEditContent("");
+    setSaveError(null);
+  }
+
+  async function reloadItems(sectionId: string) {
+    setLoadingItems(true);
+    try {
+      const res = await apiFetch(`/api/portal/sections/${sectionId}/items`);
+      if (res.ok) {
+        const list: PortalItem[] = await res.json();
+        setItems(list);
+      }
+    } catch {
+      setItems([]);
+    } finally {
+      setLoadingItems(false);
+    }
+  }
+
+  async function handleSave() {
+    if (!selectedSectionId) return;
+    if (!editTitle.trim()) {
+      setSaveError("Informe um título para o conteúdo.");
+      return;
+    }
+    setSaving(true);
+    setSaveError(null);
+    try {
+      if (isCreating || !editingItem) {
+        const res = await apiFetch("/api/portal/items", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sectionId: selectedSectionId,
+            title: editTitle,
+            content: editContent,
+            type: "text",
+            isActive: true,
+          }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => null);
+          throw new Error(data?.error || "Erro ao criar conteúdo.");
+        }
+      } else {
+        const res = await apiFetch(`/api/portal/items/${editingItem.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: editTitle,
+            content: editContent,
+          }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => null);
+          throw new Error(data?.error || "Erro ao atualizar conteúdo.");
+        }
+      }
+      await reloadItems(selectedSectionId);
+      closeEditor();
+    } catch (e: unknown) {
+      const err = e as Error;
+      setSaveError(err.message || "Erro ao salvar conteúdo.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete(item: PortalItem) {
+    if (!selectedSectionId) return;
+    if (!window.confirm("Tem certeza que deseja remover este conteúdo do portal?")) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const res = await apiFetch(`/api/portal/items/${item.id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok && res.status !== 204) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Erro ao remover conteúdo.");
+      }
+      await reloadItems(selectedSectionId);
+      if (editingItem?.id === item.id) {
+        closeEditor();
+      }
+    } catch (e: unknown) {
+      const err = e as Error;
+      setSaveError(err.message || "Erro ao remover conteúdo.");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <div className="flex min-h-screen bg-slate-50">
@@ -200,6 +322,15 @@ export default function PortalPage() {
                     Materiais, links e comunicados disponibilizados pela empresa.
                   </p>
                 </div>
+                {canEdit && selectedSectionId && (
+                  <button
+                    type="button"
+                    onClick={openCreate}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700 transition-colors"
+                  >
+                    Novo conteúdo
+                  </button>
+                )}
               </div>
               {loadingItems ? (
                 <p className="text-xs text-slate-400">Carregando conteúdos…</p>
@@ -212,9 +343,29 @@ export default function PortalPage() {
                   {items.map((item) => (
                     <article
                       key={item.id}
-                      className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-3 text-sm hover:border-blue-400/70 hover:bg-blue-50/40 transition-colors"
+                      className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-3 text-sm hover:border-blue-400/70 hover:bg-blue-50/40 transition-colors flex flex-col gap-2"
                     >
-                      <p className="text-xs font-semibold text-slate-700 mb-1">{item.title}</p>
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-xs font-semibold text-slate-700 mb-1">{item.title}</p>
+                        {canEdit && (
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => openEdit(item)}
+                              className="rounded-full border border-slate-300 bg-white px-2 py-0.5 text-[10px] text-slate-700 hover:bg-slate-100"
+                            >
+                              Editar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(item)}
+                              className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] text-red-700 hover:bg-red-100"
+                            >
+                              Remover
+                            </button>
+                          </div>
+                        )}
+                      </div>
                       <p className="text-xs text-slate-600 line-clamp-4 whitespace-pre-line">
                         {item.content}
                       </p>
@@ -290,6 +441,78 @@ export default function PortalPage() {
           </div>
         </div>
       </main>
+      {canEdit && selectedSectionId && (isCreating || editingItem) && (
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 backdrop-blur">
+          <div className="mx-auto max-w-4xl px-4 py-3 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <p className="text-xs font-semibold text-slate-800">
+                  {isCreating ? "Novo conteúdo do portal" : "Editar conteúdo do portal"}
+                </p>
+                <p className="text-[11px] text-slate-500">
+                  As alterações ficam visíveis imediatamente para todos os usuários com acesso ao portal.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeEditor}
+                className="text-[11px] text-slate-500 hover:text-slate-800"
+              >
+                Fechar
+              </button>
+            </div>
+            {saveError && (
+              <p className="text-[11px] text-red-600">
+                {saveError}
+              </p>
+            )}
+            <div className="grid gap-2 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,2fr)] items-start">
+              <div className="space-y-1">
+                <label className="block text-[11px] font-medium text-slate-700">
+                  Título
+                </label>
+                <input
+                  type="text"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="block w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder="Ex.: Política de férias, Manual do colaborador..."
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="block text-[11px] font-medium text-slate-700">
+                  Conteúdo
+                </label>
+                <textarea
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  rows={3}
+                  className="block w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder="Texto livre para descrever políticas, comunicados ou orientações."
+                />
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={closeEditor}
+                disabled={saving}
+                className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving}
+                className="inline-flex items-center justify-center rounded-full bg-blue-600 px-4 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-50"
+              >
+                {saving ? "Salvando..." : "Salvar conteúdo"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
