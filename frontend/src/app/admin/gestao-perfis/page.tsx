@@ -7,7 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch } from "@/lib/api";
 import { ChevronLeft } from "lucide-react";
 
-type RoleId = "SUPER_ADMIN" | "ADMIN_PORTAL" | "GESTOR_PROJETOS" | "CONSULTOR" | "CLIENTE";
+type RoleId = "ADMIN_PORTAL" | "GESTOR_PROJETOS" | "CONSULTOR" | "CLIENTE";
 
 type PermissionState = "allow" | "deny";
 
@@ -18,7 +18,6 @@ type Feature = {
 };
 
 const ROLES: { id: RoleId; label: string }[] = [
-  { id: "SUPER_ADMIN", label: "Super administrador" },
   { id: "ADMIN_PORTAL", label: "Administrador do portal" },
   { id: "GESTOR_PROJETOS", label: "Gestor de Projetos" },
   { id: "CONSULTOR", label: "Consultor" },
@@ -62,7 +61,6 @@ function buildDefaultPermissions(): Permissions {
     switch (f.id) {
       case "home":
         initial[f.id] = {
-          SUPER_ADMIN: "allow",
           ADMIN_PORTAL: "allow",
           GESTOR_PROJETOS: "allow",
           CONSULTOR: "allow",
@@ -78,7 +76,6 @@ function buildDefaultPermissions(): Permissions {
       case "apontamentos":
       case "hora-banco":
         initial[f.id] = {
-          SUPER_ADMIN: "allow",
           ADMIN_PORTAL: "allow",
           GESTOR_PROJETOS: "allow",
           CONSULTOR: "allow",
@@ -93,7 +90,6 @@ function buildDefaultPermissions(): Permissions {
       case "configuracoes":
       case "configuracoes.permissoes":
         initial[f.id] = {
-          SUPER_ADMIN: "allow",
           ADMIN_PORTAL: "deny",
           GESTOR_PROJETOS: "allow",
           CONSULTOR: "deny",
@@ -102,7 +98,6 @@ function buildDefaultPermissions(): Permissions {
         break;
       case "chamados.criacao":
         initial[f.id] = {
-          SUPER_ADMIN: "deny",
           ADMIN_PORTAL: "deny",
           GESTOR_PROJETOS: "deny",
           CONSULTOR: "deny",
@@ -113,7 +108,6 @@ function buildDefaultPermissions(): Permissions {
       case "configuracoes.clientes":
       case "configuracoes.gestaoPerfis":
         initial[f.id] = {
-          SUPER_ADMIN: "allow",
           ADMIN_PORTAL: "deny",
           GESTOR_PROJETOS: "deny",
           CONSULTOR: "deny",
@@ -122,7 +116,6 @@ function buildDefaultPermissions(): Permissions {
         break;
       default:
         initial[f.id] = {
-          SUPER_ADMIN: "allow",
           ADMIN_PORTAL: "allow",
           GESTOR_PROJETOS: "allow",
           CONSULTOR: "allow",

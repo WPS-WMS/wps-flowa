@@ -126,6 +126,13 @@ export async function isFeatureAllowed(params: {
   featureId: FeatureId;
 }): Promise<boolean> {
   const { tenantId, role, featureId } = params;
+
+  // SUPER_ADMIN: acesso total a todas as features, exceto abertura de chamados
+  if (role === "SUPER_ADMIN") {
+    if (featureId === "chamados.criacao") return false;
+    return true;
+  }
+
   const row = await prisma.tenantFeaturePermission.findUnique({
     where: { tenantId_featureId_role: { tenantId, featureId, role } },
     select: { state: true },
