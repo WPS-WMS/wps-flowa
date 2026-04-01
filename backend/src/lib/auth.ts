@@ -11,7 +11,7 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   return bcrypt.compare(password, hash);
 }
 
-export type UserRole = "ADMIN" | "GESTOR_PROJETOS" | "CONSULTOR" | "CLIENTE";
+export type UserRole = "SUPER_ADMIN" | "ADMIN_PORTAL" | "GESTOR_PROJETOS" | "CONSULTOR" | "CLIENTE";
 
 export interface JwtPayload {
   id: string;

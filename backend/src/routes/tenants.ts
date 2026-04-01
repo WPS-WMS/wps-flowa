@@ -47,7 +47,7 @@ tenantsRouter.post("/signup", async (req, res) => {
         email: emailNorm,
         name: String(name).trim(),
         passwordHash,
-        role: "ADMIN",
+        role: "SUPER_ADMIN",
         tenantId: tenant.id,
         cargo: "Administrador",
         cargaHorariaSemanal: 40,
@@ -67,7 +67,7 @@ tenantsRouter.post("/signup", async (req, res) => {
       id: user.id,
       email: user.email,
       name: user.name,
-      role: "ADMIN",
+      role: "SUPER_ADMIN",
       tenantId: user.tenantId,
     });
 
