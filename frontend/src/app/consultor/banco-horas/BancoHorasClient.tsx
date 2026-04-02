@@ -13,15 +13,38 @@ function fmt(n: number) {
   return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
 }
 
+/** Mês “fechado” para exibir complementares: só meses já encerrados (anteriores ao mês corrente no ano corrente). */
+function isMonthClosedForComplementares(year: number, month: number): boolean {
+  const n = new Date();
+  if (year < n.getFullYear()) return true;
+  if (year > n.getFullYear()) return false;
+  return month < n.getMonth() + 1;
+}
+
+function complementaresExibidos(row: BancoRow): number {
+  return isMonthClosedForComplementares(row.year, row.month) ? row.horasComplementares : 0;
+}
+
+function parseHorasPagasInput(raw: string): number | null {
+  const t = raw.replace(",", ".").trim();
+  if (!t) return 0;
+  const n = parseFloat(t);
+  if (!Number.isFinite(n) || n < 0) return null;
+  return Math.round(n * 100) / 100;
+}
+
 type BancoRow = {
   id: string | null;
   month: number;
   year: number;
   horasPrevistas: number;
   horasTrabalhadas: number;
+  horasPagas: number;
   horasComplementares: number;
   observacao: string | null;
 };
+
+type EditFields = { observacao: string; horasPagas: string };
 
 export function BancoHorasClient({ isAdmin = false }: { isAdmin?: boolean }) {
   const { user } = useAuth();
@@ -32,22 +55,32 @@ export function BancoHorasClient({ isAdmin = false }: { isAdmin?: boolean }) {
   const [data, setData] = useState<BancoRow[]>([]);
   const [savingObs, setSavingObs] = useState<string | null>(null);
   const [editingRow, setEditingRow] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState<Record<string, { observacao: string }>>({});
+  const [editValue, setEditValue] = useState<Record<string, EditFields>>({});
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   async function loadHourBank() {
     const url = `/api/hour-bank?year=${year}${isAdmin && selectedUserId ? `&userId=${selectedUserId}` : ""}`;
     const r = await apiFetch(url);
     const json = await r.json();
-    setData(Array.isArray(json) ? json : []);
+    const list = Array.isArray(json) ? json : [];
+    setData(
+      list.map((row: BancoRow) => ({
+        ...row,
+        horasPagas: typeof row.horasPagas === "number" && Number.isFinite(row.horasPagas) ? row.horasPagas : 0,
+        horasComplementares:
+          typeof row.horasComplementares === "number" && Number.isFinite(row.horasComplementares)
+            ? row.horasComplementares
+            : 0,
+      })),
+    );
   }
 
   useEffect(() => {
     if (isAdmin) {
-      // Usar for-select para compatibilidade com ADMIN e GESTOR_PROJETOS (GET /api/users é só ADMIN)
       apiFetch("/api/users/for-select")
         .then((r) => r.json())
         .then((list: Array<{ id: string; name: string; email?: string }>) =>
-          setUsers(list.map((u) => ({ id: u.id, name: u.name })))
+          setUsers(list.map((u) => ({ id: u.id, name: u.name }))),
         );
     }
   }, [isAdmin]);
@@ -56,7 +89,6 @@ export function BancoHorasClient({ isAdmin = false }: { isAdmin?: boolean }) {
     loadHourBank().catch(() => setData([]));
   }, [year, selectedUserId, isAdmin]);
 
-  // Atualiza automaticamente se o consultor/admin mudar apontamentos em outra tela.
   useEffect(() => {
     function onTimeEntriesChanged() {
       loadHourBank().catch(() => setData([]));
@@ -73,8 +105,21 @@ export function BancoHorasClient({ isAdmin = false }: { isAdmin?: boolean }) {
     const key = rowKey(row);
     const ev = editValue[key];
     if (!ev) return;
-    const obsChanged = (ev.observacao ?? "").trim() !== (row.observacao ?? "").trim();
-    if (!obsChanged) {
+    setSaveError(null);
+
+    const hpParsed = parseHorasPagasInput(ev.horasPagas);
+    if (hpParsed === null) {
+      setSaveError("Horas pagas inválidas. Use um número ≥ 0 (ex.: 1 ou 1,5).");
+      return;
+    }
+
+    const obsNew = (ev.observacao ?? "").trim();
+    const obsOld = (row.observacao ?? "").trim();
+    const hpOld = Math.round((row.horasPagas ?? 0) * 100) / 100;
+    const obsChanged = obsNew !== obsOld;
+    const hpChanged = Math.abs(hpParsed - hpOld) > 0.0001;
+
+    if (!obsChanged && !hpChanged) {
       setEditingRow(null);
       setEditValue((prev) => {
         const next = { ...prev };
@@ -83,31 +128,34 @@ export function BancoHorasClient({ isAdmin = false }: { isAdmin?: boolean }) {
       });
       return;
     }
+
     setSavingObs(key);
     try {
-      const body: { month: number; year: number; observacao?: string | null; userId?: string } = {
+      const body: {
+        month: number;
+        year: number;
+        observacao?: string | null;
+        horasPagas?: number | null;
+        userId?: string;
+      } = {
         month: row.month,
         year: row.year,
         ...(isAdmin && selectedUserId ? { userId: selectedUserId } : {}),
       };
-      if (obsChanged) body.observacao = (ev.observacao ?? "").trim() || null;
+      if (obsChanged) body.observacao = obsNew || null;
+      if (hpChanged) body.horasPagas = hpParsed === 0 ? null : hpParsed;
+
       const res = await apiFetch("/api/hour-bank", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      const updated = await res.json();
-      setData((prev) =>
-        prev.map((r) =>
-          r.month === row.month && r.year === row.year
-            ? {
-                ...r,
-                id: updated.id,
-                observacao: updated.observacao,
-              }
-            : r
-        )
-      );
+      const updated = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setSaveError(typeof updated?.error === "string" ? updated.error : "Não foi possível salvar.");
+        return;
+      }
+      await loadHourBank();
       setEditingRow(null);
       setEditValue((prev) => {
         const next = { ...prev };
@@ -116,6 +164,7 @@ export function BancoHorasClient({ isAdmin = false }: { isAdmin?: boolean }) {
       });
     } catch (err) {
       console.error("Erro ao salvar:", err);
+      setSaveError("Erro de conexão ao salvar.");
     } finally {
       setSavingObs(null);
     }
@@ -124,7 +173,7 @@ export function BancoHorasClient({ isAdmin = false }: { isAdmin?: boolean }) {
   const filteredData = monthFilter
     ? data.filter((r) => r.month === parseInt(monthFilter, 10))
     : data;
-  const totalHorasExtras = data.reduce((s, r) => s + (r.horasComplementares ?? 0), 0);
+  const totalHorasExtras = data.reduce((s, r) => s + complementaresExibidos(r), 0);
 
   const currentUserName =
     isAdmin && selectedUserId
@@ -142,18 +191,28 @@ export function BancoHorasClient({ isAdmin = false }: { isAdmin?: boolean }) {
   }
 
   function downloadCsv() {
-    const headers = ["Usuário", "Mês/Ano", "Horas previstas", "Horas trabalhadas", "Total de Horas complementares", "Observação"];
+    const headers = [
+      "Usuário",
+      "Mês/Ano",
+      "Horas previstas",
+      "Horas trabalhadas",
+      "Horas pagas",
+      "Total de Horas complementares",
+      "Observação",
+    ];
     const rows: string[][] = filteredData.map((row) => [
       currentUserName,
       `${MESES[row.month - 1]}/${row.year}`,
       fmt(row.horasPrevistas),
       fmt(row.horasTrabalhadas),
-      `${row.horasComplementares >= 0 ? "" : "-"}${fmt(Math.abs(row.horasComplementares))}`,
+      fmt(row.horasPagas ?? 0),
+      `${complementaresExibidos(row) >= 0 ? "" : "-"}${fmt(Math.abs(complementaresExibidos(row)))}`,
       row.observacao ?? "",
     ]);
     const totalRow = [
       currentUserName,
       "Total de horas complementares do ano",
+      "",
       "",
       "",
       `${totalHorasExtras >= 0 ? "" : "-"}${fmt(Math.abs(totalHorasExtras))}`,
@@ -184,7 +243,9 @@ export function BancoHorasClient({ isAdmin = false }: { isAdmin?: boolean }) {
             className="px-4 py-2 bg-gray-50 border border-blue-200 rounded-lg text-gray-900"
           >
             {Array.from({ length: 2036 - 2024 + 1 }, (_, i) => 2024 + i).map((y) => (
-              <option key={y} value={y}>{y}</option>
+              <option key={y} value={y}>
+                {y}
+              </option>
             ))}
           </select>
         </div>
@@ -197,7 +258,9 @@ export function BancoHorasClient({ isAdmin = false }: { isAdmin?: boolean }) {
           >
             <option value="">Todos os meses</option>
             {MESES.map((nome, i) => (
-              <option key={i} value={i + 1}>{nome}</option>
+              <option key={i} value={i + 1}>
+                {nome}
+              </option>
             ))}
           </select>
         </div>
@@ -210,7 +273,9 @@ export function BancoHorasClient({ isAdmin = false }: { isAdmin?: boolean }) {
               className="px-4 py-2 bg-gray-50 border border-blue-200 rounded-lg text-gray-900 min-w-[200px]"
             >
               {users.map((u) => (
-                <option key={u.id} value={u.id}>{u.name}</option>
+                <option key={u.id} value={u.id}>
+                  {u.name}
+                </option>
               ))}
             </select>
           </div>
@@ -227,127 +292,191 @@ export function BancoHorasClient({ isAdmin = false }: { isAdmin?: boolean }) {
         </div>
       </div>
 
-      <div className="rounded-xl border border-blue-100 overflow-hidden bg-white shadow-sm">
-        <table className="w-full table-fixed">
+      <p className="text-xs text-gray-500 max-w-3xl">
+        <span className="font-medium text-gray-700">Complementares:</span> só aparecem para meses já encerrados
+        (mês atual e futuros ficam em 00:00 até o mês fechar).{" "}
+        <span className="font-medium text-gray-700">Horas pagas:</span> horas quitadas em dinheiro (não acumuladas no
+        banco), informadas pelo gestor/admin.
+      </p>
+
+      {saveError && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800">{saveError}</div>
+      )}
+
+      <div className="rounded-xl border border-blue-100 overflow-x-auto bg-white shadow-sm">
+        <table className="w-full min-w-[720px] table-fixed">
           <thead>
             <tr className="bg-blue-50 text-gray-600 text-sm">
-              <th className="px-2 py-2 text-left w-[10.5rem] whitespace-nowrap">Mês/Ano</th>
-              <th className="px-1 py-2 text-center whitespace-nowrap min-w-[6rem]">Horas previstas</th>
-              <th className="px-1 py-2 text-center whitespace-nowrap min-w-[6rem]">Horas trabalhadas</th>
-              <th className="px-1 py-2 text-center whitespace-nowrap min-w-[7rem]">Total de Horas complementares</th>
-              <th className="px-4 py-3 text-left whitespace-nowrap">Observação</th>
+              <th className="px-2 py-2 text-left w-[5.5rem] whitespace-nowrap">Mês/Ano</th>
+              <th className="px-1 py-2 text-center whitespace-nowrap w-[5.5rem]">Horas previstas</th>
+              <th className="px-1 py-2 text-center whitespace-nowrap w-[5.5rem]">Horas trabalhadas</th>
+              <th className="px-1 py-2 text-center whitespace-nowrap w-[5.5rem]">Horas pagas</th>
+              <th className="px-1 py-2 text-center whitespace-nowrap w-[6.5rem]">Total Horas complementares</th>
+              <th className="px-4 py-3 text-left min-w-[12rem]">Observação / ajustes</th>
             </tr>
           </thead>
           <tbody>
-            {filteredData.map((row) => (
-              <tr key={`${row.year}-${row.month}`} className="border-t border-blue-50">
-                <td className="px-2 py-2 text-gray-800 w-[10.5rem]">{MESES[row.month - 1]}/{row.year}</td>
-                <td className="px-1 py-2 text-center font-mono text-gray-600 min-w-[6rem]">{fmt(row.horasPrevistas)}</td>
-                <td className="px-1 py-2 text-center font-mono text-gray-600 min-w-[6rem]">
-                  {fmt(row.horasTrabalhadas)}
-                </td>
-                <td className="px-1 py-2 text-center font-mono min-w-[7rem]">
-                  <span className={row.horasComplementares >= 0 ? "text-green-600" : "text-red-600"}>
-                    {fmt(Math.abs(row.horasComplementares))}{row.horasComplementares >= 0 ? " +" : " -"}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
-                  {isAdmin ? (
-                    <div className="flex items-center gap-2">
-                      {editingRow === rowKey(row) ? (
-                        <>
-                          <input
-                            type="text"
-                            value={editValue[rowKey(row)]?.observacao ?? row.observacao ?? ""}
-                            onChange={(e) =>
-                              setEditValue((prev) => ({
-                                ...prev,
-                                [rowKey(row)]: {
-                                      ...(prev[rowKey(row)] ?? { observacao: row.observacao ?? "" }),
-                                  observacao: e.target.value,
-                                },
-                              }))
-                            }
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") saveEdits(row);
-                            }}
-                            placeholder="Observação..."
-                            disabled={savingObs === rowKey(row)}
-                            className="flex-1 min-w-0 px-3 py-2 text-sm rounded-lg border border-blue-200 bg-white text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 disabled:opacity-60"
-                            autoFocus
-                          />
-                          {(() => {
-                            const ev = editValue[rowKey(row)];
-                            const obsChanged =
-                              (ev?.observacao ?? row.observacao ?? "").trim() !== (row.observacao ?? "").trim();
-                            return obsChanged ? (
-                              <button
-                                type="button"
-                                onClick={() => saveEdits(row)}
-                                disabled={savingObs === rowKey(row)}
-                                className="shrink-0 flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-60"
-                              >
-                                <Check className="h-4 w-4" />
-                                Salvar
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setEditingRow(null);
-                                  setEditValue((prev) => {
-                                    const next = { ...prev };
-                                    delete next[rowKey(row)];
-                                    return next;
-                                  });
-                                }}
-                                className="shrink-0 flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
-                              >
-                                Cancelar
-                              </button>
-                            );
-                          })()}
-                        </>
-                      ) : (
-                        <>
-                          <input
-                            type="text"
-                            value={row.observacao ?? ""}
-                            readOnly
-                            className="flex-1 min-w-0 px-3 py-2 text-sm rounded-lg border border-gray-200 bg-gray-50 text-gray-600"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingRow(rowKey(row));
-                              setEditValue((prev) => ({
-                                ...prev,
-                                [rowKey(row)]: {
-                                  observacao: row.observacao ?? "",
-                                },
-                              }));
-                            }}
-                            className="shrink-0 flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-lg border border-blue-200 text-blue-600 hover:bg-blue-50"
-                          >
-                            <Pencil className="h-4 w-4" />
-                            Editar
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  ) : (
-                    <span className="text-gray-500 text-sm">{row.observacao ?? "-"}</span>
-                  )}
-                </td>
-              </tr>
-            ))}
+            {filteredData.map((row) => {
+              const exib = complementaresExibidos(row);
+              return (
+                <tr key={`${row.year}-${row.month}`} className="border-t border-blue-50">
+                  <td className="px-2 py-2 text-gray-800 w-[5.5rem]">
+                    {MESES[row.month - 1]}/{row.year}
+                  </td>
+                  <td className="px-1 py-2 text-center font-mono text-gray-600 w-[5.5rem]">
+                    {fmt(row.horasPrevistas)}
+                  </td>
+                  <td className="px-1 py-2 text-center font-mono text-gray-600 w-[5.5rem]">
+                    {fmt(row.horasTrabalhadas)}
+                  </td>
+                  <td className="px-1 py-2 text-center font-mono text-gray-600 w-[5.5rem]">
+                    {isAdmin && editingRow === rowKey(row) ? (
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.25}
+                        value={editValue[rowKey(row)]?.horasPagas ?? ""}
+                        onChange={(e) =>
+                          setEditValue((prev) => ({
+                            ...prev,
+                            [rowKey(row)]: {
+                              ...(prev[rowKey(row)] ?? {
+                                observacao: row.observacao ?? "",
+                                horasPagas: row.horasPagas ? String(row.horasPagas) : "",
+                              }),
+                              horasPagas: e.target.value,
+                            },
+                          }))
+                        }
+                        disabled={savingObs === rowKey(row)}
+                        className="w-full max-w-[5.5rem] mx-auto px-1 py-1 text-sm rounded border border-blue-200 text-center"
+                        title="Horas quitadas em pagamento (decimais, ex.: 1,5)"
+                      />
+                    ) : (
+                      fmt(row.horasPagas ?? 0)
+                    )}
+                  </td>
+                  <td className="px-1 py-2 text-center font-mono w-[6.5rem]">
+                    <span className={exib >= 0 ? "text-green-600" : "text-red-600"}>
+                      {fmt(Math.abs(exib))}
+                      {exib >= 0 ? " +" : " -"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    {isAdmin ? (
+                      <div className="flex flex-col gap-2">
+                        {editingRow === rowKey(row) ? (
+                          <>
+                            <input
+                              type="text"
+                              value={editValue[rowKey(row)]?.observacao ?? row.observacao ?? ""}
+                              onChange={(e) =>
+                                setEditValue((prev) => ({
+                                  ...prev,
+                                  [rowKey(row)]: {
+                                    ...(prev[rowKey(row)] ?? {
+                                      observacao: row.observacao ?? "",
+                                      horasPagas: row.horasPagas ? String(row.horasPagas) : "",
+                                    }),
+                                    observacao: e.target.value,
+                                  },
+                                }))
+                              }
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") void saveEdits(row);
+                              }}
+                              placeholder="Observação..."
+                              disabled={savingObs === rowKey(row)}
+                              className="w-full px-3 py-2 text-sm rounded-lg border border-blue-200 bg-white text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 disabled:opacity-60"
+                              autoFocus
+                            />
+                            <div className="flex items-center gap-2">
+                              {(() => {
+                                const ev = editValue[rowKey(row)];
+                                const obsChanged =
+                                  (ev?.observacao ?? row.observacao ?? "").trim() !== (row.observacao ?? "").trim();
+                                const hpParsed = parseHorasPagasInput(ev?.horasPagas ?? "");
+                                const hpOld = Math.round((row.horasPagas ?? 0) * 100) / 100;
+                                const hpChanged =
+                                  hpParsed !== null && Math.abs(hpParsed - hpOld) > 0.0001;
+                                const canSave = obsChanged || hpChanged;
+                                return canSave ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => void saveEdits(row)}
+                                    disabled={savingObs === rowKey(row)}
+                                    className="shrink-0 flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-60"
+                                  >
+                                    <Check className="h-4 w-4" />
+                                    Salvar
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingRow(null);
+                                      setEditValue((prev) => {
+                                        const next = { ...prev };
+                                        delete next[rowKey(row)];
+                                        return next;
+                                      });
+                                      setSaveError(null);
+                                    }}
+                                    className="shrink-0 flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
+                                  >
+                                    Cancelar
+                                  </button>
+                                );
+                              })()}
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={row.observacao ?? ""}
+                              readOnly
+                              className="flex-1 min-w-0 px-3 py-2 text-sm rounded-lg border border-gray-200 bg-gray-50 text-gray-600"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSaveError(null);
+                                setEditingRow(rowKey(row));
+                                setEditValue((prev) => ({
+                                  ...prev,
+                                  [rowKey(row)]: {
+                                    observacao: row.observacao ?? "",
+                                    horasPagas: row.horasPagas ? String(row.horasPagas) : "",
+                                  },
+                                }));
+                              }}
+                              className="shrink-0 flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-lg border border-blue-200 text-blue-600 hover:bg-blue-50"
+                            >
+                              <Pencil className="h-4 w-4" />
+                              Editar
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-gray-500 text-sm">{row.observacao ?? "-"}</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
             <tr className="border-t-2 border-blue-200 bg-blue-50/50 font-medium">
-              <td className="px-2 py-2 text-gray-800 w-[10.5rem] whitespace-nowrap">Total de horas complementares do ano</td>
-              <td className="px-1 py-2 min-w-[6rem]"></td>
-              <td className="px-1 py-2 min-w-[6rem]"></td>
-              <td className="px-1 py-2 text-center font-mono min-w-[7rem]">
+              <td className="px-2 py-2 text-gray-800 whitespace-nowrap" colSpan={4}>
+                Total de horas complementares do ano
+                <span className="block text-xs font-normal text-gray-500 sm:inline sm:ml-2">
+                  (só meses encerrados)
+                </span>
+              </td>
+              <td className="px-1 py-2 text-center font-mono w-[6.5rem]">
                 <span className={totalHorasExtras >= 0 ? "text-green-600" : "text-red-600"}>
-                  {fmt(Math.abs(totalHorasExtras))}{totalHorasExtras >= 0 ? " +" : " -"}
+                  {fmt(Math.abs(totalHorasExtras))}
+                  {totalHorasExtras >= 0 ? " +" : " -"}
                 </span>
               </td>
               <td className="px-4 py-3"></td>

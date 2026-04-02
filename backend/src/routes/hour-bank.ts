@@ -133,7 +133,8 @@ hourBankRouter.get("/", async (req, res) => {
     const previstasComputed = computeHorasPrevistasParaMes(targetUser, y, m);
     const horasPrevistas = Math.round(previstasComputed * 100) / 100;
     const horasTrabalhadas = Math.round((byMonth[m] || 0) * 100) / 100;
-    const horasComplementares = Math.round((horasTrabalhadas - horasPrevistas) * 100) / 100;
+    const horasPagas = rec?.horasPagas != null && Number.isFinite(Number(rec.horasPagas)) ? Math.round(Number(rec.horasPagas) * 100) / 100 : 0;
+    const horasComplementares = Math.round((horasTrabalhadas - horasPrevistas - horasPagas) * 100) / 100;
 
     if (rec) {
       result.push({
@@ -142,6 +143,7 @@ hourBankRouter.get("/", async (req, res) => {
         year: y,
         horasPrevistas,
         horasTrabalhadas,
+        horasPagas,
         horasComplementares,
         observacao: rec.observacao,
       });
@@ -152,6 +154,7 @@ hourBankRouter.get("/", async (req, res) => {
         year: y,
         horasPrevistas,
         horasTrabalhadas,
+        horasPagas: 0,
         horasComplementares,
         observacao: null,
       });
@@ -235,7 +238,7 @@ hourBankRouter.patch("/", async (req, res) => {
     });
     return;
   }
-  const { month, year, observacao, horasTrabalhadas, userId } = req.body;
+  const { month, year, observacao, horasTrabalhadas, horasPagas, userId } = req.body;
   if (horasTrabalhadas !== undefined) {
     res.status(400).json({
       error: "Horas trabalhadas não pode ser ajustado manualmente. Esse valor é calculado pelos apontamentos.",
@@ -283,7 +286,12 @@ hourBankRouter.patch("/", async (req, res) => {
       where: { userId: targetUserId, date: { gte: start, lte: end } },
     });
     const horasTrab = entries.reduce((s, e) => s + e.totalHoras, 0);
-    const horasComplementares = horasTrab - horasPrevistas;
+    const hp =
+      horasPagas !== undefined && horasPagas !== null && String(horasPagas).trim() !== ""
+        ? Number(horasPagas)
+        : 0;
+    const horasPagasNum = Number.isFinite(hp) && hp >= 0 ? Math.round(hp * 100) / 100 : 0;
+    const horasComplementares = horasTrab - horasPrevistas - horasPagasNum;
     record = await prisma.hourBankRecord.create({
       data: {
         userId: targetUserId,
@@ -292,12 +300,25 @@ hourBankRouter.patch("/", async (req, res) => {
         horasPrevistas: Math.round(horasPrevistas * 100) / 100,
         horasTrabalhadas: Math.round(horasTrab * 100) / 100,
         horasComplementares: Math.round(horasComplementares * 100) / 100,
+        horasPagas: horasPagasNum > 0 ? horasPagasNum : null,
         observacao: observacao != null ? String(observacao) : null,
       },
     });
   } else {
-    const updateData: { observacao?: string | null } = {};
+    const updateData: { observacao?: string | null; horasPagas?: number | null } = {};
     if (observacao !== undefined) updateData.observacao = observacao != null ? String(observacao) : null;
+    if (horasPagas !== undefined) {
+      if (horasPagas === null || String(horasPagas).trim() === "") {
+        updateData.horasPagas = null;
+      } else {
+        const hp = Number(horasPagas);
+        if (!Number.isFinite(hp) || hp < 0) {
+          res.status(400).json({ error: "Horas pagas inválidas. Informe um número ≥ 0 (em horas decimais, ex.: 1,5)." });
+          return;
+        }
+        updateData.horasPagas = Math.round(hp * 100) / 100;
+      }
+    }
     if (Object.keys(updateData).length > 0) {
       record = await prisma.hourBankRecord.update({
         where: { id: record.id },

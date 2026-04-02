@@ -137,6 +137,7 @@ model HourBankRecord {
   horasPrevistas      Float
   horasTrabalhadas    Float
   horasComplementares Float?
+  horasPagas          Float?
   observacao          String?
   userId              String
   createdAt           DateTime @default(now())
