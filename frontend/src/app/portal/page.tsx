@@ -32,6 +32,7 @@ type Birthday = {
   name: string;
   birthDate: string | null;
   cargo?: string | null;
+  avatarUrl?: string | null;
 };
 
 export default function PortalPage() {
@@ -418,11 +419,30 @@ export default function PortalPage() {
                   <ul className="mt-2 space-y-1.5 text-xs text-slate-600">
                     {birthdays.map((b) => (
                       <li key={b.id} className="flex items-center justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="font-medium text-slate-800 truncate">{b.name}</p>
-                          {b.cargo && (
-                            <p className="text-[11px] text-slate-500 truncate">{b.cargo}</p>
-                          )}
+                        <div className="min-w-0 flex items-center gap-2">
+                          <span className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-100 text-[10px] font-semibold text-slate-700">
+                            {b.avatarUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={b.avatarUrl}
+                                alt={b.name}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              (b.name || "?")
+                                .trim()
+                                .split(/\s+/)
+                                .slice(0, 2)
+                                .map((p) => p[0]?.toUpperCase())
+                                .join("")
+                            )}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="font-medium text-slate-800 truncate">{b.name}</p>
+                            {b.cargo && (
+                              <p className="text-[11px] text-slate-500 truncate">{b.cargo}</p>
+                            )}
+                          </div>
                         </div>
                         {b.birthDate && (
                           <span className="text-[11px] text-slate-500">

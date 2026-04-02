@@ -57,13 +57,14 @@ portalRouter.get("/events", async (req, res) => {
   const birthdays = await prisma.user.findMany({
     where: {
       tenantId: user.tenantId,
+      role: { not: "CLIENTE" },
       birthDate: {
         gte: new Date(y, m - 1, 1),
         lte: new Date(y, m, 0, 23, 59, 59, 999),
       },
       ativo: true,
     },
-    select: { id: true, name: true, birthDate: true, cargo: true },
+    select: { id: true, name: true, birthDate: true, cargo: true, avatarUrl: true },
     orderBy: { birthDate: "asc" },
   });
 

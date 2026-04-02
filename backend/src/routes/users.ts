@@ -108,6 +108,7 @@ usersRouter.get("/", async (req, res) => {
       email: true,
       name: true,
       role: true,
+      avatarUrl: true,
       cargo: true,
       cargaHorariaSemanal: true,
       limiteHorasDiarias: true,
@@ -137,6 +138,7 @@ usersRouter.post("/", async (req, res) => {
     password,
     role,
     cargo,
+    avatarUrl,
     cargaHorariaSemanal,
     limiteHorasDiarias,
     limiteHorasPorDia,
@@ -257,6 +259,7 @@ usersRouter.post("/", async (req, res) => {
       role,
       tenantId: authUser.tenantId,
       cargo: cargo || null,
+      avatarUrl: avatarUrl ? String(avatarUrl) : null,
       cargaHorariaSemanal: cargaHorariaSemanal ?? 40,
       // Cliente não aponta horas: limpar configurações de apontamento
       limiteHorasDiarias: isCliente ? null : limiteHorasDiarias != null ? Number(limiteHorasDiarias) : 8,
@@ -288,6 +291,7 @@ usersRouter.post("/", async (req, res) => {
       email: true,
       name: true,
       role: true,
+      avatarUrl: true,
       cargo: true,
       cargaHorariaSemanal: true,
       permitirMaisHoras: true,
@@ -317,6 +321,7 @@ usersRouter.patch("/:id", async (req, res) => {
       password,
       role,
       cargo,
+      avatarUrl,
       cargaHorariaSemanal,
       limiteHorasDiarias,
       limiteHorasPorDia,
@@ -379,6 +384,7 @@ usersRouter.patch("/:id", async (req, res) => {
     if (name !== undefined) data.name = String(name).trim();
     if (role !== undefined) data.role = String(role);
     if (cargo !== undefined) data.cargo = (cargo as string)?.trim() || null;
+    if (avatarUrl !== undefined) data.avatarUrl = avatarUrl ? String(avatarUrl) : null;
     if (cargaHorariaSemanal !== undefined) data.cargaHorariaSemanal = cargaHorariaSemanal ?? 40;
     // Cliente não aponta horas: ignorar/limpar configurações de apontamento
     if (newRole === "CLIENTE") {
