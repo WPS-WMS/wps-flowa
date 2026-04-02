@@ -5,6 +5,31 @@ import { authMiddleware } from "../lib/auth.js";
 export const clientReportsRouter = Router();
 clientReportsRouter.use(authMiddleware);
  
+function parseRange(params: { start?: unknown; end?: unknown }) {
+  const now = new Date();
+  const fallbackStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const fallbackEnd = new Date();
+
+  const rawStart = typeof params.start === "string" ? params.start : undefined;
+  const rawEnd = typeof params.end === "string" ? params.end : undefined;
+
+  const startIso = rawStart
+    ? rawStart.length === 10
+      ? `${rawStart}T00:00:00.000Z`
+      : rawStart
+    : null;
+  const endIso = rawEnd
+    ? rawEnd.length === 10
+      ? `${rawEnd}T23:59:59.999Z`
+      : rawEnd
+    : null;
+
+  const startDate = startIso ? new Date(startIso) : fallbackStart;
+  const endDate = endIso ? new Date(endIso) : fallbackEnd;
+
+  return { startDate, endDate };
+}
+
 // GET /api/client-reports/projects
 clientReportsRouter.get("/projects", async (req, res) => {
   try {
@@ -47,9 +72,8 @@ clientReportsRouter.get("/gestao-horas", async (req, res) => {
       return;
     }
  
-    const { start, end, projectId } = req.query;
-    const startDate = start ? new Date(String(start)) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-    const endDate = end ? new Date(String(end)) : new Date();
+    const { projectId } = req.query;
+    const { startDate, endDate } = parseRange({ start: req.query.start, end: req.query.end });
  
     const clientIds = (
       await prisma.clientUser.findMany({

@@ -59,8 +59,8 @@ export default function ClienteRelatorioGestaoHorasPage() {
     setHasFiltered(true);
     setLoading(true);
     const params = new URLSearchParams({
-      start: new Date(start).toISOString(),
-      end: new Date(end + "T23:59:59.999Z").toISOString(),
+      start,
+      end,
     });
     if (projectId) params.set("projectId", projectId);
 
