@@ -22,6 +22,7 @@ import { ticketAttachmentsRouter } from "./routes/ticket-attachments.js";
 import { reportsRouter } from "./routes/reports.js";
 import { accessControlRouter } from "./routes/access-control.js";
 import { portalRouter } from "./routes/portal.js";
+import { clientReportsRouter } from "./routes/client-reports.js";
 
 const app = express();
 app.disable("x-powered-by");
@@ -114,6 +115,7 @@ app.use("/api/client-contacts", clientContactsRouter);
 app.use("/api/ticket-history", ticketHistoryRouter);
 app.use("/api/ticket-attachments", ticketAttachmentsRouter);
 app.use("/api/reports", reportsRouter);
+app.use("/api/client-reports", clientReportsRouter);
 app.use("/api/access-control", accessControlRouter);
 app.use("/api/portal", portalRouter);
 

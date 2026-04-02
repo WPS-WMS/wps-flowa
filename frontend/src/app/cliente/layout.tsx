@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Sidebar, type NavItem } from "@/components/Sidebar";
-import { Home, PlusCircle, FolderKanban, Settings } from "lucide-react";
+import { Home, PlusCircle, FolderKanban, Settings, BarChart3 } from "lucide-react";
 
 export default function ClienteLayout({ children }: { children: React.ReactNode }) {
   const { user, loading, can } = useAuth();
@@ -29,6 +29,7 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
         ],
       });
     }
+    items.push({ href: "/cliente/relatorios/gestao-horas", label: "Gestão de horas", icon: BarChart3 });
     if (can("configuracoes")) {
       items.push({ href: "/cliente/configuracoes", label: "Configurações", icon: Settings });
     }

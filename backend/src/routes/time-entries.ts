@@ -131,11 +131,16 @@ timeEntriesRouter.get("/", async (req, res) => {
       });
       where = { ...tenantFilter, projectId: { in: projects.map((p) => p.id) } };
     } else {
-      const targetUserId =
-        (user.role === "SUPER_ADMIN" || user.role === "GESTOR_PROJETOS") && userId
-          ? String(userId)
-          : user.id;
-      where = { ...tenantFilter, userId: targetUserId };
+      // Padrão:
+      // - SUPER_ADMIN / GESTOR_PROJETOS: se não houver userId, pode ver todos (tenant); se houver, filtra pelo usuário
+      // - Demais perfis: sempre filtra pelo próprio usuário
+      const isAdminViewer = user.role === "SUPER_ADMIN" || user.role === "GESTOR_PROJETOS";
+      if (isAdminViewer) {
+        where = { ...tenantFilter };
+        if (userId) where.userId = String(userId);
+      } else {
+        where = { ...tenantFilter, userId: user.id };
+      }
     }
     if (start && end) {
       where.date = { gte: new Date(String(start)), lte: new Date(String(end)) };
@@ -170,7 +175,7 @@ timeEntriesRouter.get("/", async (req, res) => {
         project: { include: { client: true } },
         ticket: true,
         activity: true,
-        user: { select: { id: true, name: true } },
+        user: { select: { id: true, name: true, avatarUrl: true } },
       },
       orderBy: [{ date: "desc" }, { horaInicio: "asc" }],
     });

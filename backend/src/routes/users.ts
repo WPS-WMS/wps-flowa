@@ -9,7 +9,7 @@ usersRouter.use(authMiddleware);
 usersRouter.get("/for-select", requireFeature("projeto"), async (req, res) => {
   const authUser = req.user;
   const users = await prisma.user.findMany({
-    where: { tenantId: authUser.tenantId },
+    where: { tenantId: authUser.tenantId, role: { not: "CLIENTE" }, ativo: true },
     select: { id: true, name: true, email: true },
     orderBy: { name: "asc" },
   });
