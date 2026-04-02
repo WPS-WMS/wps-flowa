@@ -59,7 +59,17 @@ export default function ConsumoPage() {
             <tbody>
               {entries.map((e, i) => (
                 <tr key={i} className="border-t border-blue-100">
-                  <td className="px-4 py-3 text-gray-700">{new Date(e.date).toLocaleDateString("pt-BR")}</td>
+                  <td className="px-4 py-3 text-gray-700">
+                    {(() => {
+                      const ymd = String(e.date || "").slice(0, 10);
+                      if (/^\d{4}-\d{2}-\d{2}$/.test(ymd)) {
+                        const [y, m, d] = ymd.split("-");
+                        return `${d}/${m}/${y}`;
+                      }
+                      const dt = new Date(e.date);
+                      return dt.toLocaleDateString("pt-BR");
+                    })()}
+                  </td>
                   <td className="px-4 py-3 text-gray-700">{e.project?.client?.name} - {e.project?.name}</td>
                   <td className="px-4 py-3 text-gray-500">{e.ticket ? `${e.ticket.code}: ${e.ticket.title}` : "-"}</td>
                   <td className="px-4 py-3 text-right font-mono text-blue-600">{fmt(e.totalHoras)}</td>
