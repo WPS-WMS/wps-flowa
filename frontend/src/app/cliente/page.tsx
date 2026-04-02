@@ -15,26 +15,6 @@ import {
 import { EditTaskModalFull } from "@/components/EditTaskModalFull";
 import type { PackageTicket } from "@/components/PackageCard";
 
-function formatHours(h: number): string {
-  const hours = Math.floor(h);
-  const minutes = Math.round((h - hours) * 60);
-  return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
-}
-
-function getWeekOfMonth(d: Date): number {
-  return Math.ceil(d.getDate() / 7);
-}
-
-function getStatusBadge(statusRaw: unknown): { label: string; className: string } {
-  const s = String(statusRaw ?? "").toUpperCase();
-  if (s === "ENCERRADO") return { label: "Finalizado", className: "text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded" };
-  if (s === "ABERTO") return { label: "Backlog", className: "text-xs font-medium text-slate-600 bg-slate-100 px-2 py-1 rounded" };
-  if (s === "EM_ANDAMENTO" || s === "EXECUCAO" || s === "EM_EXECUCAO") {
-    return { label: "Em execução", className: "text-xs font-medium text-amber-600 bg-amber-50 px-2 py-1 rounded" };
-  }
-  return { label: "Em execução", className: "text-xs font-medium text-amber-600 bg-amber-50 px-2 py-1 rounded" };
-}
-
 type TicketForClient = {
   id: string;
   code: string;
@@ -48,6 +28,67 @@ type TicketForClient = {
   type: string;
   createdBy?: { id: string; name: string } | null;
 };
+
+function formatHours(h: number): string {
+  const hours = Math.floor(h);
+  const minutes = Math.round((h - hours) * 60);
+  return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+}
+
+function getWeekOfMonth(d: Date): number {
+  return Math.ceil(d.getDate() / 7);
+}
+
+function parseTicketDate(iso: string | null | undefined): Date | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/** Fora do prazo (SLA): não finalizada e já passou de dataFimPrevista */
+function isTicketAtrasada(t: TicketForClient, now: Date): boolean {
+  if (String(t.status ?? "").toUpperCase() === "ENCERRADO") return false;
+  const due = parseTicketDate(t.dataFimPrevista);
+  if (!due) return false;
+  return now.getTime() > due.getTime();
+}
+
+function getStatusBadge(statusRaw: unknown): { label: string; className: string } {
+  const s = String(statusRaw ?? "").toUpperCase();
+  if (s === "ENCERRADO") return { label: "Finalizado", className: "text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded" };
+  if (s === "ABERTO") return { label: "Backlog", className: "text-xs font-medium text-slate-600 bg-slate-100 px-2 py-1 rounded" };
+  if (s === "EM_ANDAMENTO" || s === "EXECUCAO" || s === "EM_EXECUCAO") {
+    return { label: "Em execução", className: "text-xs font-medium text-amber-600 bg-amber-50 px-2 py-1 rounded" };
+  }
+  return { label: "Em execução", className: "text-xs font-medium text-amber-600 bg-amber-50 px-2 py-1 rounded" };
+}
+
+function getTicketDisplayBadge(t: TicketForClient, now: Date): { label: string; className: string } {
+  if (isTicketAtrasada(t, now)) {
+    return {
+      label: "Atrasada",
+      className: "text-xs font-medium text-red-700 bg-red-50 px-2 py-1 rounded",
+    };
+  }
+  return getStatusBadge(t.status);
+}
+
+/**
+ * Indicador de SLA na home: chamados com prazo definido (ex.: AMS).
+ * - Finalizado: dentro se encerrado até dataFimPrevista (usa updatedAt).
+ * - Em aberto: dentro se ainda não passou do prazo; fora se passou (atrasada).
+ */
+function slaOutcomeForTicket(t: TicketForClient, now: Date): "dentro" | "fora" | null {
+  const due = parseTicketDate(t.dataFimPrevista);
+  if (!due) return null;
+  const encerrado = String(t.status ?? "").toUpperCase() === "ENCERRADO";
+  if (encerrado) {
+    const done = parseTicketDate(t.updatedAt);
+    if (!done) return null;
+    return done.getTime() <= due.getTime() ? "dentro" : "fora";
+  }
+  return now.getTime() <= due.getTime() ? "dentro" : "fora";
+}
 
 type ProjectForClient = {
   id: string;
@@ -92,6 +133,13 @@ export default function ClienteHomePage() {
   const [entriesClient, setEntriesClient] = useState<TimeEntryForClient[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<PackageTicket | null>(null);
   const [expandedAmsProjectId, setExpandedAmsProjectId] = useState<string | null>(null);
+  /** Atualiza a cada minuto para SLA / “Atrasada” refletirem o relógio sem recarregar a página */
+  const [clockNow, setClockNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = window.setInterval(() => setClockNow(new Date()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+
   const openTaskModal = (t: TicketForClient) => {
     setSelectedTicket(t as unknown as PackageTicket);
   };
@@ -205,19 +253,14 @@ export default function ClienteHomePage() {
     const emExecucao = tickets.filter((t) => EXECUTION_STATUSES.has(String(t.status).toUpperCase())).length;
     const finalizadas = tickets.filter((t) => t.status === "ENCERRADO").length;
     let slaLabel = "—";
-    // SLA em % (conforme exemplo): de todos os chamados encerrados que têm prazo,
-    // quantos foram atendidos/encerrados dentro do SLA (encerrado até dataFimPrevista).
-    const encerradosComPrazo = tickets.filter((t) => t.status === "ENCERRADO" && t.dataFimPrevista);
-    if (encerradosComPrazo.length > 0) {
-      const dentro = encerradosComPrazo.filter((t) => {
-        const due = t.dataFimPrevista ? new Date(t.dataFimPrevista) : null;
-        const done = t.updatedAt ? new Date(t.updatedAt) : null;
-        if (!due || Number.isNaN(due.getTime())) return false;
-        if (!done || Number.isNaN(done.getTime())) return false;
-        return done.getTime() <= due.getTime();
-      }).length;
-      const pct = Math.round((dentro / encerradosComPrazo.length) * 100);
-      slaLabel = `${pct}%`;
+    // SLA em %: entre chamados com prazo (dataFimPrevista, ex. AMS), quantos estão dentro do SLA.
+    // Finalizado: comparado com updatedAt. Em aberto: dentro se ainda não passou do prazo; fora se atrasado.
+    const outcomes = tickets
+      .map((t) => slaOutcomeForTicket(t, clockNow))
+      .filter((x): x is "dentro" | "fora" => x !== null);
+    if (outcomes.length > 0) {
+      const dentro = outcomes.filter((x) => x === "dentro").length;
+      slaLabel = `${Math.round((dentro / outcomes.length) * 100)}%`;
     }
     // Horas contratadas: projetos T&M (estimativaInicialTM) e AMS (horasMensaisAMS ou bancoHorasInicial)
     let totalContratadas = 0;
@@ -231,7 +274,7 @@ export default function ClienteHomePage() {
       }
     }
     return { emExecucao, finalizadas, slaLabel, horasContratadas: totalContratadas };
-  }, [tickets, projects, EXECUTION_STATUSES]);
+  }, [tickets, projects, EXECUTION_STATUSES, clockNow]);
 
   const amsSummaries = useMemo<AmsProjectSummary[]>(() => {
     const now = new Date();
@@ -522,7 +565,7 @@ export default function ClienteHomePage() {
                       {t.project?.client?.name} - {t.project?.name} - {t.title}
                     </span>
                     {(() => {
-                      const badge = getStatusBadge(t.status);
+                      const badge = getTicketDisplayBadge(t, clockNow);
                       return <span className={badge.className}>{badge.label}</span>;
                     })()}
                   </button>
@@ -564,7 +607,7 @@ export default function ClienteHomePage() {
                       {t.project?.client?.name} - {t.project?.name} - {t.title}
                     </span>
                     {(() => {
-                      const badge = getStatusBadge(t.status);
+                      const badge = getTicketDisplayBadge(t, clockNow);
                       return <span className={badge.className}>{badge.label}</span>;
                     })()}
                   </button>

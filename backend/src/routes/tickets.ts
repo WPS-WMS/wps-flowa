@@ -275,10 +275,14 @@ ticketsRouter.post("/", async (req, res) => {
           : project.tipoProjeto === "AMS" && normalizedAmsPriority === "CRITICA"
             ? project.slaSolucaoCritica
             : null;
+  // AMS: prazo total = horas de resposta + horas de solução (a partir da abertura do chamado)
+  const respostaNum = slaRespostaHoras != null ? Number(slaRespostaHoras) : 0;
+  const solucaoNum = slaSolucaoHoras != null ? Number(slaSolucaoHoras) : 0;
+  const totalSlaHorasAms = project.tipoProjeto === "AMS" ? respostaNum + solucaoNum : 0;
   const dataFimPrevistaResolved = dataFimPrevista
     ? new Date(dataFimPrevista)
-    : slaSolucaoHoras != null
-      ? addHours(new Date(), slaSolucaoHoras)
+    : totalSlaHorasAms > 0
+      ? addHours(new Date(), totalSlaHorasAms)
       : null;
 
   const ticket = await prisma.ticket.create({
@@ -414,7 +418,22 @@ ticketsRouter.patch("/:id", async (req, res) => {
       id: ticketId,
       project: { client: { tenantId: user.tenantId } },
     },
-    include: { project: { select: { createdById: true } } },
+    include: {
+      project: {
+        select: {
+          createdById: true,
+          tipoProjeto: true,
+          slaRespostaBaixa: true,
+          slaSolucaoBaixa: true,
+          slaRespostaMedia: true,
+          slaSolucaoMedia: true,
+          slaRespostaAlta: true,
+          slaSolucaoAlta: true,
+          slaRespostaCritica: true,
+          slaSolucaoCritica: true,
+        },
+      },
+    },
   });
   
   if (!ticket) {
@@ -512,6 +531,49 @@ ticketsRouter.patch("/:id", async (req, res) => {
         newValue: newCrit,
         details: newCrit ? `Prioridade alterada para "${newCrit}"` : "Prioridade removida",
       });
+      // AMS: ao mudar prioridade, recalcular prazo total (resposta + solução) a partir da criação do chamado
+      if (
+        ticket.project.tipoProjeto === "AMS" &&
+        dataFimPrevista === undefined &&
+        ticket.status !== "ENCERRADO"
+      ) {
+        const norm = normalizeAmsPriority(newCrit);
+        const r =
+          norm === "BAIXA"
+            ? ticket.project.slaRespostaBaixa
+            : norm === "MEDIA"
+              ? ticket.project.slaRespostaMedia
+              : norm === "ALTA"
+                ? ticket.project.slaRespostaAlta
+                : norm === "CRITICA"
+                  ? ticket.project.slaRespostaCritica
+                  : null;
+        const s =
+          norm === "BAIXA"
+            ? ticket.project.slaSolucaoBaixa
+            : norm === "MEDIA"
+              ? ticket.project.slaSolucaoMedia
+              : norm === "ALTA"
+                ? ticket.project.slaSolucaoAlta
+                : norm === "CRITICA"
+                  ? ticket.project.slaSolucaoCritica
+                  : null;
+        const rNum = r != null ? Number(r) : 0;
+        const sNum = s != null ? Number(s) : 0;
+        const total = rNum + sNum;
+        if (total > 0) {
+          updateData.dataFimPrevista = addHours(new Date(ticket.createdAt), total);
+          updateData.slaRespostaHoras = r != null ? rNum : null;
+          updateData.slaSolucaoHoras = s != null ? sNum : null;
+          historyEntries.push({
+            action: "UPDATE",
+            field: "dataFimPrevista",
+            oldValue: ticket.dataFimPrevista ? ticket.dataFimPrevista.toISOString() : null,
+            newValue: updateData.dataFimPrevista.toISOString(),
+            details: "Prazo SLA (AMS) recalculado após alteração de prioridade",
+          });
+        }
+      }
     }
   }
   if (parentTicketId !== undefined && parentTicketId !== ticket.parentTicketId) {
