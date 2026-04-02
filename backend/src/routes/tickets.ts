@@ -217,6 +217,22 @@ ticketsRouter.post("/", async (req, res) => {
     res.status(400).json({ error: "Projeto não encontrado" });
     return;
   }
+
+  const effectiveType = type != null && String(type).trim() !== "" ? String(type).trim() : "SUBPROJETO";
+  const isSubprojetoTopic = effectiveType === "SUBPROJETO";
+  // AMS: chamados/tarefas (não tópico) exigem prioridade válida para aplicar SLA desde a criação
+  if (project.tipoProjeto === "AMS" && !isSubprojetoTopic) {
+    const critRaw = criticidade != null ? String(criticidade).trim() : "";
+    if (!critRaw) {
+      res.status(400).json({ error: "Prioridade é obrigatória para chamados em projetos AMS." });
+      return;
+    }
+    if (!normalizeAmsPriority(critRaw)) {
+      res.status(400).json({ error: "Prioridade inválida. Use Baixa, Média, Alta ou Urgente." });
+      return;
+    }
+  }
+
   const ids = Array.isArray(responsibleIds) ? responsibleIds.filter(Boolean) : [];
   if (ids.length > 0) {
     const usersInTenant = await prisma.user.findMany({
@@ -279,18 +295,19 @@ ticketsRouter.post("/", async (req, res) => {
   const respostaNum = slaRespostaHoras != null ? Number(slaRespostaHoras) : 0;
   const solucaoNum = slaSolucaoHoras != null ? Number(slaSolucaoHoras) : 0;
   const totalSlaHorasAms = project.tipoProjeto === "AMS" ? respostaNum + solucaoNum : 0;
-  const dataFimPrevistaResolved = dataFimPrevista
-    ? new Date(dataFimPrevista)
-    : totalSlaHorasAms > 0
-      ? addHours(new Date(), totalSlaHorasAms)
-      : null;
+  // Mesmo instante para createdAt e início da janela de SLA (quando o prazo vem do AMS)
+  const slaStart = new Date();
+  const dataFimPrevistaFromAms =
+    !dataFimPrevista && totalSlaHorasAms > 0 ? addHours(slaStart, totalSlaHorasAms) : null;
+  const dataFimPrevistaResolved = dataFimPrevista ? new Date(dataFimPrevista) : dataFimPrevistaFromAms;
 
   const ticket = await prisma.ticket.create({
     data: {
       code: nextCode,
       title: String(title).trim(),
       description: description ? String(description).trim() : null,
-      type: type || "SUBPROJETO",
+      type: effectiveType,
+      ...(dataFimPrevistaFromAms ? { createdAt: slaStart } : {}),
       criticidade: criticidade || null,
       status: status || "ABERTO",
       projectId,

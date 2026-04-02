@@ -279,6 +279,10 @@ export function AbrirChamadoContent({ afterCreateHref }: AbrirChamadoContentProp
       setError("Preencha os campos obrigatórios destacados em vermelho.");
       return;
     }
+    if (projectDetail?.tipoProjeto === "AMS" && !prioridade.trim()) {
+      setError("Em projetos AMS, a prioridade é obrigatória: ela define o SLA (resposta + solução) a partir da abertura do chamado.");
+      return;
+    }
     setSaving(true);
     try {
       let ticketId = createdTicketId;
@@ -309,7 +313,7 @@ export function AbrirChamadoContent({ afterCreateHref }: AbrirChamadoContentProp
             title: ticketName.trim(),
             description: description.trim(),
             type: tipo,
-            criticidade: prioridade || undefined,
+            criticidade: prioridade.trim() || undefined,
           }),
         });
         const data = await res.json().catch(() => ({}));
@@ -392,7 +396,16 @@ export function AbrirChamadoContent({ afterCreateHref }: AbrirChamadoContentProp
   const selectedProject = filteredProjects.find((p) => p.id === projectId);
   const selectedProjectName = selectedProject?.name || "";
   const pendingUploads = attachments.filter((a) => !a.uploaded).length;
-  const canSubmit = Boolean(projectId && ticketName.trim() && tipo && description.trim()) && !saving;
+  const prioridadeObrigatoriaAms =
+    projectDetail?.tipoProjeto === "AMS" || String(selectedProject?.tipoProjeto || "") === "AMS";
+  const canSubmit =
+    Boolean(
+      projectId &&
+        ticketName.trim() &&
+        tipo &&
+        description.trim() &&
+        (!prioridadeObrigatoriaAms || prioridade.trim()),
+    ) && !saving;
   const primaryLabel = saving
     ? "Salvando..."
     : createdTicketId
@@ -558,11 +571,22 @@ export function AbrirChamadoContent({ afterCreateHref }: AbrirChamadoContentProp
                       {submitAttempted && !tipo && <p className="mt-2 text-xs text-rose-600">Tipo é obrigatório.</p>}
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Prioridade (opcional)</label>
+                      <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                        Prioridade
+                        {prioridadeObrigatoriaAms ? (
+                          <span className="text-rose-600"> *</span>
+                        ) : (
+                          <span className="text-slate-400 font-normal"> (opcional)</span>
+                        )}
+                      </label>
                       <select
                         value={prioridade}
                         onChange={(e) => setPrioridade(e.target.value)}
-                        className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm bg-slate-50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                        className={`w-full rounded-xl border px-4 py-3 text-sm bg-slate-50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-300 ${
+                          submitAttempted && prioridadeObrigatoriaAms && !prioridade.trim()
+                            ? "border-rose-400"
+                            : "border-slate-200"
+                        }`}
                       >
                         <option value="">Selecione</option>
                         {PRIORIDADES.map((p) => (
@@ -578,6 +602,9 @@ export function AbrirChamadoContent({ afterCreateHref }: AbrirChamadoContentProp
                           · Solução:{" "}
                           <span className="font-semibold">{slaForPrioridade.solucao != null ? `${slaForPrioridade.solucao}h` : "—"}</span>
                         </p>
+                      )}
+                      {submitAttempted && prioridadeObrigatoriaAms && !prioridade.trim() && (
+                        <p className="mt-2 text-xs text-rose-600">Prioridade é obrigatória em projetos AMS.</p>
                       )}
                     </div>
                     <div className="md:col-span-2">
