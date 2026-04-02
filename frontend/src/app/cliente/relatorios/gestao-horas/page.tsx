@@ -45,7 +45,7 @@ export default function ClienteRelatorioGestaoHorasPage() {
   const [hasFiltered, setHasFiltered] = useState(false);
 
   useEffect(() => {
-    apiFetch("/api/projects?light=true")
+    apiFetch("/api/client-reports/projects")
       .then((r) => r.json())
       .then((data: ProjectOption[]) => setProjects(Array.isArray(data) ? data : []))
       .catch(() => setProjects([]));

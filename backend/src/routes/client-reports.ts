@@ -5,6 +5,39 @@ import { authMiddleware } from "../lib/auth.js";
 export const clientReportsRouter = Router();
 clientReportsRouter.use(authMiddleware);
  
+// GET /api/client-reports/projects
+clientReportsRouter.get("/projects", async (req, res) => {
+  try {
+    const user = (req as Request & { user: { id: string; role: string; tenantId: string } }).user;
+    if (user.role !== "CLIENTE") {
+      res.status(403).json({ error: "Não autorizado" });
+      return;
+    }
+
+    const clientIds = (
+      await prisma.clientUser.findMany({
+        where: { userId: user.id },
+        select: { clientId: true },
+      })
+    ).map((x) => x.clientId);
+
+    if (clientIds.length === 0) {
+      res.json([]);
+      return;
+    }
+
+    const projects = await prisma.project.findMany({
+      where: { clientId: { in: clientIds }, arquivado: false, client: { tenantId: user.tenantId } },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    });
+    res.json(projects);
+  } catch (err) {
+    console.error("GET /api/client-reports/projects error:", err);
+    res.status(500).json({ error: "Erro ao listar projetos" });
+  }
+});
+
 // GET /api/client-reports/gestao-horas?start=&end=&projectId=
 clientReportsRouter.get("/gestao-horas", async (req, res) => {
   try {
