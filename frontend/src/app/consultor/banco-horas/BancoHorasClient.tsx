@@ -343,15 +343,6 @@ export function BancoHorasClient({ isAdmin = false }: { isAdmin?: boolean }) {
         </div>
       </div>
 
-      <p className="text-xs text-gray-500 max-w-3xl">
-        {[
-          "Total Horas complementares: saldo acumulado ao fim de cada mês (saldo anterior + trabalhadas − previstas − horas pagas do mês). ",
-          "Só exibido para meses já encerrados; mês atual e futuros mostram 00:00. ",
-          "Meses anteriores à data de início das atividades do usuário ficam com saldo 00:00 e não entram no acúmulo. ",
-          "Horas pagas: quitadas em dinheiro — só o Super Admin pode editar; demais perfis apenas visualizam.",
-        ].join("")}
-      </p>
-
       {loadError && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           <p className="font-medium">Não foi possível carregar o banco de horas</p>
