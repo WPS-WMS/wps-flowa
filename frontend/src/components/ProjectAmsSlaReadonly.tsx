@@ -18,7 +18,7 @@ export function ProjectAmsSlaReadonly({ project }: Props) {
     { label: "Baixa", r: project.slaRespostaBaixa, s: project.slaSolucaoBaixa },
     { label: "Média", r: project.slaRespostaMedia, s: project.slaSolucaoMedia },
     { label: "Alta", r: project.slaRespostaAlta, s: project.slaSolucaoAlta },
-    { label: "Crítica", r: project.slaRespostaCritica, s: project.slaSolucaoCritica },
+    { label: "Urgente", r: project.slaRespostaCritica, s: project.slaSolucaoCritica },
   ];
 
   const hasAny = rows.some((row) => row.r != null || row.s != null);

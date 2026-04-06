@@ -30,7 +30,7 @@ const PRIORIDADES_AMS = [
   { value: "BAIXA", label: "Baixa", color: "bg-green-100 text-green-700 border-green-300" },
   { value: "MEDIA", label: "Média", color: "bg-yellow-100 text-yellow-700 border-yellow-300" },
   { value: "ALTA", label: "Alta", color: "bg-orange-100 text-orange-700 border-orange-300" },
-  { value: "CRITICA", label: "Crítica", color: "bg-red-100 text-red-700 border-red-300" },
+  { value: "CRITICA", label: "Urgente", color: "bg-red-100 text-red-700 border-red-300" },
 ];
 
 function getIniciais(name: string): string {
@@ -56,7 +56,7 @@ function getPrioridadePillClass(prioridade: string): string {
   if (!prioridade) return "bg-slate-100 text-slate-600 border-slate-200";
   const map: Record<string, string> = {
     Urgente: "bg-red-50 text-red-700 border-red-200", URGENTE: "bg-red-50 text-red-700 border-red-200",
-    Crítica: "bg-red-50 text-red-700 border-red-200", CRITICA: "bg-red-50 text-red-700 border-red-200",
+    Urgente: "bg-red-50 text-red-700 border-red-200", CRITICA: "bg-red-50 text-red-700 border-red-200",
     Alta: "bg-orange-50 text-orange-700 border-orange-200", ALTA: "bg-orange-50 text-orange-700 border-orange-200",
     Média: "bg-amber-50 text-amber-700 border-amber-200", MEDIA: "bg-amber-50 text-amber-700 border-amber-200",
     Baixa: "bg-blue-50 text-blue-700 border-blue-200", BAIXA: "bg-blue-50 text-blue-700 border-blue-200",
@@ -69,7 +69,7 @@ function getPrioridadeDotClass(prioridade: string): string {
   if (!prioridade) return "bg-slate-400";
   const map: Record<string, string> = {
     Urgente: "bg-red-500", URGENTE: "bg-red-500",
-    Crítica: "bg-red-500", CRITICA: "bg-red-500",
+    Urgente: "bg-red-500", CRITICA: "bg-red-500",
     Alta: "bg-orange-500", ALTA: "bg-orange-500",
     Média: "bg-amber-500", MEDIA: "bg-amber-500",
     Baixa: "bg-blue-500", BAIXA: "bg-blue-500",

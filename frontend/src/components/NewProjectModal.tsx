@@ -819,7 +819,7 @@ export function NewProjectModal({ onClose, onSaved, mode = "create", projectId }
                     { label: "Baixa", r: slaRespostaBaixa, s: slaSolucaoBaixa, setR: setSlaRespostaBaixa, setS: setSlaSolucaoBaixa },
                     { label: "Média", r: slaRespostaMedia, s: slaSolucaoMedia, setR: setSlaRespostaMedia, setS: setSlaSolucaoMedia },
                     { label: "Alta", r: slaRespostaAlta, s: slaSolucaoAlta, setR: setSlaRespostaAlta, setS: setSlaSolucaoAlta },
-                    { label: "Crítica", r: slaRespostaCritica, s: slaSolucaoCritica, setR: setSlaRespostaCritica, setS: setSlaSolucaoCritica },
+                    { label: "Urgente", r: slaRespostaCritica, s: slaSolucaoCritica, setR: setSlaRespostaCritica, setS: setSlaSolucaoCritica },
                   ].map((row) => (
                     <div key={row.label} className="grid grid-cols-3 gap-2 items-center">
                       <span className="text-sm text-slate-700">{row.label}</span>
