@@ -420,21 +420,27 @@ export function EditTaskModalFull({
   }, [ticket]);
 
   useEffect(() => {
-    if (isClienteProfile) return;
     if (!ticket?.id) return;
-    const isAmsOrTm = tipoProjeto === "AMS" || tipoProjeto === "TIME_MATERIAL";
-    if (!isAmsOrTm) return;
     if (status !== "ENCERRADO") return;
-    // Garante que o motivo apareça mesmo se o card veio de uma lista desatualizada
+    let cancelled = false;
+    // Não depender só de tipoProjeto no estado: cliente não chama /api/projects/:id e tipo fica vazio.
+    // Uma única leitura do ticket traz project.tipoProjeto + finalizacaoMotivo para qualquer perfil.
     apiFetch(`/api/tickets/${ticket.id}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((t) => {
-        if (t && typeof t.finalizacaoMotivo === "string") {
+        if (cancelled || !t) return;
+        const tp = t.project?.tipoProjeto != null ? String(t.project.tipoProjeto) : "";
+        if (tp) setTipoProjeto(tp);
+        const isAmsOrTm = tp === "AMS" || tp === "TIME_MATERIAL";
+        if (isAmsOrTm && typeof t.finalizacaoMotivo === "string") {
           setFinalizacaoMotivoView(t.finalizacaoMotivo);
         }
       })
       .catch(() => {});
-  }, [ticket?.id, tipoProjeto, status, isClienteProfile]);
+    return () => {
+      cancelled = true;
+    };
+  }, [ticket?.id, status]);
 
   // Garante que o cliente (e qualquer origem "light") carregue os dados completos do ticket ao abrir a modal
   // para exibir sempre a versão mais recente (inclui descrição).
@@ -479,6 +485,12 @@ export function EditTaskModalFull({
         }
         if (t.progresso !== undefined && t.progresso !== null) {
           setProgresso(t.progresso);
+        }
+        if (t.project?.tipoProjeto != null) {
+          setTipoProjeto(String(t.project.tipoProjeto));
+        }
+        if (typeof t.finalizacaoMotivo === "string") {
+          setFinalizacaoMotivoView(t.finalizacaoMotivo);
         }
       })
       .catch(() => {});
