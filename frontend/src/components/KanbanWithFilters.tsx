@@ -112,15 +112,33 @@ export function KanbanWithFilters({
   // Carrega colunas customizadas do localStorage (igual ao KanbanBoard)
   useEffect(() => {
     const storageKey = `kanban_columns_${projectId}`;
-    const saved = localStorage.getItem(storageKey);
-    if (saved) {
+    const load = () => {
+      const saved = localStorage.getItem(storageKey);
+      if (!saved) {
+        setCustomColumns([]);
+        return;
+      }
       try {
         const parsed = JSON.parse(saved);
         setCustomColumns(Array.isArray(parsed) ? parsed : []);
       } catch {
         setCustomColumns([]);
       }
-    }
+    };
+    load();
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === storageKey) load();
+    };
+    const onColumnsChanged = (e: Event) => {
+      const ce = e as CustomEvent<{ projectId?: string }>;
+      if (ce?.detail?.projectId === projectId) load();
+    };
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("wps_kanban_columns_changed", onColumnsChanged as EventListener);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("wps_kanban_columns_changed", onColumnsChanged as EventListener);
+    };
   }, [projectId]);
 
   useEffect(() => {

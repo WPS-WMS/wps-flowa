@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { X, Maximize2, Send, Pencil, Trash2, Check, X as XIcon, Plus, Upload, Download, File, Image as ImageIcon } from "lucide-react";
 import { apiFetch, getToken } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -119,6 +119,68 @@ export function EditTaskModalFull({
     }>
   >([]);
   const [savingComment, setSavingComment] = useState(false);
+
+  type StatusOption = { value: string; label: string };
+
+  const effectiveProjectId =
+    projectId ??
+    (ticket as unknown as { projectId?: string }).projectId ??
+    (ticket as unknown as { project?: { id?: string } }).project?.id ??
+    "";
+
+  function loadCustomStatusOptions(pid: string): StatusOption[] {
+    if (!pid) return [];
+    try {
+      const raw = localStorage.getItem(`kanban_columns_${pid}`);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw) as Array<{ id: string; label: string }>;
+      if (!Array.isArray(parsed)) return [];
+      return parsed
+        .filter((c) => c && typeof c.id === "string" && typeof c.label === "string")
+        .map((c) => ({ value: c.id, label: c.label }));
+    } catch {
+      return [];
+    }
+  }
+
+  const [customStatusOptions, setCustomStatusOptions] = useState<StatusOption[]>([]);
+
+  useEffect(() => {
+    setCustomStatusOptions(loadCustomStatusOptions(effectiveProjectId));
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === `kanban_columns_${effectiveProjectId}`) {
+        setCustomStatusOptions(loadCustomStatusOptions(effectiveProjectId));
+      }
+    };
+    const onColumnsChanged = (e: Event) => {
+      const ce = e as CustomEvent<{ projectId?: string }>;
+      if (ce?.detail?.projectId === effectiveProjectId) {
+        setCustomStatusOptions(loadCustomStatusOptions(effectiveProjectId));
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("wps_kanban_columns_changed", onColumnsChanged as EventListener);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("wps_kanban_columns_changed", onColumnsChanged as EventListener);
+    };
+  }, [effectiveProjectId]);
+
+  const statusOptions = useMemo(() => {
+    const base: StatusOption[] = [
+      { value: "ABERTO", label: "Backlog" },
+      { value: "EXECUCAO", label: "Em execução" },
+      { value: "ENCERRADO", label: "Finalizadas" },
+    ];
+    const seen = new Set(base.map((o) => o.value));
+    const customs = customStatusOptions.filter((o) => !seen.has(o.value));
+    const merged = [...base, ...customs];
+    // Garante que o status atual sempre apareça (mesmo se a coluna customizada não estiver no storage)
+    if (status && !merged.some((o) => o.value === status)) {
+      merged.push({ value: status, label: status });
+    }
+    return merged;
+  }, [customStatusOptions, status]);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingCommentContent, setEditingCommentContent] = useState("");
   const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
@@ -1424,9 +1486,11 @@ export function EditTaskModalFull({
                           className={inputClass}
                           disabled={isReadOnly}
                         >
-                          <option value="ABERTO">Backlog</option>
-                          <option value="EXECUCAO">Em execução</option>
-                          <option value="ENCERRADO">Finalizadas</option>
+                          {statusOptions.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
                         </select>
                       </div>
 

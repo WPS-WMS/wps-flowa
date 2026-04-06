@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { X, Maximize2, Send, Pencil, Trash2, Plus } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -118,6 +118,57 @@ export function CreateTaskModalFull({
   const [error, setError] = useState("");
   const [estimativaError, setEstimativaError] = useState(false);
   const [dataEntregaError, setDataEntregaError] = useState(false);
+
+  type StatusOption = { value: string; label: string };
+
+  function loadCustomStatusOptions(pid: string): StatusOption[] {
+    if (!pid) return [];
+    try {
+      const raw = localStorage.getItem(`kanban_columns_${pid}`);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw) as Array<{ id: string; label: string }>;
+      if (!Array.isArray(parsed)) return [];
+      return parsed
+        .filter((c) => c && typeof c.id === "string" && typeof c.label === "string")
+        .map((c) => ({ value: c.id, label: c.label }));
+    } catch {
+      return [];
+    }
+  }
+
+  const [customStatusOptions, setCustomStatusOptions] = useState<StatusOption[]>([]);
+
+  useEffect(() => {
+    setCustomStatusOptions(loadCustomStatusOptions(projectId));
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === `kanban_columns_${projectId}`) {
+        setCustomStatusOptions(loadCustomStatusOptions(projectId));
+      }
+    };
+    const onColumnsChanged = (e: Event) => {
+      const ce = e as CustomEvent<{ projectId?: string }>;
+      if (ce?.detail?.projectId === projectId) {
+        setCustomStatusOptions(loadCustomStatusOptions(projectId));
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("wps_kanban_columns_changed", onColumnsChanged as EventListener);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("wps_kanban_columns_changed", onColumnsChanged as EventListener);
+    };
+  }, [projectId]);
+
+  const statusOptions = useMemo(() => {
+    const base: StatusOption[] = [
+      { value: "ABERTO", label: "Backlog" },
+      { value: "EXECUCAO", label: "Em execução" },
+      { value: "ENCERRADO", label: "Finalizadas" },
+    ];
+    const seen = new Set(base.map((o) => o.value));
+    const customs = customStatusOptions.filter((o) => !seen.has(o.value));
+    return [...base, ...customs];
+  }, [customStatusOptions]);
   const [showUserPicker, setShowUserPicker] = useState(false);
   const [showPrioridadeOpen, setShowPrioridadeOpen] = useState(false);
 
@@ -691,9 +742,11 @@ export function CreateTaskModalFull({
                           onChange={(e) => setStatus(e.target.value)}
                           className={inputClass}
                         >
-                          <option value="ABERTO">Backlog</option>
-                          <option value="EXECUCAO">Em execução</option>
-                          <option value="ENCERRADO">Finalizadas</option>
+                          {statusOptions.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
                         </select>
                       </div>
 

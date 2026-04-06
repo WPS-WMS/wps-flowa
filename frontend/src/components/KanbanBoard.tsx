@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Trash2, Plus, LayoutGrid, FileText, Clock, Calendar, User, Check } from "lucide-react";
+import { Trash2, Plus, LayoutGrid, FileText, Clock, Calendar, User, Check, GripVertical } from "lucide-react";
 import { PackageTicket } from "./PackageCard";
 import { CreateTaskModalFull } from "./CreateTaskModalFull";
 import { CreateColumnModal } from "./CreateColumnModal";
@@ -194,6 +194,8 @@ export function KanbanBoard({
   const [deleteColumnTarget, setDeleteColumnTarget] = useState<string | null>(null);
   const [draggingTicketId, setDraggingTicketId] = useState<string | null>(null);
   const [dragOverColumnId, setDragOverColumnId] = useState<string | null>(null);
+  const [draggingColumnId, setDraggingColumnId] = useState<string | null>(null);
+  const [dragOverCustomColumnId, setDragOverCustomColumnId] = useState<string | null>(null);
   const [pendingStatusByTicket, setPendingStatusByTicket] = useState<Record<string, string>>({});
   const [editingTicket, setEditingTicket] = useState<PackageTicket | null>(null);
   const [hoursByTicket, setHoursByTicket] = useState<Record<string, number>>({});
@@ -302,6 +304,7 @@ export function KanbanBoard({
     const storageKey = `kanban_columns_${projectId}`;
     localStorage.setItem(storageKey, JSON.stringify(columns));
     setCustomColumns(columns);
+    window.dispatchEvent(new CustomEvent("wps_kanban_columns_changed", { detail: { projectId } }));
   };
 
   // Adiciona uma nova coluna customizada
@@ -309,6 +312,17 @@ export function KanbanBoard({
     const updated = [...customColumns, newColumn];
     saveCustomColumns(updated);
   };
+
+  function reorderCustomColumns(sourceId: string, targetId: string) {
+    if (!sourceId || !targetId || sourceId === targetId) return;
+    const from = customColumns.findIndex((c) => c.id === sourceId);
+    const to = customColumns.findIndex((c) => c.id === targetId);
+    if (from < 0 || to < 0) return;
+    const next = [...customColumns];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    saveCustomColumns(next);
+  }
 
   // Remove uma coluna customizada
   const handleDeleteColumn = (columnId: string) => {
@@ -447,11 +461,57 @@ export function KanbanBoard({
             }`}
           >
             {/* Cabeçalho da coluna - estilo referência */}
-            <div className={`${theme.headerBg} border-b border-slate-200/80 px-4 py-3`}>
+            <div
+              className={`${theme.headerBg} border-b border-slate-200/80 px-4 py-3 ${
+                isCustomColumn ? "cursor-move" : ""
+              } ${dragOverCustomColumnId === column.id ? "ring-2 ring-blue-400 ring-inset" : ""}`}
+              draggable={isCustomColumn}
+              onDragStart={(e) => {
+                if (!isCustomColumn) return;
+                // Diferencia do drag de ticket
+                e.dataTransfer.setData("application/x-kanban-column", column.id);
+                e.dataTransfer.effectAllowed = "move";
+                setDraggingColumnId(column.id);
+              }}
+              onDragEnd={() => {
+                setDraggingColumnId(null);
+                setDragOverCustomColumnId(null);
+              }}
+              onDragOver={(e) => {
+                if (!isCustomColumn) return;
+                // Permite drop de outra coluna customizada
+                const movingId = e.dataTransfer.getData("application/x-kanban-column");
+                if (!movingId) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
+              }}
+              onDragEnter={() => {
+                if (isCustomColumn) setDragOverCustomColumnId(column.id);
+              }}
+              onDragLeave={() => {
+                if (isCustomColumn) setDragOverCustomColumnId(null);
+              }}
+              onDrop={(e) => {
+                if (!isCustomColumn) return;
+                const movingId = e.dataTransfer.getData("application/x-kanban-column");
+                if (!movingId) return;
+                e.preventDefault();
+                reorderCustomColumns(movingId, column.id);
+                setDraggingColumnId(null);
+                setDragOverCustomColumnId(null);
+              }}
+            >
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
                   {isFinalizadas && (
                     <Check className="h-4 w-4 text-emerald-600 flex-shrink-0" aria-hidden />
+                  )}
+                  {isCustomColumn && (
+                    <GripVertical
+                      className="h-4 w-4 text-slate-400 flex-shrink-0"
+                      aria-hidden
+                      title="Arraste para reordenar"
+                    />
                   )}
                   {isCustomColumn && (
                     <span className={`h-2 w-2 rounded-full ${column.color}`} aria-hidden />
