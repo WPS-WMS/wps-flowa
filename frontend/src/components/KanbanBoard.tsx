@@ -531,11 +531,9 @@ export function KanbanBoard({
                     <Check className="h-4 w-4 text-emerald-600 flex-shrink-0" aria-hidden />
                   )}
                   {isCustomColumn && (
-                    <GripVertical
-                      className="h-4 w-4 text-slate-400 flex-shrink-0"
-                      aria-hidden
-                      title="Arraste para reordenar"
-                    />
+                    <span className="inline-flex shrink-0" title="Arraste para reordenar">
+                      <GripVertical className="h-4 w-4 text-slate-400" aria-hidden />
+                    </span>
                   )}
                   {isCustomColumn && (
                     <span className={`h-2 w-2 rounded-full ${column.color}`} aria-hidden />
