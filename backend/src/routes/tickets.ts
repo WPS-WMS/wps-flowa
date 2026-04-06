@@ -487,7 +487,15 @@ ticketsRouter.patch("/:id", async (req, res) => {
     const isResponsible = ticket.id
       ? await prisma.ticketResponsible.findFirst({ where: { ticketId: ticket.id, userId: user.id } }).then(Boolean)
       : false;
-    if (!canEdit && !isResponsible) {
+    // Se o usuário for membro do TÓPICO (SUBPROJETO pai), ele pode editar qualquer tarefa dentro desse tópico,
+    // mesmo não sendo membro direto da tarefa (regra: acesso do tópico é mais importante).
+    const isTopicMember = ticket.parentTicketId
+      ? await prisma.ticketResponsible
+          .findFirst({ where: { ticketId: ticket.parentTicketId, userId: user.id } })
+          .then(Boolean)
+      : false;
+
+    if (!canEdit && !isResponsible && !isTopicMember) {
       res.status(403).json({ error: "Sem permissão para atualizar este chamado" });
       return;
     }
