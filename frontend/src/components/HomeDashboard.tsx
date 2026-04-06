@@ -7,6 +7,7 @@ import {
   Loader2,
   Calendar,
   ListTodo,
+  Target,
 } from "lucide-react";
 import { EditTaskModalFull } from "./EditTaskModalFull";
 import type { PackageTicket } from "./PackageCard";
@@ -66,6 +67,12 @@ export function HomeDashboard({ basePath }: HomeDashboardProps) {
   const [hours, setHours] = useState({ hoje: 0, semana: 0, mes: 0 });
   const [tickets, setTickets] = useState<TicketForHome[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<PackageTicket | null>(null);
+  const [slaSummary, setSlaSummary] = useState<{
+    percent: number | null;
+    dentroPrazo: number;
+    total: number;
+    aplicavel: boolean;
+  } | null>(null);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -94,6 +101,19 @@ export function HomeDashboard({ basePath }: HomeDashboardProps) {
       .catch(() => setHours({ hoje: 0, semana: 0, mes: 0 }));
   }, [user?.id]);
 
+  function applySlaPayload(data: { percent?: number | null; dentroPrazo?: number; total?: number; aplicavel?: boolean } | null) {
+    if (!data || typeof data !== "object") {
+      setSlaSummary(null);
+      return;
+    }
+    setSlaSummary({
+      percent: data.percent ?? null,
+      dentroPrazo: Number(data.dentroPrazo ?? 0),
+      total: Number(data.total ?? 0),
+      aplicavel: Boolean(data.aplicavel),
+    });
+  }
+
   useEffect(() => {
     if (!user?.id) return;
     apiFetch("/api/tickets?light=true")
@@ -111,33 +131,31 @@ export function HomeDashboard({ basePath }: HomeDashboardProps) {
             isResponsible(t)
         );
         setTickets(myTickets);
+        return apiFetch("/api/tickets/sla-compliance-summary");
       })
-      .catch(() => setTickets([]))
+      .then((r) => (r && r.ok ? r.json().catch(() => null) : null))
+      .then((slaData: { percent?: number | null; dentroPrazo?: number; total?: number; aplicavel?: boolean } | null) =>
+        applySlaPayload(slaData),
+      )
+      .catch(() => {
+        setTickets([]);
+        setSlaSummary(null);
+      })
       .finally(() => setLoading(false));
   }, [user?.id]);
 
+  const EXECUTION_STATUSES = useMemo(() => new Set(["EM_ANDAMENTO", "EXECUCAO", "EM_EXECUCAO"]), []);
+
   const { emExecucao, finalizadas, horasContratadas, slaLabel } = useMemo(() => {
-    const emExecucao = tickets.filter((t) => String(t.status).toUpperCase() === "EM_ANDAMENTO").length;
+    const emExecucao = tickets.filter((t) => EXECUTION_STATUSES.has(String(t.status).toUpperCase())).length;
     const finalizadas = tickets.filter((t) => t.status === "ENCERRADO").length;
     const horasContratadas = tickets.reduce((acc, t) => acc + (t.estimativaHoras ?? 0), 0);
-    const emAndamento = tickets.filter((t) => t.status !== "ENCERRADO" && t.dataFimPrevista);
-    const now = new Date();
     let slaLabel = "—";
-    if (emAndamento.length > 0) {
-      const nearest = emAndamento.reduce((best, t) => {
-        const due = new Date(t.dataFimPrevista!);
-        return !best || due.getTime() < best.getTime() ? due : best;
-      }, null as Date | null);
-      if (nearest) {
-        const diffDays = Math.ceil((nearest.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
-        if (diffDays < 0) slaLabel = "Atrasado";
-        else if (diffDays === 0) slaLabel = "Hoje";
-        else if (diffDays === 1) slaLabel = "1 dia";
-        else slaLabel = `${diffDays} dias`;
-      }
+    if (slaSummary?.aplicavel && slaSummary.total > 0 && slaSummary.percent != null) {
+      slaLabel = `${slaSummary.percent}%`;
     }
     return { emExecucao, finalizadas, horasContratadas, slaLabel };
-  }, [tickets]);
+  }, [tickets, slaSummary, EXECUTION_STATUSES]);
 
   const tarefasTotal = tickets.length;
 
@@ -220,6 +238,18 @@ export function HomeDashboard({ basePath }: HomeDashboardProps) {
                         <div>
                           <p className="text-slate-400 text-sm">Tarefas</p>
                           <p className="text-xl font-bold">{tarefasTotal}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Target className="h-5 w-5 text-sky-300" />
+                        <div>
+                          <p className="text-slate-400 text-sm">SLA AMS (finalizadas)</p>
+                          <p className="text-xl font-bold tabular-nums">{slaLabel}</p>
+                          {slaSummary?.aplicavel && slaSummary.total > 0 && (
+                            <p className="text-slate-500 text-xs">
+                              {slaSummary.dentroPrazo}/{slaSummary.total} no prazo
+                            </p>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -320,7 +350,10 @@ export function HomeDashboard({ basePath }: HomeDashboardProps) {
                         isResponsible(t)
                     )
                   );
+                  return apiFetch("/api/tickets/sla-compliance-summary");
                 })
+                .then((r) => (r.ok ? r.json().catch(() => null) : null))
+                .then((slaData) => applySlaPayload(slaData))
                 .catch(() => {});
             }
           }}

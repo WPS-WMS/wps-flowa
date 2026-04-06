@@ -73,23 +73,6 @@ function getTicketDisplayBadge(t: TicketForClient, now: Date): { label: string; 
   return getStatusBadge(t.status);
 }
 
-/**
- * Indicador de SLA na home: chamados com prazo definido (ex.: AMS).
- * - Finalizado: dentro se encerrado até dataFimPrevista (usa updatedAt).
- * - Em aberto: dentro se ainda não passou do prazo; fora se passou (atrasada).
- */
-function slaOutcomeForTicket(t: TicketForClient, now: Date): "dentro" | "fora" | null {
-  const due = parseTicketDate(t.dataFimPrevista);
-  if (!due) return null;
-  const encerrado = String(t.status ?? "").toUpperCase() === "ENCERRADO";
-  if (encerrado) {
-    const done = parseTicketDate(t.updatedAt);
-    if (!done) return null;
-    return done.getTime() <= due.getTime() ? "dentro" : "fora";
-  }
-  return now.getTime() <= due.getTime() ? "dentro" : "fora";
-}
-
 type ProjectForClient = {
   id: string;
   name?: string;
@@ -133,6 +116,12 @@ export default function ClienteHomePage() {
   const [entriesClient, setEntriesClient] = useState<TimeEntryForClient[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<PackageTicket | null>(null);
   const [expandedAmsProjectId, setExpandedAmsProjectId] = useState<string | null>(null);
+  const [slaSummary, setSlaSummary] = useState<{
+    percent: number | null;
+    dentroPrazo: number;
+    total: number;
+    aplicavel: boolean;
+  } | null>(null);
   /** Atualiza a cada minuto para SLA / “Atrasada” refletirem o relógio sem recarregar a página */
   const [clockNow, setClockNow] = useState(() => new Date());
   useEffect(() => {
@@ -146,19 +135,30 @@ export default function ClienteHomePage() {
 
   const refetchTickets = () => {
     if (!user?.id) return;
-    apiFetch("/api/tickets?light=true")
-      .then(async (r) => {
-        if (!r.ok) return [];
-        const data = await r.json().catch(() => []);
-        return Array.isArray(data) ? data : [];
-      })
-      .then((ticketsData: TicketForClient[]) => {
-        const tasksOnly = (ticketsData || []).filter(
-          (t) => t.project && t.type !== "SUBPROJETO" && t.type !== "SUBTAREFA",
+    void (async () => {
+      try {
+        const r = await apiFetch("/api/tickets?light=true");
+        if (!r.ok) return;
+        const raw = await r.json().catch(() => []);
+        const ticketsData = Array.isArray(raw) ? raw : [];
+        const tasksOnly = ticketsData.filter(
+          (t: TicketForClient) => t.project && t.type !== "SUBPROJETO" && t.type !== "SUBTAREFA",
         );
         setTickets(tasksOnly);
-      })
-      .catch(() => {});
+        const sr = await apiFetch("/api/tickets/sla-compliance-summary");
+        if (!sr.ok) return;
+        const data = await sr.json().catch(() => null);
+        if (!data || typeof data !== "object") return;
+        setSlaSummary({
+          percent: (data as { percent?: number | null }).percent ?? null,
+          dentroPrazo: Number((data as { dentroPrazo?: number }).dentroPrazo ?? 0),
+          total: Number((data as { total?: number }).total ?? 0),
+          aplicavel: Boolean((data as { aplicavel?: boolean }).aplicavel),
+        });
+      } catch {
+        /* mantém estado anterior */
+      }
+    })();
   };
 
 
@@ -206,9 +206,26 @@ export default function ClienteHomePage() {
             t.type !== "SUBTAREFA"
         );
         setTickets(tasksOnly);
+        return apiFetch("/api/tickets/sla-compliance-summary");
       })
+      .then((r) => (r && r.ok ? r.json().catch(() => null) : null))
+      .then(
+        (data: { percent?: number | null; dentroPrazo?: number; total?: number; aplicavel?: boolean } | null) => {
+          if (!data || typeof data !== "object") {
+            setSlaSummary(null);
+            return;
+          }
+          setSlaSummary({
+            percent: data.percent ?? null,
+            dentroPrazo: Number(data.dentroPrazo ?? 0),
+            total: Number(data.total ?? 0),
+            aplicavel: Boolean(data.aplicavel),
+          });
+        },
+      )
       .catch(() => {
         setTickets([]);
+        setSlaSummary(null);
       })
       .finally(() => setLoading(false));
   }, [user?.id, can]);
@@ -253,14 +270,8 @@ export default function ClienteHomePage() {
     const emExecucao = tickets.filter((t) => EXECUTION_STATUSES.has(String(t.status).toUpperCase())).length;
     const finalizadas = tickets.filter((t) => t.status === "ENCERRADO").length;
     let slaLabel = "—";
-    // SLA em %: entre chamados com prazo (dataFimPrevista, ex. AMS), quantos estão dentro do SLA.
-    // Finalizado: comparado com updatedAt. Em aberto: dentro se ainda não passou do prazo; fora se atrasado.
-    const outcomes = tickets
-      .map((t) => slaOutcomeForTicket(t, clockNow))
-      .filter((x): x is "dentro" | "fora" => x !== null);
-    if (outcomes.length > 0) {
-      const dentro = outcomes.filter((x) => x === "dentro").length;
-      slaLabel = `${Math.round((dentro / outcomes.length) * 100)}%`;
+    if (slaSummary?.aplicavel && slaSummary.total > 0 && slaSummary.percent != null) {
+      slaLabel = `${slaSummary.percent}%`;
     }
     // Horas contratadas: projetos T&M (estimativaInicialTM) e AMS (horasMensaisAMS ou bancoHorasInicial)
     let totalContratadas = 0;
@@ -274,7 +285,7 @@ export default function ClienteHomePage() {
       }
     }
     return { emExecucao, finalizadas, slaLabel, horasContratadas: totalContratadas };
-  }, [tickets, projects, EXECUTION_STATUSES, clockNow]);
+  }, [tickets, projects, EXECUTION_STATUSES, slaSummary]);
 
   const amsSummaries = useMemo<AmsProjectSummary[]>(() => {
     const now = new Date();
@@ -415,8 +426,13 @@ export default function ClienteHomePage() {
                       <div className="flex items-center gap-2">
                         <AlertCircle className="h-5 w-5 text-blue-400" />
                         <div>
-                          <p className="text-slate-400 text-sm">SLA</p>
-                          <p className="text-xl font-bold">{slaLabel}</p>
+                          <p className="text-slate-400 text-sm">SLA AMS (finalizadas)</p>
+                          <p className="text-xl font-bold tabular-nums">{slaLabel}</p>
+                          {slaSummary?.aplicavel && slaSummary.total > 0 && (
+                            <p className="text-slate-500 text-xs">
+                              {slaSummary.dentroPrazo}/{slaSummary.total} no prazo
+                            </p>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">

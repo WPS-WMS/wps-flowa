@@ -2,6 +2,12 @@ import { Request, Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { authMiddleware } from "../lib/auth.js";
 import { filterTicketsForConsultant } from "../lib/ticketVisibility.js";
+import {
+  SLA_STAFF_ROLES,
+  getSlaHorasPorPrioridade,
+  isFinalizedAmsTicketWithinSla,
+  slaHorasAplicavel,
+} from "../lib/amsSlaCompliance.js";
 
 export const ticketsRouter = Router();
 ticketsRouter.use(authMiddleware);
@@ -80,12 +86,6 @@ function normalizeAmsPriority(value: string | null | undefined): "BAIXA" | "MEDI
   if (raw === "BAIXA" || raw === "MEDIA" || raw === "ALTA" || raw === "CRITICA") return raw;
   if (raw === "URGENTE" || raw === "CRITICO") return "CRITICA";
   return null;
-}
-
-function addHours(date: Date, hours: number): Date {
-  const d = new Date(date);
-  d.setTime(d.getTime() + hours * 60 * 60 * 1000);
-  return d;
 }
 
 async function syncProjectStatusFromTopics(projectId: string) {
@@ -195,6 +195,133 @@ ticketsRouter.get("/", async (req, res) => {
   res.json(list);
 });
 
+/**
+ * Percentual de chamados AMS finalizados dentro do SLA (resposta + solução conforme configuração atual do projeto).
+ * - Cliente: todos os chamados AMS dos projetos da empresa.
+ * - Demais perfis: chamados onde o usuário é responsável (mesma regra da home).
+ */
+ticketsRouter.get("/sla-compliance-summary", async (req, res) => {
+  const user = (req as Request & { user: { id: string; role: string; tenantId: string } }).user;
+
+  const clientBranch =
+    user.role === "CLIENTE"
+      ? { users: { some: { userId: user.id } } }
+      : ({} as Record<string, unknown>);
+
+  const staffBranch =
+    user.role !== "CLIENTE"
+      ? {
+          OR: [{ assignedToId: user.id }, { responsibles: { some: { userId: user.id } } }],
+        }
+      : ({} as Record<string, unknown>);
+
+  const tickets = await prisma.ticket.findMany({
+    where: {
+      status: "ENCERRADO",
+      type: { notIn: ["SUBPROJETO", "SUBTAREFA"] },
+      project: {
+        tipoProjeto: "AMS",
+        client: { tenantId: user.tenantId, ...clientBranch },
+      },
+      ...staffBranch,
+    },
+    select: {
+      id: true,
+      createdAt: true,
+      updatedAt: true,
+      criticidade: true,
+      project: {
+        select: {
+          slaRespostaBaixa: true,
+          slaSolucaoBaixa: true,
+          slaRespostaMedia: true,
+          slaSolucaoMedia: true,
+          slaRespostaAlta: true,
+          slaSolucaoAlta: true,
+          slaRespostaCritica: true,
+          slaSolucaoCritica: true,
+        },
+      },
+    },
+  });
+
+  const applicable = tickets.filter((t) => {
+    const { resposta, solucao } = getSlaHorasPorPrioridade(t.project, t.criticidade);
+    return slaHorasAplicavel(resposta, solucao);
+  });
+
+  if (applicable.length === 0) {
+    res.json({
+      percent: null as number | null,
+      dentroPrazo: 0,
+      total: 0,
+      aplicavel: false,
+    });
+    return;
+  }
+
+  const ids = applicable.map((t) => t.id);
+
+  const commentRows = await prisma.ticketComment.findMany({
+    where: {
+      ticketId: { in: ids },
+      visibility: "PUBLIC",
+      user: { role: { in: [...SLA_STAFF_ROLES] } },
+    },
+    select: { ticketId: true, createdAt: true },
+    orderBy: { createdAt: "asc" },
+  });
+  const firstStaffPublicByTicket = new Map<string, Date>();
+  for (const row of commentRows) {
+    if (!firstStaffPublicByTicket.has(row.ticketId)) {
+      firstStaffPublicByTicket.set(row.ticketId, row.createdAt);
+    }
+  }
+
+  const historyRows = await prisma.ticketHistory.findMany({
+    where: {
+      ticketId: { in: ids },
+      action: "STATUS_CHANGE",
+      newValue: "ENCERRADO",
+    },
+    select: { ticketId: true, createdAt: true },
+    orderBy: { createdAt: "desc" },
+  });
+  const lastClosedByTicket = new Map<string, Date>();
+  for (const row of historyRows) {
+    if (!lastClosedByTicket.has(row.ticketId)) {
+      lastClosedByTicket.set(row.ticketId, row.createdAt);
+    }
+  }
+
+  let dentroPrazo = 0;
+  for (const t of applicable) {
+    const { resposta, solucao } = getSlaHorasPorPrioridade(t.project, t.criticidade);
+    const first = firstStaffPublicByTicket.get(t.id) ?? null;
+    const closed = lastClosedByTicket.get(t.id) ?? t.updatedAt;
+    if (
+      isFinalizedAmsTicketWithinSla({
+        createdAt: t.createdAt,
+        firstStaffPublicCommentAt: first,
+        closedAt: closed,
+        respostaHoras: resposta,
+        solucaoHoras: solucao,
+      })
+    ) {
+      dentroPrazo += 1;
+    }
+  }
+
+  const total = applicable.length;
+  const percent = Math.round((dentroPrazo / total) * 100);
+  res.json({
+    percent,
+    dentroPrazo,
+    total,
+    aplicavel: true,
+  });
+});
+
 ticketsRouter.post("/", async (req, res) => {
   const user = (req as Request & { user: { id: string; tenantId: string } }).user;
   const {
@@ -295,15 +422,8 @@ ticketsRouter.post("/", async (req, res) => {
           : project.tipoProjeto === "AMS" && normalizedAmsPriority === "CRITICA"
             ? project.slaSolucaoCritica
             : null;
-  // AMS: prazo total = horas de resposta + horas de solução (a partir da abertura do chamado)
-  const respostaNum = slaRespostaHoras != null ? Number(slaRespostaHoras) : 0;
-  const solucaoNum = slaSolucaoHoras != null ? Number(slaSolucaoHoras) : 0;
-  const totalSlaHorasAms = project.tipoProjeto === "AMS" ? respostaNum + solucaoNum : 0;
-  // Mesmo instante para createdAt e início da janela de SLA (quando o prazo vem do AMS)
-  const slaStart = new Date();
-  const dataFimPrevistaFromAms =
-    !dataFimPrevista && totalSlaHorasAms > 0 ? addHours(slaStart, totalSlaHorasAms) : null;
-  const dataFimPrevistaResolved = dataFimPrevista ? new Date(dataFimPrevista) : dataFimPrevistaFromAms;
+  // SLA AMS: prazos são calculados por fases (1º comentário público da equipe + finalização), não por dataFimPrevista única.
+  const dataFimPrevistaResolved = dataFimPrevista ? new Date(dataFimPrevista) : null;
 
   const ticket = await prisma.ticket.create({
     data: {
@@ -311,7 +431,6 @@ ticketsRouter.post("/", async (req, res) => {
       title: String(title).trim(),
       description: description ? String(description).trim() : null,
       type: effectiveType,
-      ...(dataFimPrevistaFromAms ? { createdAt: slaStart } : {}),
       criticidade: criticidade || null,
       status: status || "ABERTO",
       projectId,
@@ -606,12 +725,8 @@ ticketsRouter.patch("/:id", async (req, res) => {
         newValue: newCrit,
         details: newCrit ? `Prioridade alterada para "${newCrit}"` : "Prioridade removida",
       });
-      // AMS: ao mudar prioridade, recalcular prazo total (resposta + solução) a partir da criação do chamado
-      if (
-        ticket.project.tipoProjeto === "AMS" &&
-        dataFimPrevista === undefined &&
-        ticket.status !== "ENCERRADO"
-      ) {
+      // AMS: SLA segue prioridade atual do projeto (sem gravar dataFimPrevista automática).
+      if (ticket.project.tipoProjeto === "AMS" && ticket.status !== "ENCERRADO") {
         const norm = normalizeAmsPriority(newCrit);
         const r =
           norm === "BAIXA"
@@ -633,21 +748,8 @@ ticketsRouter.patch("/:id", async (req, res) => {
                 : norm === "CRITICA"
                   ? ticket.project.slaSolucaoCritica
                   : null;
-        const rNum = r != null ? Number(r) : 0;
-        const sNum = s != null ? Number(s) : 0;
-        const total = rNum + sNum;
-        if (total > 0) {
-          updateData.dataFimPrevista = addHours(new Date(ticket.createdAt), total);
-          updateData.slaRespostaHoras = r != null ? rNum : null;
-          updateData.slaSolucaoHoras = s != null ? sNum : null;
-          historyEntries.push({
-            action: "UPDATE",
-            field: "dataFimPrevista",
-            oldValue: ticket.dataFimPrevista ? ticket.dataFimPrevista.toISOString() : null,
-            newValue: updateData.dataFimPrevista.toISOString(),
-            details: "Prazo SLA (AMS) recalculado após alteração de prioridade",
-          });
-        }
+        updateData.slaRespostaHoras = r != null ? Number(r) : null;
+        updateData.slaSolucaoHoras = s != null ? Number(s) : null;
       }
     }
   }
