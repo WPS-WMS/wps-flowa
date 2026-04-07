@@ -118,37 +118,23 @@ function getConfiguredHorasProjeto(project: ProjectForCard): { label: string; ho
 }
 
 function getProjectStatus(project: ProjectForCard): { label: string; color: string } {
-  const topicos = project.tickets?.filter((t) => t.type === "SUBPROJETO") ?? [];
+  // Status do projeto agora é manual (statusInicial).
+  // Mantém compatibilidade com valores antigos.
+  const raw = String(project.statusInicial ?? "").trim().toUpperCase();
+  const normalized =
+    raw === "ATIVO" || raw === "ENCERRADO" || raw === "EM_ESPERA"
+      ? raw
+      : raw === "EM_ANDAMENTO"
+        ? "ATIVO"
+        : raw === "PLANEJADO"
+          ? "EM_ESPERA"
+          : raw === "CONCLUIDO"
+            ? "ENCERRADO"
+            : "ATIVO";
 
-  if (topicos.length === 0) {
-    return { label: "Planejado", color: "bg-slate-400" };
-  }
-
-  const todosConcluidos =
-    topicos.length > 0 &&
-    topicos.every((topic) => getTopicStatus(topic, project.tickets) === "CONCLUIDO");
-
-  if (todosConcluidos) {
-    return { label: "Finalizado", color: "bg-emerald-500" };
-  }
-
-  // Atrasado: dataFimPrevista passada (comparação só por data) e ainda existem tarefas não encerradas
-  if (project.dataFimPrevista) {
-    const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD de hoje
-    const fimStr = String(project.dataFimPrevista).slice(0, 10); // YYYY-MM-DD da data prevista
-
-    const tarefas = (project.tickets ?? []).filter(
-      (t) => t.type !== "SUBPROJETO" && t.type !== "SUBTAREFA",
-    );
-    const todasTarefasConcluidas =
-      tarefas.length > 0 && tarefas.every((t) => t.status === "ENCERRADO");
-
-    if (fimStr < todayStr && !todasTarefasConcluidas) {
-      return { label: "Atrasado", color: "bg-rose-500" };
-    }
-  }
-
-  return { label: "Em andamento", color: "bg-blue-500" };
+  if (normalized === "ENCERRADO") return { label: "Encerrado", color: "bg-slate-500" };
+  if (normalized === "EM_ESPERA") return { label: "Em espera", color: "bg-amber-500" };
+  return { label: "Ativo", color: "bg-emerald-500" };
 }
 
 type ProjectCardProps = {
