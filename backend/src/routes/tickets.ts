@@ -320,6 +320,25 @@ ticketsRouter.post("/", async (req, res) => {
     return;
   }
 
+  // Projeto ENCERRADO: bloqueia criação de tópicos e tarefas, obrigando reabrir/alterar status.
+  const stRaw = String((project as any).statusInicial ?? "").toUpperCase();
+  const st =
+    stRaw === "ATIVO" || stRaw === "ENCERRADO" || stRaw === "EM_ESPERA"
+      ? stRaw
+      : stRaw === "EM_ANDAMENTO"
+        ? "ATIVO"
+        : stRaw === "PLANEJADO"
+          ? "EM_ESPERA"
+          : stRaw === "CONCLUIDO"
+            ? "ENCERRADO"
+            : stRaw;
+  if (st === "ENCERRADO") {
+    res
+      .status(400)
+      .json({ error: "Não é possível criar pois o projeto se encontra encerrado" });
+    return;
+  }
+
   const effectiveType = type != null && String(type).trim() !== "" ? String(type).trim() : "SUBPROJETO";
   const isSubprojetoTopic = effectiveType === "SUBPROJETO";
   // AMS: chamados/tarefas (não tópico) exigem prioridade válida para aplicar SLA desde a criação
