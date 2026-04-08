@@ -23,9 +23,8 @@ export type PackageTicket = {
   responsibles?: Array<{ user: { id: string; name: string } }>;
   budget?: {
     status: string;
-    valor: number;
     horas: number;
-    descricao: string;
+    observacao: string;
     rejectionReason?: string | null;
   } | null;
   _count?: { timeEntries: number };

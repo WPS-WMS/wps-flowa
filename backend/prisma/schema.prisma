@@ -303,9 +303,8 @@ model TicketBudget {
   id          String   @id @default(cuid())
   ticketId    String   @unique
   status      String   @default("NENHUM") // NENHUM | AGUARDANDO_APROVACAO | APROVADO | REPROVADO
-  valor       Float
   horas       Float
-  descricao   String
+  observacao  String
   rejectionReason String?
   sentById    String?
   decidedById String?

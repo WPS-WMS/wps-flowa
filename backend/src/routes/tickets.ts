@@ -526,10 +526,9 @@ ticketsRouter.post("/", async (req, res) => {
 ticketsRouter.post("/:id/budget", async (req, res) => {
   const user = (req as Request & { user: { id: string; role: string; tenantId: string } }).user;
   const ticketId = req.params.id;
-  const { valor, horas, descricao } = req.body as {
-    valor?: number | string;
+  const { horas, observacao } = req.body as {
     horas?: number | string;
-    descricao?: string;
+    observacao?: string;
   };
 
   if (user.role !== "CONSULTOR") {
@@ -537,11 +536,10 @@ ticketsRouter.post("/:id/budget", async (req, res) => {
     return;
   }
 
-  const v = Number(valor);
   const h = Number(horas);
-  const d = String(descricao ?? "").trim();
-  if (!Number.isFinite(v) || v <= 0 || !Number.isFinite(h) || h <= 0 || !d) {
-    res.status(400).json({ error: "Preencha Valor, Horas e Descrição para enviar o orçamento." });
+  const obs = String(observacao ?? "").trim();
+  if (!Number.isFinite(h) || h <= 0 || !obs) {
+    res.status(400).json({ error: "Preencha Horas e Observação para enviar o orçamento." });
     return;
   }
 
@@ -563,17 +561,15 @@ ticketsRouter.post("/:id/budget", async (req, res) => {
     create: {
       ticketId,
       status: "AGUARDANDO_APROVACAO",
-      valor: v,
       horas: h,
-      descricao: d,
+      observacao: obs,
       sentById: user.id,
       sentAt: new Date(),
     },
     update: {
       status: "AGUARDANDO_APROVACAO",
-      valor: v,
       horas: h,
-      descricao: d,
+      observacao: obs,
       rejectionReason: null,
       sentById: user.id,
       sentAt: new Date(),
@@ -589,7 +585,7 @@ ticketsRouter.post("/:id/budget", async (req, res) => {
       action: "BUDGET_SENT",
       field: "budget",
       oldValue: null,
-      newValue: JSON.stringify({ valor: v, horas: h }),
+      newValue: JSON.stringify({ horas: h }),
       details: "Orçamento enviado para aprovação do cliente.",
     },
   });
@@ -600,7 +596,7 @@ ticketsRouter.post("/:id/budget", async (req, res) => {
     subject: `Chamado ${ticket.code} - Orçamento enviado`,
     title: "Orçamento enviado",
     messageHtml: `<p>Um orçamento foi enviado e está <b>aguardando aprovação</b>.</p>
-      <p><b>Valor:</b> ${v.toFixed(2)}<br/><b>Horas:</b> ${h}<br/><b>Descrição:</b> ${d}</p>`,
+      <p><b>Horas:</b> ${h}<br/><b>Observação:</b> ${obs}</p>`,
   });
 
   res.json({ ok: true, budget });

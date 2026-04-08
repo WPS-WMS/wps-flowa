@@ -265,9 +265,8 @@ export function EditTaskModalFull({
   const [finalizacaoMotivoView, setFinalizacaoMotivoView] = useState<string | null>(ticket.finalizacaoMotivo ?? null);
 
   const [budget, setBudget] = useState<any>((ticket as any).budget ?? null);
-  const [budgetValor, setBudgetValor] = useState("");
   const [budgetHoras, setBudgetHoras] = useState("");
-  const [budgetDescricao, setBudgetDescricao] = useState("");
+  const [budgetObservacao, setBudgetObservacao] = useState("");
   const [budgetSaving, setBudgetSaving] = useState(false);
   const [budgetError, setBudgetError] = useState("");
   const [budgetRejectReason, setBudgetRejectReason] = useState("");
@@ -282,11 +281,10 @@ export function EditTaskModalFull({
 
   async function handleSendBudget() {
     setBudgetError("");
-    const v = budgetValor.trim();
     const h = budgetHoras.trim();
-    const d = budgetDescricao.trim();
-    if (!v || !h || !d) {
-      setBudgetError("Preencha Valor, Horas e Descrição para enviar o orçamento.");
+    const obs = budgetObservacao.trim();
+    if (!h || !obs) {
+      setBudgetError("Preencha Horas e Observação para enviar o orçamento.");
       return;
     }
     setBudgetSaving(true);
@@ -294,9 +292,8 @@ export function EditTaskModalFull({
       const res = await apiFetch(`/api/tickets/${ticket.id}/budget`, {
         method: "POST",
         body: JSON.stringify({
-          valor: Number(String(v).replace(",", ".")),
           horas: Number(String(h).replace(",", ".")),
-          descricao: d,
+          observacao: obs,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -1517,20 +1514,14 @@ export function EditTaskModalFull({
                     {budget && String(budget.status ?? "").toUpperCase() !== "NENHUM" ? (
                       <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                          <div className="text-xs text-slate-500">Valor</div>
-                          <div className="text-sm font-semibold text-slate-800">
-                            {Number(budget.valor ?? 0).toFixed(2)}
-                          </div>
-                        </div>
-                        <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
                           <div className="text-xs text-slate-500">Horas</div>
                           <div className="text-sm font-semibold text-slate-800">
                             {Number(budget.horas ?? 0)}
                           </div>
                         </div>
                         <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 md:col-span-3">
-                          <div className="text-xs text-slate-500">Descrição</div>
-                          <div className="text-sm text-slate-800 whitespace-pre-wrap">{String(budget.descricao ?? "")}</div>
+                          <div className="text-xs text-slate-500">Observação</div>
+                          <div className="text-sm text-slate-800 whitespace-pre-wrap">{String(budget.observacao ?? "")}</div>
                           {String(budget.status ?? "").toUpperCase() === "REPROVADO" && (
                             <div className="mt-2 text-xs text-red-700">
                               <b>Reprovado:</b> {String(budget.rejectionReason ?? "-")}
@@ -1578,16 +1569,6 @@ export function EditTaskModalFull({
                     ) : currentUser?.role === "CONSULTOR" ? (
                       <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                          <label className="block text-xs font-medium text-slate-600 mb-1">Valor *</label>
-                          <input
-                            value={budgetValor}
-                            onChange={(e) => setBudgetValor(e.target.value)}
-                            className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
-                            placeholder="Ex: 2500"
-                            disabled={budgetSaving}
-                          />
-                        </div>
-                        <div>
                           <label className="block text-xs font-medium text-slate-600 mb-1">Horas *</label>
                           <input
                             value={budgetHoras}
@@ -1598,10 +1579,10 @@ export function EditTaskModalFull({
                           />
                         </div>
                         <div className="md:col-span-3">
-                          <label className="block text-xs font-medium text-slate-600 mb-1">Descrição *</label>
+                          <label className="block text-xs font-medium text-slate-600 mb-1">Observação *</label>
                           <textarea
-                            value={budgetDescricao}
-                            onChange={(e) => setBudgetDescricao(e.target.value)}
+                            value={budgetObservacao}
+                            onChange={(e) => setBudgetObservacao(e.target.value)}
                             className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 min-h-[90px]"
                             placeholder="Detalhe o orçamento"
                             disabled={budgetSaving}
