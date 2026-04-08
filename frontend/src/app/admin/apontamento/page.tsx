@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { ApontamentoClient } from "@/app/consultor/apontamento/ApontamentoClient";
+import { ApontamentoClient } from "../../consultor/apontamento/ApontamentoClient";
 
 export default function AdminApontamentoPage() {
   const { user } = useAuth();

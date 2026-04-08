@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
-  const existing = await prisma.user.findUnique({
+  const existing = await prisma.user.findFirst({
     where: { email: email.trim().toLowerCase() },
   });
   if (existing) {

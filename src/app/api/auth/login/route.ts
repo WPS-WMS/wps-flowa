@@ -11,7 +11,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    const user = await prisma.user.findUnique({
+    // Este projeto suporta multi-tenant em alguns ambientes (unique composto).
+    // Para o app raiz (login simples por e-mail), usamos findFirst para evitar dependência do unique composto.
+    const user = await prisma.user.findFirst({
       where: { email: email.trim().toLowerCase() },
     });
     if (!user || !(await verifyPassword(password, user.passwordHash))) {
