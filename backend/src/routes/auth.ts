@@ -1,8 +1,9 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
-import { verifyPassword, signToken } from "../lib/auth.js";
+import { verifyPassword, signToken, hashPassword } from "../lib/auth.js";
 import crypto from "crypto";
 import { getAllowedFeaturesForUser, type RoleId } from "../lib/permissions.js";
+import { sendMail } from "../lib/mailer.js";
 
 export const authRouter = Router();
 
@@ -314,21 +315,42 @@ authRouter.post("/forgot-password", async (req, res) => {
     }
 
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1h
-    const token = crypto.randomUUID();
+    const token = crypto.randomBytes(32).toString("hex");
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
+    // Evita acumular tokens antigos do mesmo usuário
+    await prisma.passwordResetToken.updateMany({
+      where: { userId: user.id, used: false },
+      data: { used: true },
+    });
 
     await prisma.passwordResetToken.create({
       data: {
         userId: user.id,
-        token,
+        token: tokenHash,
         expiresAt,
         used: false,
       },
     });
 
-    // Aqui, em produção, integrar com serviço de e-mail (SendGrid, SES, etc)
-    // Ex.: enviar link: `${process.env.APP_URL}/reset-password?token=${token}`
+    const appUrl = (process.env.APP_URL || "").replace(/\/$/, "");
+    const resetUrl = `${appUrl || "http://localhost:3000"}/reset-senha?token=${token}`;
+
+    const subject = "Recuperação de senha - WPS One";
+    const html = `
+      <div style="font-family:Arial,sans-serif;line-height:1.5">
+        <h2>Recuperação de senha</h2>
+        <p>Recebemos uma solicitação para criar uma nova senha.</p>
+        <p>Clique no link abaixo para redefinir sua senha (válido por 1 hora):</p>
+        <p><a href="${resetUrl}">${resetUrl}</a></p>
+        <p>Se você não solicitou, pode ignorar este e-mail.</p>
+      </div>
+    `;
+
+    await sendMail({ to: normalizedEmail, subject, html });
+
     if (process.env.NODE_ENV !== "production") {
-      console.log("[AUTH] Password reset token generated for", normalizedEmail, "token:", token);
+      console.log("[AUTH] Password reset link:", resetUrl);
     }
 
     res.json({
@@ -339,5 +361,47 @@ authRouter.post("/forgot-password", async (req, res) => {
   } catch (err) {
     console.error("[AUTH] forgot-password error", err);
     res.status(500).json({ error: "Erro ao iniciar recuperação de senha" });
+  }
+});
+
+authRouter.post("/reset-password", async (req, res) => {
+  try {
+    const { token, newPassword } = req.body as { token?: string; newPassword?: string };
+    if (!token || !newPassword) {
+      res.status(400).json({ error: "Token e nova senha são obrigatórios" });
+      return;
+    }
+    if (String(newPassword).length < 6) {
+      res.status(400).json({ error: "A nova senha deve ter no mínimo 6 caracteres" });
+      return;
+    }
+
+    const tokenHash = crypto.createHash("sha256").update(String(token)).digest("hex");
+    const record = await prisma.passwordResetToken.findFirst({
+      where: { token: tokenHash, used: false },
+      select: { id: true, userId: true, expiresAt: true },
+    });
+    if (!record || record.expiresAt.getTime() < Date.now()) {
+      res.status(400).json({ error: "Token inválido ou expirado" });
+      return;
+    }
+
+    const passwordHash = await hashPassword(String(newPassword));
+
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: record.userId },
+        data: { passwordHash, mustChangePassword: false },
+      }),
+      prisma.passwordResetToken.update({
+        where: { id: record.id },
+        data: { used: true },
+      }),
+    ]);
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[AUTH] reset-password error", err);
+    res.status(500).json({ error: "Erro ao redefinir senha" });
   }
 });
