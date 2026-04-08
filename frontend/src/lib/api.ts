@@ -7,7 +7,8 @@ export const API_BASE_URL = API_URL;
 
 export function getToken(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem("wps_token");
+  // Compat: versões antigas podem ter salvo como "token"
+  return localStorage.getItem("wps_token") || localStorage.getItem("token");
 }
 
 export async function apiFetch(path: string, options: RequestInit = {}) {
@@ -28,9 +29,16 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
 }
 
 export function setToken(token: string) {
-  if (typeof window !== "undefined") localStorage.setItem("wps_token", token);
+  if (typeof window !== "undefined") {
+    localStorage.setItem("wps_token", token);
+    // Compat: outras telas/ambientes podem procurar por "token"
+    localStorage.setItem("token", token);
+  }
 }
 
 export function clearToken() {
-  if (typeof window !== "undefined") localStorage.removeItem("wps_token");
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("wps_token");
+    localStorage.removeItem("token");
+  }
 }
