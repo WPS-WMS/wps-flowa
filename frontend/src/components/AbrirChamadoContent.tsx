@@ -204,32 +204,58 @@ export function AbrirChamadoContent({ afterCreateHref }: AbrirChamadoContentProp
     setPrioridade("");
     if (!projectId) return;
     let cancelled = false;
-    apiFetch(`/api/projects/${projectId}`)
-      .then(async (r) => (r.ok ? r.json().catch(() => null) : null))
-      .then((p) => {
-        if (cancelled) return;
-        if (!p || typeof p !== "object") return;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const obj = p as any;
-        setProjectDetail({
-          id: String(obj.id),
-          tipoProjeto: obj.tipoProjeto ?? null,
-          slaRespostaBaixa: obj.slaRespostaBaixa ?? null,
-          slaSolucaoBaixa: obj.slaSolucaoBaixa ?? null,
-          slaRespostaMedia: obj.slaRespostaMedia ?? null,
-          slaSolucaoMedia: obj.slaSolucaoMedia ?? null,
-          slaRespostaAlta: obj.slaRespostaAlta ?? null,
-          slaSolucaoAlta: obj.slaSolucaoAlta ?? null,
-          slaRespostaCritica: obj.slaRespostaCritica ?? null,
-          slaSolucaoCritica: obj.slaSolucaoCritica ?? null,
-          tickets: Array.isArray(obj.tickets) ? obj.tickets : [],
-        });
-      })
-      .catch(() => {});
+    // Cliente pode não ter acesso a /api/projects/:id (permissões).
+    // Para montar tópicos e validar AMS, usamos /api/tickets + dados do select de projetos.
+    if (isCliente) {
+      const proj = filteredProjects.find((p) => p.id === projectId);
+      apiFetch(`/api/tickets?projectId=${projectId}&light=true`)
+        .then(async (r) => (r.ok ? r.json().catch(() => []) : []))
+        .then((tickets) => {
+          if (cancelled) return;
+          const list = Array.isArray(tickets) ? tickets : [];
+          setProjectDetail({
+            id: projectId,
+            tipoProjeto: (proj as any)?.tipoProjeto ?? null,
+            slaRespostaBaixa: null,
+            slaSolucaoBaixa: null,
+            slaRespostaMedia: null,
+            slaSolucaoMedia: null,
+            slaRespostaAlta: null,
+            slaSolucaoAlta: null,
+            slaRespostaCritica: null,
+            slaSolucaoCritica: null,
+            tickets: list,
+          });
+        })
+        .catch(() => {});
+    } else {
+      apiFetch(`/api/projects/${projectId}`)
+        .then(async (r) => (r.ok ? r.json().catch(() => null) : null))
+        .then((p) => {
+          if (cancelled) return;
+          if (!p || typeof p !== "object") return;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const obj = p as any;
+          setProjectDetail({
+            id: String(obj.id),
+            tipoProjeto: obj.tipoProjeto ?? null,
+            slaRespostaBaixa: obj.slaRespostaBaixa ?? null,
+            slaSolucaoBaixa: obj.slaSolucaoBaixa ?? null,
+            slaRespostaMedia: obj.slaRespostaMedia ?? null,
+            slaSolucaoMedia: obj.slaSolucaoMedia ?? null,
+            slaRespostaAlta: obj.slaRespostaAlta ?? null,
+            slaSolucaoAlta: obj.slaSolucaoAlta ?? null,
+            slaRespostaCritica: obj.slaRespostaCritica ?? null,
+            slaSolucaoCritica: obj.slaSolucaoCritica ?? null,
+            tickets: Array.isArray(obj.tickets) ? obj.tickets : [],
+          });
+        })
+        .catch(() => {});
+    }
     return () => {
       cancelled = true;
     };
-  }, [projectId]);
+  }, [projectId, isCliente, filteredProjects]);
 
   const topicsForSelect = useMemo(() => {
     const all = projectDetail?.tickets ?? [];
