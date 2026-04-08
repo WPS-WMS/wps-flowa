@@ -43,7 +43,6 @@ const TICKET_LIST_LIGHT_SELECT = {
   assignedTo: { select: { id: true, name: true } },
   createdBy: { select: { id: true, name: true } },
   responsibles: { select: { user: { select: { id: true, name: true } } } },
-  budget: { select: { status: true } },
 } as const;
 
 /** Mesmo payload útil ao Kanban, sem join em `project` (redundante quando já filtramos por projectId). */
@@ -69,7 +68,6 @@ const TICKET_LIST_LIGHT_IN_PROJECT = {
   assignedTo: { select: { id: true, name: true } },
   createdBy: { select: { id: true, name: true } },
   responsibles: { select: { user: { select: { id: true, name: true } } } },
-  budget: { select: { status: true } },
 } as const;
 
 const TICKET_LIST_FULL_INCLUDE = {
@@ -77,7 +75,6 @@ const TICKET_LIST_FULL_INCLUDE = {
   assignedTo: { select: { id: true, name: true } },
   createdBy: { select: { id: true, name: true } },
   responsibles: { include: { user: { select: { id: true, name: true } } } },
-  budget: true,
 } as const;
 
 function normalizeAmsPriority(value: string | null | undefined): "BAIXA" | "MEDIA" | "ALTA" | "CRITICA" | null {
@@ -444,7 +441,6 @@ ticketsRouter.post("/", async (req, res) => {
       project: { include: { client: true } },
       assignedTo: { select: { id: true, name: true } },
       responsibles: { include: { user: { select: { id: true, name: true } } } },
-      budget: true,
     },
   });
   
@@ -498,7 +494,6 @@ ticketsRouter.post("/", async (req, res) => {
         project: { include: { client: true } },
         assignedTo: { select: { id: true, name: true } },
         responsibles: { include: { user: { select: { id: true, name: true } } } },
-        budget: true,
       },
     });
     // Notificar criação (após membros estarem persistidos)
