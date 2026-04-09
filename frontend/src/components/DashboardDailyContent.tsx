@@ -175,11 +175,11 @@ export function DashboardDailyContent() {
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-slate-50">
-      <header className="flex-shrink-0 bg-white border-b border-slate-200 px-6 py-4">
+    <div className="flex-1 flex flex-col min-h-0 bg-[color:var(--background)]">
+      <header className="flex-shrink-0 bg-[color:var(--surface)]/60 backdrop-blur border-b border-[color:var(--border)] px-6 py-4">
         <div className="max-w-6xl mx-auto">
-          <h1 className="text-xl md:text-2xl font-semibold text-slate-900">Dashboard Daily</h1>
-          <p className="text-xs md:text-sm text-slate-500 mt-1">
+          <h1 className="text-xl md:text-2xl font-semibold text-[color:var(--foreground)]">Dashboard Daily</h1>
+          <p className="text-xs md:text-sm text-[color:var(--muted-foreground)] mt-1">
             Visualize e gerencie tarefas do projeto em formato Kanban.
           </p>
         </div>
@@ -189,20 +189,20 @@ export function DashboardDailyContent() {
         <div className="max-w-6xl mx-auto space-y-4">
           <div className="flex items-center gap-4 flex-wrap">
             <div className="relative w-full md:w-64 flex-shrink-0">
-              <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+              <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-[color:var(--muted-foreground)]" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Buscar tarefas..."
-                className="w-full rounded-full border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] py-2 pl-9 pr-3 text-sm text-[color:var(--foreground)] placeholder:text-[color:var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]"
               />
             </div>
             <div className="flex-1 min-w-[200px]">
               <select
                 value={selectedProjectId}
                 onChange={(e) => setSelectedProjectId(e.target.value)}
-                className="w-full px-3 py-2 rounded-full border border-slate-200 bg-white text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] text-sm text-[color:var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]"
               >
                 <option value="">Selecione um projeto...</option>
                 {projects.map((p) => (
@@ -218,7 +218,7 @@ export function DashboardDailyContent() {
                 setLoading(true);
                 setRetryCount((c) => c + 1);
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:bg-slate-50 hover:border-slate-300"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] text-xs font-medium text-[color:var(--foreground)] hover:opacity-90"
             >
               <RefreshCw className="h-3.5 w-3.5" />
               Atualizar projetos
@@ -226,7 +226,7 @@ export function DashboardDailyContent() {
           </div>
 
           {selectedProjectId && ticketsLoading ? (
-            <div className="w-full rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-500 text-sm">
+            <div className="w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] p-8 text-center text-[color:var(--muted-foreground)] text-sm">
               Carregando tarefas do projeto…
             </div>
           ) : selectedProjectId ? (
@@ -241,8 +241,8 @@ export function DashboardDailyContent() {
               />
             </div>
           ) : (
-            <div className="bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-500">
-              <p className="text-slate-500 text-sm">Selecione um projeto para visualizar o Kanban</p>
+            <div className="bg-[color:var(--surface)] rounded-xl border border-[color:var(--border)] p-8 text-center text-[color:var(--muted-foreground)]">
+              <p className="text-[color:var(--muted-foreground)] text-sm">Selecione um projeto para visualizar o Kanban</p>
             </div>
           )}
         </div>

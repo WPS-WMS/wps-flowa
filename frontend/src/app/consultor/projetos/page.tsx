@@ -33,11 +33,11 @@ export default function ProjetosPage() {
   }, []);
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-slate-50">
-      <header className="flex-shrink-0 bg-white border-b border-slate-200 px-6 py-4">
+    <div className="flex-1 flex flex-col min-h-0 bg-[color:var(--background)]">
+      <header className="flex-shrink-0 bg-[color:var(--surface)]/60 backdrop-blur border-b border-[color:var(--border)] px-6 py-4">
         <div className="max-w-6xl mx-auto">
-          <h1 className="text-xl md:text-2xl font-semibold text-slate-900">Projetos</h1>
-          <p className="text-xs md:text-sm text-slate-500 mt-1">
+          <h1 className="text-xl md:text-2xl font-semibold text-[color:var(--foreground)]">Projetos</h1>
+          <p className="text-xs md:text-sm text-[color:var(--muted-foreground)] mt-1">
             Gerencie todos os projetos e acompanhe o progresso.
           </p>
         </div>
@@ -56,7 +56,7 @@ export default function ProjetosPage() {
               {canArchiveProjects && (
                 <Link
                   href="/consultor/projetos/arquivados"
-                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+                  className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-2 text-sm font-medium text-[color:var(--foreground)] shadow-sm hover:opacity-90"
                 >
                   <Archive className="h-4 w-4" />
                   Projetos Arquivados
@@ -66,7 +66,7 @@ export default function ProjetosPage() {
                 <button
                   type="button"
                   onClick={() => setShowNewModal(true)}
-                  className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
+                  className="inline-flex items-center gap-2 rounded-full bg-[color:var(--primary)] px-4 py-2 text-sm font-medium text-[color:var(--primary-foreground)] shadow-sm hover:opacity-90"
                 >
                   <Plus className="h-4 w-4" />
                   Novo Projeto
@@ -75,7 +75,7 @@ export default function ProjetosPage() {
             </div>
           </div>
           {projects.length === 0 && !error && (
-            <div className="bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-500">
+            <div className="bg-[color:var(--surface)] rounded-xl border border-[color:var(--border)] p-8 text-center text-[color:var(--muted-foreground)]">
               Nenhum projeto encontrado.
             </div>
           )}

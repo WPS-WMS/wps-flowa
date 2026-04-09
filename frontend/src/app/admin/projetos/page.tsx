@@ -112,11 +112,11 @@ export default function AdminProjetosPage() {
   }, [projects, arquivadosCount]);
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-slate-50">
-      <header className="flex-shrink-0 bg-white border-b border-slate-200 px-6 py-4">
+    <div className="flex-1 flex flex-col min-h-0 bg-[color:var(--background)]">
+      <header className="flex-shrink-0 bg-[color:var(--surface)]/60 backdrop-blur border-b border-[color:var(--border)] px-6 py-4">
         <div className="max-w-6xl mx-auto">
-          <h1 className="text-xl md:text-2xl font-semibold text-slate-900">Projetos</h1>
-          <p className="text-xs md:text-sm text-slate-500 mt-1">
+          <h1 className="text-xl md:text-2xl font-semibold text-[color:var(--foreground)]">Projetos</h1>
+          <p className="text-xs md:text-sm text-[color:var(--muted-foreground)] mt-1">
             Gerencie todos os projetos e acompanhe o progresso.
           </p>
         </div>
@@ -126,20 +126,20 @@ export default function AdminProjetosPage() {
           {/* Barra de ações */}
           <div className="flex items-center justify-between gap-4">
             <div className="relative w-full md:w-64">
-              <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+              <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-[color:var(--muted-foreground)]" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Buscar projetos..."
-                className="w-full rounded-full border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] py-2 pl-9 pr-3 text-sm text-[color:var(--foreground)] placeholder:text-[color:var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]"
               />
             </div>
             <div className="flex items-center gap-3">
               {canArchiveProjects && (
                 <Link
                   href={arquivadosHref}
-                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+                  className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-2 text-sm font-medium text-[color:var(--foreground)] shadow-sm hover:opacity-90"
                 >
                   <Archive className="h-4 w-4" />
                   Projetos Arquivados
@@ -149,7 +149,7 @@ export default function AdminProjetosPage() {
                 <button
                   type="button"
                   onClick={() => setShowNewModal(true)}
-                  className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
+                  className="inline-flex items-center gap-2 rounded-full bg-[color:var(--primary)] px-4 py-2 text-sm font-medium text-[color:var(--primary-foreground)] shadow-sm hover:opacity-90"
                 >
                   <Plus className="h-4 w-4" />
                   Novo Projeto
@@ -165,56 +165,56 @@ export default function AdminProjetosPage() {
 
           {/* Cards de métricas */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <div className="rounded-xl bg-white border border-slate-200 px-4 py-3 shadow-sm flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+              <div className="rounded-xl bg-[color:var(--surface)] border border-[color:var(--border)] px-4 py-3 shadow-sm flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[color:var(--surface)] text-[color:var(--primary)] border border-[color:var(--border)]">
                   <TrendingUp className="h-4 w-4" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[11px] uppercase tracking-wide text-slate-500">
+                  <p className="text-[11px] uppercase tracking-wide text-[color:var(--muted-foreground)]">
                     Projetos ativos
                   </p>
-                  <p className="text-lg font-semibold text-slate-900">{metrics.totalProjetos}</p>
+                  <p className="text-lg font-semibold text-[color:var(--foreground)]">{metrics.totalProjetos}</p>
                 </div>
               </div>
 
               {canArchiveProjects && (
                 <Link
                   href={arquivadosHref}
-                  className="rounded-xl bg-white border border-slate-200 px-4 py-3 shadow-sm flex items-center gap-3 hover:border-slate-300 transition-colors"
+                  className="rounded-xl bg-[color:var(--surface)] border border-[color:var(--border)] px-4 py-3 shadow-sm flex items-center gap-3 hover:opacity-90 transition"
                 >
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[color:var(--surface)] text-emerald-400 border border-[color:var(--border)]">
                     <Archive className="h-4 w-4" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[11px] uppercase tracking-wide text-slate-500">Projetos Arquivados</p>
-                    <p className="text-lg font-semibold text-slate-900">{metrics.projetosArquivados}</p>
+                    <p className="text-[11px] uppercase tracking-wide text-[color:var(--muted-foreground)]">Projetos Arquivados</p>
+                    <p className="text-lg font-semibold text-[color:var(--foreground)]">{metrics.projetosArquivados}</p>
                   </div>
                 </Link>
               )}
 
-              <div className="rounded-xl bg-white border border-slate-200 px-4 py-3 shadow-sm flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
+              <div className="rounded-xl bg-[color:var(--surface)] border border-[color:var(--border)] px-4 py-3 shadow-sm flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[color:var(--surface)] text-[color:var(--primary)] border border-[color:var(--border)]">
                   <CheckCircle2 className="h-4 w-4" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[11px] uppercase tracking-wide text-slate-500">
+                  <p className="text-[11px] uppercase tracking-wide text-[color:var(--muted-foreground)]">
                     Projetos Concluídos
                   </p>
-                  <p className="text-lg font-semibold text-slate-900">
+                  <p className="text-lg font-semibold text-[color:var(--foreground)]">
                     {metrics.projetosConcluidos}
                   </p>
                 </div>
               </div>
 
-              <div className="rounded-xl bg-white border border-slate-200 px-4 py-3 shadow-sm flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-rose-50 text-rose-600">
+              <div className="rounded-xl bg-[color:var(--surface)] border border-[color:var(--border)] px-4 py-3 shadow-sm flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[color:var(--surface)] text-rose-400 border border-[color:var(--border)]">
                   <AlertTriangle className="h-4 w-4" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[11px] uppercase tracking-wide text-slate-500">
+                  <p className="text-[11px] uppercase tracking-wide text-[color:var(--muted-foreground)]">
                     Projetos atrasados
                   </p>
-                  <p className="text-lg font-semibold text-slate-900">
+                  <p className="text-lg font-semibold text-[color:var(--foreground)]">
                     {metrics.projetosAtrasados}
                   </p>
                 </div>
