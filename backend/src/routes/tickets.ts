@@ -78,6 +78,7 @@ const TICKET_LIST_FULL_INCLUDE = {
   assignedTo: { select: { id: true, name: true } },
   createdBy: { select: { id: true, name: true } },
   responsibles: { include: { user: { select: { id: true, name: true } } } },
+  budget: { select: { status: true } },
 } as const;
 
 function normalizeAmsPriority(value: string | null | undefined): "BAIXA" | "MEDIA" | "ALTA" | "CRITICA" | null {
