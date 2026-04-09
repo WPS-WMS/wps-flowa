@@ -18,9 +18,12 @@ function isMailConfigured() {
 
 export async function sendMail({ to, subject, html }: SendMailArgs) {
   if (!isMailConfigured()) {
-    if (process.env.NODE_ENV !== "production") {
-      console.log("[MAIL] SMTP não configurado. E-mail simulado.", { to, subject });
-    }
+    // Em produção, isso virava "silencioso" e dificultava suporte.
+    // Não logamos conteúdo do e-mail por segurança.
+    console.warn("[MAIL] SMTP não configurado. Envio ignorado.", {
+      to,
+      subject,
+    });
     return { ok: false as const, skipped: true as const };
   }
 

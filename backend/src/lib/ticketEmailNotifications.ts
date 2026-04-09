@@ -38,7 +38,10 @@ export async function notifyTicketMembers(args: {
       ticket.assignedTo?.email,
       ...ticket.responsibles.map((r) => r.user.email),
     ]);
-    if (to.length === 0) return;
+    if (to.length === 0) {
+      console.warn(`[MAIL] Nenhum destinatário com e-mail válido no chamado ${ticket.code}.`);
+      return;
+    }
 
     const header = `
       <div style="font-family:Arial,sans-serif;line-height:1.5">
