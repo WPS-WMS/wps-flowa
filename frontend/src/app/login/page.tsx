@@ -129,14 +129,14 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-slate-50 to-indigo-50 px-4">
-      <div className="w-full max-w-md p-8 bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-blue-100">
+    <div className="min-h-screen flex items-center justify-center bg-[color:var(--background)] px-4">
+      <div className="w-full max-w-md p-8 rounded-2xl shadow-2xl border border-[color:var(--border)] bg-[color:var(--surface)]/80 backdrop-blur-xl">
         <div className="text-center mb-8">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-white text-xl font-bold shadow-md mb-3">
+          <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[color:var(--primary)] text-[color:var(--primary-foreground)] text-xl font-bold shadow-md mb-3">
             W
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">WPS One</h1>
-          <p className="text-gray-500 mt-1 text-sm">Gestão de projetos e apontamento de horas</p>
+          <h1 className="text-2xl font-bold text-[color:var(--foreground)] tracking-tight">WPS One</h1>
+          <p className="mt-1 text-sm text-[color:var(--muted-foreground)]">Gestão de projetos e apontamento de horas</p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
@@ -145,7 +145,7 @@ export default function LoginPage() {
             </p>
           )}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-[color:var(--muted-foreground)] mb-1">
               E-mail
             </label>
             <input
@@ -156,15 +156,15 @@ export default function LoginPage() {
                 setFieldErrors((prev) => ({ ...prev, email: undefined }));
                 setError("");
               }}
-              className={`w-full px-4 py-2.5 rounded-lg bg-gray-50 border text-gray-900 focus:ring-2 focus:border-blue-500 focus:ring-blue-500 transition ${
-                fieldErrors.email ? "border-red-400 focus:border-red-500 focus:ring-red-500" : "border-blue-200"
+              className={`w-full px-4 py-2.5 rounded-lg border bg-[color:var(--surface)] text-[color:var(--foreground)] placeholder:text-[color:var(--muted-foreground)] focus:ring-2 focus:ring-[color:var(--primary)] transition ${
+                fieldErrors.email ? "border-red-400 focus:border-red-500 focus:ring-red-500" : "border-[color:var(--border)]"
               }`}
               placeholder="seu@email.com"
             />
             {/* Erro de preenchimento é exibido apenas no topo */}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-[color:var(--muted-foreground)] mb-1">
               Senha
             </label>
             <input
@@ -175,17 +175,17 @@ export default function LoginPage() {
                 setFieldErrors((prev) => ({ ...prev, password: undefined }));
                 setError("");
               }}
-              className={`w-full px-4 py-2.5 rounded-lg bg-gray-50 border text-gray-900 focus:ring-2 focus:border-blue-500 focus:ring-blue-500 transition ${
+              className={`w-full px-4 py-2.5 rounded-lg border bg-[color:var(--surface)] text-[color:var(--foreground)] placeholder:text-[color:var(--muted-foreground)] focus:ring-2 focus:ring-[color:var(--primary)] transition ${
                 fieldErrors.password
                   ? "border-red-400 focus:border-red-500 focus:ring-red-500"
-                  : "border-blue-200"
+                  : "border-[color:var(--border)]"
               }`}
               placeholder="••••••••"
             />
             {/* Erro de preenchimento é exibido apenas no topo */}
           </div>
           <div className="flex items-center justify-between text-xs mt-1">
-            <div className="text-gray-400" />
+            <div className="text-[color:var(--muted-foreground)]" />
             <button
               type="button"
               onClick={() => {
@@ -194,7 +194,7 @@ export default function LoginPage() {
                 setForgotError("");
                 setForgotMessage("");
               }}
-              className="text-blue-600 hover:text-blue-700 font-medium"
+              className="text-[color:var(--primary)] hover:opacity-90 font-medium"
             >
               Esqueci minha senha
             </button>
@@ -202,7 +202,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold disabled:opacity-50 transition shadow-sm"
+            className="w-full py-2.5 rounded-lg bg-[color:var(--primary)] hover:opacity-90 text-[color:var(--primary-foreground)] font-semibold disabled:opacity-50 transition shadow-sm"
           >
             {loading ? "Entrando..." : "Entrar"}
           </button>
@@ -217,18 +217,18 @@ export default function LoginPage() {
           }}
         >
           <div
-            className="w-full max-w-sm bg-white rounded-2xl shadow-2xl border border-blue-100 p-6"
+            className="w-full max-w-sm rounded-2xl shadow-2xl border border-[color:var(--border)] bg-[color:var(--surface)]/90 backdrop-blur-xl p-6"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-lg font-semibold text-slate-900 mb-1">
+            <h2 className="text-lg font-semibold text-[color:var(--foreground)] mb-1">
               Recuperar senha
             </h2>
-            <p className="text-xs text-slate-600 mb-4">
+            <p className="text-xs text-[color:var(--muted-foreground)] mb-4">
               Informe seu e-mail de acesso. Se ele existir em nossa base, você receberá um link para criar uma nova senha.
             </p>
             <form onSubmit={handleForgotSubmit} className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-[color:var(--muted-foreground)] mb-1">
                   E-mail
                 </label>
                 <input
@@ -239,7 +239,7 @@ export default function LoginPage() {
                     setForgotError("");
                     setForgotMessage("");
                   }}
-                  className="w-full px-4 py-2.5 rounded-lg bg-gray-50 border border-blue-200 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--foreground)] placeholder:text-[color:var(--muted-foreground)] focus:ring-2 focus:ring-[color:var(--primary)]"
                   placeholder="seu@email.com"
                 />
               </div>
@@ -255,7 +255,7 @@ export default function LoginPage() {
                   onClick={() => {
                     if (!forgotLoading) setShowForgot(false);
                   }}
-                  className="flex-1 py-2.5 rounded-lg border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50"
+                  className="flex-1 py-2.5 rounded-lg border border-[color:var(--border)] text-[color:var(--foreground)] text-sm font-medium hover:opacity-90"
                   disabled={forgotLoading}
                 >
                   Cancelar
@@ -263,7 +263,7 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={forgotLoading}
-                  className="flex-1 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold disabled:opacity-50"
+                  className="flex-1 py-2.5 rounded-lg bg-[color:var(--primary)] hover:opacity-90 text-[color:var(--primary-foreground)] text-sm font-semibold disabled:opacity-50"
                 >
                   {forgotLoading ? "Enviando..." : "Enviar"}
                 </button>
