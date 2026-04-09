@@ -254,8 +254,8 @@ export function KanbanWithFilters({
             onClick={() => setShowFilters(!showFilters)}
             className={`inline-flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium transition-all ${
               showFilters || hasActiveFilters
-                ? "bg-blue-600 text-white shadow-sm"
-                : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
+                ? "bg-[color:var(--primary)] text-[color:var(--primary-foreground)] shadow-sm"
+                : "bg-[color:var(--surface)] border border-[color:var(--border)] text-[color:var(--foreground)] hover:opacity-90"
             }`}
           >
             <Filter className="h-4 w-4" />

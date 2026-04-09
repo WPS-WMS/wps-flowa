@@ -74,67 +74,12 @@ function getColumnThemeByColor(colorClass: string): {
   headerBg: string;
   bodyBg: string;
 } {
-  // Importante: manter classes estáticas (Tailwind) — evitar strings dinâmicas.
-  if (colorClass.includes("slate")) {
-    return {
-      container: "bg-slate-50 border-slate-200",
-      headerBg: "bg-slate-50",
-      bodyBg: "bg-slate-100/40",
-    };
-  }
-  if (colorClass.includes("blue")) {
-    return {
-      container: "bg-blue-50/30 border-blue-100",
-      headerBg: "bg-blue-50/80",
-      bodyBg: "bg-blue-50/70",
-    };
-  }
-  if (colorClass.includes("emerald") || colorClass.includes("green")) {
-    return {
-      container: "bg-emerald-50/30 border-emerald-100",
-      headerBg: "bg-emerald-50/80",
-      bodyBg: "bg-emerald-50/70",
-    };
-  }
-  if (colorClass.includes("amber") || colorClass.includes("yellow")) {
-    return {
-      container: "bg-amber-50/30 border-amber-100",
-      headerBg: "bg-amber-50/80",
-      bodyBg: "bg-amber-50/70",
-    };
-  }
-  if (colorClass.includes("cyan") || colorClass.includes("teal")) {
-    return {
-      container: "bg-cyan-50/30 border-cyan-100",
-      headerBg: "bg-cyan-50/80",
-      bodyBg: "bg-cyan-50/70",
-    };
-  }
-  if (colorClass.includes("purple") || colorClass.includes("indigo")) {
-    return {
-      container: "bg-purple-50/30 border-purple-100",
-      headerBg: "bg-purple-50/80",
-      bodyBg: "bg-purple-50/70",
-    };
-  }
-  if (colorClass.includes("rose") || colorClass.includes("pink")) {
-    return {
-      container: "bg-rose-50/30 border-rose-100",
-      headerBg: "bg-rose-50/80",
-      bodyBg: "bg-rose-50/70",
-    };
-  }
-  if (colorClass.includes("orange")) {
-    return {
-      container: "bg-orange-50/30 border-orange-100",
-      headerBg: "bg-orange-50/80",
-      bodyBg: "bg-orange-50/70",
-    };
-  }
+  // Tema atual: usamos tokens (dark fica "glass" e evita cinza desbotado).
+  // Mantemos colorClass para o dot de status (coluna.color).
   return {
-    container: "bg-white border-slate-200",
-    headerBg: "bg-slate-50/80",
-    bodyBg: "bg-slate-50/50",
+    container: "bg-[color:var(--surface)]/55 border-[color:var(--border)] backdrop-blur",
+    headerBg: "bg-[color:var(--surface)]/45",
+    bodyBg: "bg-[color:var(--surface)]/30",
   };
 }
 
@@ -486,9 +431,9 @@ export function KanbanBoard({
           >
             {/* Cabeçalho da coluna - estilo referência */}
             <div
-              className={`${theme.headerBg} border-b border-slate-200/80 px-4 py-3 ${
+              className={`${theme.headerBg} border-b border-[color:var(--border)] px-4 py-3 ${
                 isCustomColumn ? "cursor-move" : ""
-              } ${dragOverCustomColumnId === column.id ? "ring-2 ring-blue-400 ring-inset" : ""}`}
+              } ${dragOverCustomColumnId === column.id ? "ring-2 ring-[color:var(--primary)] ring-inset" : ""}`}
               draggable={isCustomColumn}
               onDragStart={(e) => {
                 if (!isCustomColumn) return;
@@ -528,20 +473,20 @@ export function KanbanBoard({
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
                   {isFinalizadas && (
-                    <Check className="h-4 w-4 text-emerald-600 flex-shrink-0" aria-hidden />
+                    <Check className="h-4 w-4 text-emerald-400 flex-shrink-0" aria-hidden />
                   )}
                   {isCustomColumn && (
                     <span className="inline-flex shrink-0" title="Arraste para reordenar">
-                      <GripVertical className="h-4 w-4 text-slate-400" aria-hidden />
+                      <GripVertical className="h-4 w-4 text-[color:var(--muted-foreground)]" aria-hidden />
                     </span>
                   )}
                   {isCustomColumn && (
                     <span className={`h-2 w-2 rounded-full ${column.color}`} aria-hidden />
                   )}
-                  <h3 className="text-sm font-semibold text-slate-800 truncate">
+                  <h3 className="text-sm font-semibold text-[color:var(--foreground)] truncate">
                     {column.label}
                   </h3>
-                  <span className="flex-shrink-0 text-xs font-medium text-slate-500">
+                  <span className="flex-shrink-0 text-xs font-medium text-[color:var(--muted-foreground)]">
                     ({columnTickets.length})
                   </span>
                   {isCustomColumn && (
@@ -551,7 +496,7 @@ export function KanbanBoard({
                         e.stopPropagation();
                         handleDeleteColumn(column.id);
                       }}
-                      className="p-1 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors flex-shrink-0"
+                      className="p-1 rounded-md text-[color:var(--muted-foreground)] hover:text-red-300 hover:bg-red-500/10 transition-colors flex-shrink-0"
                       title="Excluir coluna"
                       aria-label="Excluir coluna"
                     >
@@ -566,7 +511,7 @@ export function KanbanBoard({
                     const statusToCreate = getStatusForColumn(column.id);
                     setCreateModalStatus(statusToCreate);
                   }}
-                  className="p-2 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                  className="p-2 rounded-lg text-[color:var(--muted-foreground)] hover:text-[color:var(--primary)] hover:bg-[color:var(--surface)] transition-colors"
                   title="Nova tarefa"
                   aria-label="Nova tarefa"
                 >
@@ -578,9 +523,9 @@ export function KanbanBoard({
               <div
                 className={`p-3 space-y-3 min-h-[180px] max-h-[calc(100vh-320px)] overflow-y-auto transition-all duration-200 rounded-b-xl ${
                   isDropTarget && dragOverColumnId === column.id
-                    ? "bg-blue-100/60 ring-2 ring-blue-400 ring-inset"
+                    ? "bg-[color:var(--surface)] ring-2 ring-[color:var(--primary)] ring-inset"
                     : isDropTarget
-                    ? "ring-2 ring-blue-300 ring-inset ring-dashed"
+                    ? "ring-2 ring-[color:var(--primary)]/60 ring-inset ring-dashed"
                     : theme.bodyBg
                 }`}
                 onDragEnter={() => setDragOverColumnId(column.id)}
@@ -596,8 +541,8 @@ export function KanbanBoard({
               >
                 {columnTickets.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 text-center">
-                    <p className="text-sm text-slate-400">Nenhuma tarefa</p>
-                    <p className="text-xs text-slate-400 mt-0.5">Arraste cards aqui ou crie uma nova</p>
+                    <p className="text-sm text-[color:var(--muted-foreground)]">Nenhuma tarefa</p>
+                    <p className="text-xs text-[color:var(--muted-foreground)] mt-0.5">Arraste cards aqui ou crie uma nova</p>
                   </div>
                 ) : (
                   columnTickets.map((ticket) => {
@@ -608,10 +553,10 @@ export function KanbanBoard({
                     return (
                       <div
                         key={ticket.id}
-                        className={`relative rounded-xl bg-white border border-slate-200 p-3 shadow-sm transition-all duration-200 cursor-grab active:cursor-grabbing ${
+                        className={`relative rounded-xl bg-[color:var(--surface)]/85 border border-[color:var(--border)] p-3 shadow-sm transition-all duration-200 cursor-grab active:cursor-grabbing ${
                           isDragging
-                            ? "opacity-90 scale-[1.02] shadow-xl ring-2 ring-blue-400 z-10"
-                            : "hover:shadow-md hover:border-slate-300"
+                            ? "opacity-90 scale-[1.02] shadow-xl ring-2 ring-[color:var(--primary)] z-10"
+                            : "hover:shadow-md hover:border-[color:var(--border)]"
                         }`}
                         draggable
                         onDragStart={(e) => {
@@ -634,8 +579,8 @@ export function KanbanBoard({
                         >
                           {/* Primeira linha: ID + nome da tarefa */}
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs font-mono font-semibold text-slate-600 shrink-0">#{ticket.code}</span>
-                            <span className="text-sm font-semibold text-slate-800 line-clamp-2 truncate" title={ticket.title}>
+                            <span className="text-xs font-mono font-semibold text-[color:var(--muted-foreground)] shrink-0">#{ticket.code}</span>
+                            <span className="text-sm font-semibold text-[color:var(--foreground)] line-clamp-2 truncate" title={ticket.title}>
                               {ticket.title}
                             </span>
                           </div>
@@ -646,25 +591,25 @@ export function KanbanBoard({
                                 className={`flex-shrink-0 w-2.5 h-2.5 rounded-full ${getPriorityDotClass(ticket.criticidade)}`}
                                 aria-hidden
                               />
-                              <span className="text-xs font-medium text-slate-700">{ticket.criticidade}</span>
+                              <span className="text-xs font-medium text-[color:var(--muted-foreground)]">{ticket.criticidade}</span>
                             </div>
                           )}
                           {/* Linha: tópico/tipo, Orçado/Executado, data, responsável */}
-                          <div className="flex items-center flex-wrap gap-3 text-xs text-slate-500">
+                          <div className="flex items-center flex-wrap gap-3 text-xs text-[color:var(--muted-foreground)]">
                             {ticket.parentTicketId && topicsMap[ticket.parentTicketId] ? (
                               <span className="inline-flex items-center gap-1" title={topicsMap[ticket.parentTicketId]}>
-                                <FileText className="h-3.5 w-3.5 text-slate-400" />
+                                <FileText className="h-3.5 w-3.5 text-[color:var(--muted-foreground)]" />
                                 <span className="truncate max-w-[150px]">{topicsMap[ticket.parentTicketId]}</span>
                               </span>
                             ) : ticket.type ? (
                               <span className="inline-flex items-center gap-1">
-                                <FileText className="h-3.5 w-3.5 text-slate-400" />
+                                <FileText className="h-3.5 w-3.5 text-[color:var(--muted-foreground)]" />
                                 {ticket.type}
                               </span>
                             ) : null}
                             {(estimativaHoras != null || horasApontadas > 0) && (
                               <span className="inline-flex items-center gap-1">
-                                <Clock className="h-3.5 w-3.5 text-slate-400" />
+                                <Clock className="h-3.5 w-3.5 text-[color:var(--muted-foreground)]" />
                                 {estimativaHoras != null && horasApontadas > 0 ? (
                                   <span>
                                     Orçado {formatHorasDecimalToHm(estimativaHoras)} · Executado{" "}
@@ -679,13 +624,13 @@ export function KanbanBoard({
                             )}
                             {dateStr && (
                               <span className="inline-flex items-center gap-1">
-                                <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                                <Calendar className="h-3.5 w-3.5 text-[color:var(--muted-foreground)]" />
                                 {dateStr}
                               </span>
                             )}
                             {ticket.assignedTo && (
                               <span className="inline-flex items-center gap-1 truncate max-w-[100px]" title={ticket.assignedTo.name}>
-                                <User className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+                                <User className="h-3.5 w-3.5 text-[color:var(--muted-foreground)] flex-shrink-0" />
                                 <span className="truncate">{ticket.assignedTo.name}</span>
                               </span>
                             )}
@@ -712,7 +657,7 @@ export function KanbanBoard({
                               e.stopPropagation();
                               setDeleteTicketTarget(ticket);
                             }}
-                            className="absolute top-3 right-3 p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                            className="absolute top-3 right-3 p-1.5 rounded-lg text-[color:var(--muted-foreground)] hover:text-red-300 hover:bg-red-500/10 transition-colors"
                             title="Excluir tarefa"
                             aria-label="Excluir tarefa"
                           >
@@ -734,13 +679,13 @@ export function KanbanBoard({
         <button
           type="button"
           onClick={() => setShowCreateColumnModal(true)}
-          className="w-full h-full min-h-[220px] rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/80 hover:border-blue-300 hover:bg-blue-50/50 transition-all flex flex-col items-center justify-center gap-3 text-slate-500 hover:text-blue-600 group"
+          className="w-full h-full min-h-[220px] rounded-xl border-2 border-dashed border-[color:var(--border)] bg-[color:var(--surface)]/35 hover:border-[color:var(--primary)]/60 hover:bg-[color:var(--surface)] transition-all flex flex-col items-center justify-center gap-3 text-[color:var(--muted-foreground)] hover:text-[color:var(--primary)] group"
         >
-          <div className="rounded-full bg-slate-200/80 p-3 group-hover:bg-blue-100 transition-colors">
-            <LayoutGrid className="h-6 w-6 text-slate-500 group-hover:text-blue-600" />
+          <div className="rounded-full bg-[color:var(--surface)] p-3 group-hover:bg-[color:var(--surface)] transition-colors border border-[color:var(--border)]">
+            <LayoutGrid className="h-6 w-6 text-[color:var(--muted-foreground)] group-hover:text-[color:var(--primary)]" />
           </div>
           <span className="text-sm font-semibold">Nova coluna</span>
-          <span className="text-xs text-slate-400 group-hover:text-blue-500">Adicione um status personalizado</span>
+          <span className="text-xs text-[color:var(--muted-foreground)] group-hover:text-[color:var(--primary)]/80">Adicione um status personalizado</span>
         </button>
       </div>
       
