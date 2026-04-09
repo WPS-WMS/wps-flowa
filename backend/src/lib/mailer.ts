@@ -37,12 +37,27 @@ export async function sendMail({ to, subject, html }: SendMailArgs) {
     },
   });
 
-  await transporter.sendMail({
-    from: process.env.SMTP_FROM,
-    to,
-    subject,
-    html,
-  });
+  try {
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM,
+      to,
+      subject,
+      html,
+    });
+  } catch (err) {
+    // Loga somente metadados; sem corpo do e-mail/credenciais.
+    const e = err as any;
+    console.error("[MAIL] transporter.sendMail falhou", {
+      to,
+      subject,
+      code: e?.code,
+      responseCode: e?.responseCode,
+      command: e?.command,
+      message: e?.message,
+      response: e?.response,
+    });
+    throw err;
+  }
 
   return { ok: true as const };
 }

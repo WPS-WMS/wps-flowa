@@ -60,6 +60,17 @@ export async function notifyTicketMembers(args: {
     const rejected = results.filter((r) => r.status === "rejected").length;
     if (rejected > 0) {
       console.warn(`[MAIL] Falha ao enviar ${rejected}/${results.length} e-mails do chamado ${ticket.code}.`);
+      const first = results.find((r) => r.status === "rejected") as PromiseRejectedResult | undefined;
+      if (first?.reason) {
+        const e = first.reason as any;
+        console.warn("[MAIL] Primeiro erro de envio (amostra):", {
+          code: e?.code,
+          responseCode: e?.responseCode,
+          command: e?.command,
+          message: e?.message,
+          response: e?.response,
+        });
+      }
     }
   } catch (err) {
     console.error("[MAIL] notifyTicketMembers falhou:", err);
