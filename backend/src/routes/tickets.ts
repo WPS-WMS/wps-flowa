@@ -13,6 +13,37 @@ import {
 export const ticketsRouter = Router();
 ticketsRouter.use(authMiddleware);
 
+/** Maior código puramente numérico (chamados/tarefas; ignora tópicos e formatos como T12). */
+function maxNumericTaskCode(codes: Iterable<string>): number {
+  let max = 0;
+  for (const code of codes) {
+    const s = String(code).trim();
+    if (!/^\d+$/.test(s)) continue;
+    const n = parseInt(s, 10);
+    if (!Number.isNaN(n) && n > max) max = n;
+  }
+  return max;
+}
+
+/**
+ * Sequência de tópicos (SUBPROJETO): legado só dígitos ou formato T{n}.
+ * Novos tópicos recebem T{n+1} para não competir com números de tarefas.
+ */
+function maxTopicCodeNumber(codes: Iterable<string>): number {
+  let max = 0;
+  for (const code of codes) {
+    const s = String(code).trim();
+    let n: number | null = null;
+    if (/^\d+$/.test(s)) n = parseInt(s, 10);
+    else {
+      const m = /^T(\d+)$/i.exec(s);
+      if (m) n = parseInt(m[1], 10);
+    }
+    if (n != null && !Number.isNaN(n) && n > max) max = n;
+  }
+  return max;
+}
+
 /** Listagem enxuta: menos colunas e relações (detalhe continua em GET /:id). */
 const TICKET_LIST_LIGHT_SELECT = {
   id: true,
@@ -372,16 +403,21 @@ ticketsRouter.post("/", async (req, res) => {
       return;
     }
   }
-  // Sequência única de código para TODAS as tarefas (incluindo tópicos),
-  // crescente por ordem de criação dentro do tenant.
+  const tenantTicketScope = { project: { client: { tenantId: user.tenantId } } };
   let nextCode: string;
-  const lastTicket = await prisma.ticket.findFirst({
-    where: {
-      project: { client: { tenantId: user.tenantId } },
-    },
-    orderBy: { createdAt: "desc" },
-  });
-  nextCode = lastTicket ? String(parseInt(lastTicket.code, 10) + 1) : "1";
+  if (isSubprojetoTopic) {
+    const topicRows = await prisma.ticket.findMany({
+      where: { ...tenantTicketScope, type: "SUBPROJETO" },
+      select: { code: true },
+    });
+    nextCode = `T${maxTopicCodeNumber(topicRows.map((r) => r.code)) + 1}`;
+  } else {
+    const taskRows = await prisma.ticket.findMany({
+      where: { ...tenantTicketScope, type: { not: "SUBPROJETO" } },
+      select: { code: true },
+    });
+    nextCode = String(maxNumericTaskCode(taskRows.map((r) => r.code)) + 1);
+  }
   if (parentTicketId) {
     const parentTicket = await prisma.ticket.findFirst({
       where: {
@@ -458,7 +494,10 @@ ticketsRouter.post("/", async (req, res) => {
       field: null,
       oldValue: null,
       newValue: null,
-      details: `Tarefa criada: "${ticket.title}"`,
+      details:
+        effectiveType === "SUBPROJETO"
+          ? `Tópico criado: "${ticket.title}"`
+          : `Tarefa criada: "${ticket.title}"`,
     },
   });
   
@@ -503,15 +542,18 @@ ticketsRouter.post("/", async (req, res) => {
     },
   });
 
-  notifyTicketMembers({
-    tenantId: user.tenantId,
-    ticketId: ticket.id,
-    subject: `Chamado ${ticket.code} foi criado`,
-    title: `Chamado ${ticket.code} foi criado`,
-    messageHtml: `<p>O chamado foi criado e já está em <b>Backlog</b>.</p>`,
-    openingByClient: isClienteCreator,
-    includeProjectResponsibles: !isClienteCreator,
-  }).catch(() => {});
+  // Tópicos (SUBPROJETO) não são chamados: não enviar e-mail de "chamado criado".
+  if (effectiveType !== "SUBPROJETO") {
+    notifyTicketMembers({
+      tenantId: user.tenantId,
+      ticketId: ticket.id,
+      subject: `Chamado ${ticket.code} foi criado`,
+      title: `Chamado ${ticket.code} foi criado`,
+      messageHtml: `<p>O chamado foi criado e já está em <b>Backlog</b>.</p>`,
+      openingByClient: isClienteCreator,
+      includeProjectResponsibles: !isClienteCreator,
+    }).catch(() => {});
+  }
 
   res.json(ticketFull ?? ticket);
 });
@@ -1280,6 +1322,30 @@ ticketsRouter.patch("/:id", async (req, res) => {
       responsibles: { include: { user: { select: { id: true, name: true } } } },
     },
   });
+
+  const becameEncerrado =
+    String(updated.status) === "ENCERRADO" && String(ticket.status ?? "") !== "ENCERRADO";
+  if (becameEncerrado) {
+    const esc = (t: string) =>
+      t
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    const motivo = updated.finalizacaoMotivo ? esc(String(updated.finalizacaoMotivo)) : "";
+    const obs = updated.finalizacaoObservacao ? esc(String(updated.finalizacaoObservacao)) : "";
+    let body = "<p>O chamado foi <b>finalizado</b>.</p>";
+    if (motivo) body += `<p><b>Motivo:</b> ${motivo}</p>`;
+    if (obs) body += `<p><b>Observação:</b> ${obs}</p>`;
+    notifyTicketMembers({
+      tenantId: user.tenantId,
+      ticketId,
+      subject: `Chamado ${updated.code} foi finalizado`,
+      title: `Chamado ${updated.code} foi finalizado`,
+      messageHtml: body,
+      includeProjectResponsibles: true,
+    }).catch(() => {});
+  }
 
   res.json(updated);
 });
