@@ -335,8 +335,12 @@ export default function LandingPage() {
 
               <div className="order-1 space-y-8 text-center sm:text-left lg:order-2">
                 <p
-                  className="text-lg font-medium md:text-xl"
-                  style={{ color: isDark ? "rgba(255,255,255,0.92)" : "rgba(17,24,39,0.85)" }}
+                  className="font-medium leading-[1.08] tracking-tight"
+                  style={{
+                    fontFamily: "var(--font-montserrat), system-ui, sans-serif",
+                    fontSize: "clamp(2rem, 5.5vw + 0.5rem, 6.0125rem)",
+                    color: isDark ? "rgba(255,255,255,0.92)" : "rgba(17,24,39,0.85)",
+                  }}
                 >
                   Bem-vindo
                 </p>
@@ -351,7 +355,7 @@ export default function LandingPage() {
                   <img
                     src="/WPS One.png"
                     alt="One"
-                    className="h-12 w-auto select-none md:h-[4.25rem]"
+                    className="h-[3.25rem] w-auto select-none sm:h-16 md:h-[5.25rem] lg:h-28"
                     draggable={false}
                   />
                 </div>
