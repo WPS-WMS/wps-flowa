@@ -525,7 +525,8 @@ export function BancoHorasClient({ isAdmin = false }: { isAdmin?: boolean }) {
                 </td>
               </tr>
             ) : (
-            {filteredData.map((row) => {
+              <>
+              {filteredData.map((row) => {
               const exib = saldoExibido(row);
               const isCurrent = isCurrentMonth(row);
               const rowText = isCurrent ? "text-indigo-700" : "";
@@ -695,6 +696,7 @@ export function BancoHorasClient({ isAdmin = false }: { isAdmin?: boolean }) {
               </td>
               <td className="px-4 py-3"></td>
             </tr>
+              </>
             )}
           </tbody>
         </table>
