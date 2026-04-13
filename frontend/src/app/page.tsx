@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { ArrowRight, UserRound } from "lucide-react";
@@ -9,6 +9,25 @@ import { ArrowRight, UserRound } from "lucide-react";
 export default function LandingPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const [theme, setTheme] = useState<"dark" | "light">("light");
+
+  useEffect(() => {
+    const el = document.documentElement;
+    const getTheme = () =>
+      (el.getAttribute("data-theme") === "dark" ? "dark" : "light") as "dark" | "light";
+    setTheme(getTheme());
+    const obs = new MutationObserver(() => setTheme(getTheme()));
+    obs.observe(el, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => obs.disconnect();
+  }, []);
+
+  const isDark = theme === "dark";
+  const surface = useMemo(
+    () => (isDark ? "rgba(12, 8, 18, 0.55)" : "rgba(255, 255, 255, 0.65)"),
+    [isDark],
+  );
+  const navText = useMemo(() => (isDark ? "rgba(244,242,255,0.78)" : "rgba(17,24,39,0.70)"), [isDark]);
+  const bg = useMemo(() => (isDark ? "#000000" : "#f7f7fb"), [isDark]);
 
   // Usuário já autenticado continua indo direto para o seu dashboard / portal.
   useEffect(() => {
@@ -24,55 +43,63 @@ export default function LandingPage() {
   }, [user, loading, router]);
 
   return (
-    <div className="min-h-screen bg-[color:var(--background)] text-[color:var(--foreground)] flex flex-col">
-      <div
-        className="pointer-events-none fixed inset-0 -z-10"
-        style={{
-          background:
-            "radial-gradient(900px 420px at 75% 20%, rgba(92,0,225,0.14), transparent 60%), radial-gradient(720px 420px at 20% 75%, rgba(87,66,118,0.10), transparent 62%)",
-        }}
-        aria-hidden
-      />
+    <div className="min-h-screen flex flex-col" style={{ background: bg, color: isDark ? "#ffffff" : "#0b0b12" }}>
+      {/* topo */}
       <header className="w-full">
-        <div className="mx-auto max-w-6xl px-6 py-5 flex items-center justify-between">
-          <nav className="hidden md:flex items-center gap-10 text-sm font-medium text-[color:var(--muted-foreground)]">
-            <a href="#home" className="hover:text-[color:var(--foreground)] transition-colors">
-              Home
-            </a>
-            <a href="#sobre" className="hover:text-[color:var(--foreground)] transition-colors">
-              Sobre
-            </a>
-            <a href="#contato" className="hover:text-[color:var(--foreground)] transition-colors">
-              Contato
-            </a>
-          </nav>
+        <div className="mx-auto max-w-6xl px-6 pt-7">
+          <div className="relative flex items-center">
+            <nav
+              className="absolute left-1/2 -translate-x-1/2 hidden md:flex items-center gap-24 text-sm font-medium"
+              style={{ color: navText }}
+            >
+              <a href="#home" className="hover:opacity-90 transition-opacity">
+                Home
+              </a>
+              <a href="#sobre" className="hover:opacity-90 transition-opacity">
+                Sobre
+              </a>
+              <a href="#contato" className="hover:opacity-90 transition-opacity">
+                Contato
+              </a>
+            </nav>
 
-          <div className="ml-auto flex items-center gap-3">
-            <Link
-              href="/login"
-              className="inline-flex items-center justify-center rounded-full bg-[color:var(--primary)] px-6 py-2.5 text-sm font-semibold text-[color:var(--primary-foreground)] shadow-sm hover:opacity-95 transition-opacity"
-            >
-              Entrar
-            </Link>
-            <Link
-              href="/login"
-              aria-label="Entrar"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--border)]/80 bg-[color:var(--surface)]/40 backdrop-blur hover:opacity-90 transition-opacity"
-            >
-              <UserRound className="h-5 w-5 text-[color:var(--muted-foreground)]" />
-            </Link>
+            <div className="ml-auto flex items-center gap-3">
+              <Link
+                href="/login"
+                className="inline-flex items-center justify-center rounded-full px-7 py-2.5 text-sm font-semibold text-white shadow-sm hover:opacity-95 transition-opacity"
+                style={{ background: "#5c00e1" }}
+              >
+                Entrar
+              </Link>
+              <Link
+                href="/login"
+                aria-label="Entrar"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full"
+                style={{ background: surface, border: `1px solid ${isDark ? "rgba(255,255,255,0.10)" : "rgba(17,24,39,0.14)"}` }}
+              >
+                <UserRound className="h-5 w-5" style={{ color: isDark ? "rgba(244,242,255,0.70)" : "rgba(17,24,39,0.60)" }} />
+              </Link>
+            </div>
           </div>
         </div>
       </header>
 
+      {/* hero */}
       <main className="flex-1">
-        <section id="home" className="mx-auto max-w-6xl px-6 pb-16 pt-10 md:pt-16">
-          <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2 lg:gap-16">
+        <section id="home" className="mx-auto max-w-6xl px-6 pt-12 pb-10">
+          <div className="grid grid-cols-1 lg:grid-cols-[1.05fr_0.95fr] items-center gap-12 lg:gap-14">
             <div className="space-y-10">
-              <div className="flex items-end gap-4">
+              {/* lockup */}
+              <div className="flex items-center gap-6">
                 <div className="relative">
-                  <div className="rounded-none border-2 border-[color:var(--primary)]/85 px-3 py-1.5">
-                    <span className="text-5xl sm:text-6xl font-black tracking-tight text-[color:var(--foreground)]">
+                  <div
+                    className="px-4 py-2.5"
+                    style={{
+                      border: `2px solid rgba(92,0,225,0.85)`,
+                      background: "transparent",
+                    }}
+                  >
+                    <span className="text-6xl font-black tracking-tight leading-none" style={{ color: isDark ? "#ffffff" : "#0b0b12" }}>
                       WPS
                     </span>
                   </div>
@@ -80,63 +107,92 @@ export default function LandingPage() {
                 <img
                   src="/WPS One 2.png"
                   alt="One"
-                  className="h-[44px] sm:h-[56px] w-auto select-none"
+                  className="h-[56px] w-auto select-none"
                   draggable={false}
                 />
               </div>
 
-              <div className="max-w-xl rounded-3xl bg-[color:var(--primary)] px-8 py-7 text-[color:var(--primary-foreground)] shadow-[0_18px_55px_-20px_rgba(92,0,225,0.65)]">
-                <h2 className="text-lg sm:text-xl font-bold">Gestão de projetos</h2>
-                <p className="mt-3 text-base/relaxed opacity-95">
+              {/* card */}
+              <div className="max-w-xl rounded-[22px] px-8 py-7 text-white" style={{ background: "#5c00e1" }}>
+                <h2 className="text-xl font-bold">Gestão de projetos</h2>
+                <p className="mt-3 text-base leading-relaxed opacity-95">
                   Modele projetos internos, Fixed Price, AMS e T&amp;M, com horas contratadas,
-                  banco de horas e escopo.
+                  banco de horas e escopo
                 </p>
               </div>
 
-              <div className="flex justify-center sm:justify-start">
+              {/* CTA */}
+              <div className="flex justify-center sm:justify-start pt-1">
                 <a
                   href="#sobre"
-                  className="inline-flex items-center gap-2 rounded-full bg-[color:var(--primary)] px-6 py-2.5 text-sm font-semibold text-[color:var(--primary-foreground)] shadow-sm hover:opacity-95 transition-opacity"
+                  className="inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-semibold text-white hover:opacity-95 transition-opacity"
+                  style={{ background: "#5c00e1" }}
                 >
-                  Próximo
-                  <ArrowRight className="h-4 w-4" aria-hidden />
+                  Próximo &gt;
                 </a>
               </div>
             </div>
 
-            <div className="relative">
-              <div className="pointer-events-none absolute -inset-6 -z-10 rounded-[2.5rem] bg-[radial-gradient(60%_55%_at_65%_30%,rgba(92,0,225,0.20),transparent_60%)]" />
+            {/* seta */}
+            <div className="relative flex items-center justify-center">
+              <div
+                className="absolute inset-0 -z-10"
+                style={{
+                  background: isDark
+                    ? "radial-gradient(780px 420px at 65% 35%, rgba(92,0,225,0.18), transparent 62%)"
+                    : "radial-gradient(780px 420px at 65% 35%, rgba(92,0,225,0.10), transparent 64%)",
+                }}
+                aria-hidden
+              />
               <img
                 src="/WPS One seta.png"
                 alt=""
-                className="w-full max-w-[560px] mx-auto select-none opacity-90 drop-shadow-[0_20px_60px_rgba(0,0,0,0.25)]"
+                className="w-full max-w-[680px] select-none"
+                style={{ filter: isDark ? "drop-shadow(0 28px 80px rgba(0,0,0,0.55))" : "drop-shadow(0 28px 80px rgba(17,24,39,0.20))" }}
                 draggable={false}
               />
             </div>
           </div>
         </section>
 
-        <section id="sobre" className="mx-auto max-w-6xl px-6 pb-16">
-          <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)]/50 backdrop-blur p-6 md:p-8">
-            <h3 className="text-lg font-semibold text-[color:var(--foreground)]">Sobre</h3>
-            <p className="mt-2 text-sm md:text-base leading-relaxed text-[color:var(--muted-foreground)] max-w-3xl">
-              O WPS One centraliza projetos, chamados e apontamentos em um fluxo simples e consistente, com acesso
-              segmentado por perfil e foco em produtividade no dia a dia.
+        {/* blocos simples p/ navegação (mantém âncoras do topo) */}
+        <section id="sobre" className="mx-auto max-w-6xl px-6 pb-10">
+          <div
+            className="rounded-2xl px-6 py-6 md:px-8 md:py-7"
+            style={{
+              background: surface,
+              border: `1px solid ${isDark ? "rgba(255,255,255,0.10)" : "rgba(17,24,39,0.12)"}`,
+              color: isDark ? "rgba(244,242,255,0.80)" : "rgba(17,24,39,0.75)",
+            }}
+          >
+            <h3 className="text-base font-semibold" style={{ color: isDark ? "#fff" : "#0b0b12" }}>
+              Sobre
+            </h3>
+            <p className="mt-2 text-sm leading-relaxed max-w-3xl">
+              Plataforma para gestão de projetos, chamados e horas, com experiência moderna e acesso segmentado por perfil.
             </p>
           </div>
         </section>
 
-        <section id="contato" className="mx-auto max-w-6xl px-6 pb-20">
-          <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)]/50 backdrop-blur p-6 md:p-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <section id="contato" className="mx-auto max-w-6xl px-6 pb-16">
+          <div
+            className="rounded-2xl px-6 py-6 md:px-8 md:py-7 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+            style={{
+              background: surface,
+              border: `1px solid ${isDark ? "rgba(255,255,255,0.10)" : "rgba(17,24,39,0.12)"}`,
+              color: isDark ? "rgba(244,242,255,0.80)" : "rgba(17,24,39,0.75)",
+            }}
+          >
             <div>
-              <h3 className="text-lg font-semibold text-[color:var(--foreground)]">Contato</h3>
-              <p className="mt-2 text-sm text-[color:var(--muted-foreground)]">
-                Para acessar, utilize suas credenciais ou fale com a equipe responsável.
-              </p>
+              <h3 className="text-base font-semibold" style={{ color: isDark ? "#fff" : "#0b0b12" }}>
+                Contato
+              </h3>
+              <p className="mt-2 text-sm">Para acessar, utilize suas credenciais ou fale com a equipe responsável.</p>
             </div>
             <Link
               href="/login"
-              className="inline-flex items-center justify-center rounded-xl bg-[color:var(--primary)] px-5 py-3 text-sm font-semibold text-[color:var(--primary-foreground)] shadow-sm hover:opacity-95 transition-opacity"
+              className="inline-flex items-center justify-center rounded-xl px-5 py-3 text-sm font-semibold text-white hover:opacity-95 transition-opacity"
+              style={{ background: "#5c00e1" }}
             >
               Entrar no sistema
             </Link>
@@ -144,10 +200,9 @@ export default function LandingPage() {
         </section>
       </main>
 
-      <footer className="border-t border-[color:var(--border)] bg-[color:var(--surface)]/40 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl flex-col gap-2 px-6 py-5 text-xs text-[color:var(--muted-foreground)] sm:flex-row sm:items-center sm:justify-between">
-          <p>© {new Date().getFullYear()} WPS One. Todos os direitos reservados.</p>
-          <p className="text-[11px]">Projetos, chamados e horas em uma experiência moderna.</p>
+      <footer className="border-t" style={{ borderColor: isDark ? "rgba(255,255,255,0.10)" : "rgba(17,24,39,0.12)" }}>
+        <div className="mx-auto max-w-6xl px-6 py-6 text-xs" style={{ color: isDark ? "rgba(244,242,255,0.55)" : "rgba(17,24,39,0.55)" }}>
+          © {new Date().getFullYear()} WPS One. Todos os direitos reservados.
         </div>
       </footer>
     </div>
