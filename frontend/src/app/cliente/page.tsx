@@ -371,66 +371,74 @@ export default function ClienteHomePage() {
     <div className="flex-1 min-h-0 flex flex-col">
       <main className="flex-1 overflow-auto p-6 lg:p-8">
         <div className="max-w-6xl mx-auto space-y-6">
-          <section className="rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 text-white shadow-xl overflow-hidden">
-            <div className="p-6 lg:p-8">
+          <section className="relative rounded-2xl overflow-hidden border border-[color:var(--border)] shadow-xl">
+            <div
+              className="absolute inset-0"
+              style={{
+                background:
+                  "radial-gradient(900px 420px at 78% 30%, rgba(92,0,225,0.35), transparent 55%), radial-gradient(700px 380px at 30% 60%, rgba(87,66,118,0.28), transparent 60%), linear-gradient(135deg, rgba(7,5,12,0.95), rgba(18,12,28,0.85))",
+              }}
+              aria-hidden
+            />
+            <div className="relative p-6 lg:p-8 text-[color:var(--primary-foreground)]">
               <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
                 <div>
                   <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">
                     Olá, {user?.name ?? "Cliente"}!
                   </h1>
-                  <p className="text-slate-300 mt-1">
+                  <p className="mt-1 text-[color:var(--primary-foreground)]/70">
                     Acompanhe as horas apontadas pela equipe e o status dos seus projetos.
                   </p>
 
                   <div className="mt-6">
-                    <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">
+                    <h2 className="text-sm font-semibold text-[color:var(--primary-foreground)]/60 uppercase tracking-wider mb-3">
                       Horas apontadas nos seus projetos
                     </h2>
-                    <p className="text-slate-400 text-xs mb-2">
+                    <p className="text-[color:var(--primary-foreground)]/60 text-xs mb-2">
                       Apontamentos realizados por consultores e gestores nas tarefas
                     </p>
                     <div className="flex flex-wrap gap-6">
                       <div>
-                        <p className="text-slate-400 text-sm">Hoje</p>
+                        <p className="text-[color:var(--primary-foreground)]/70 text-sm">Hoje</p>
                         <p className="text-2xl font-bold tabular-nums">{formatHours(hours.hoje)}</p>
                       </div>
                       <div>
-                        <p className="text-slate-400 text-sm">Semana</p>
+                        <p className="text-[color:var(--primary-foreground)]/70 text-sm">Semana</p>
                         <p className="text-2xl font-bold tabular-nums">{formatHours(hours.semana)}</p>
                       </div>
                       <div>
-                        <p className="text-slate-400 text-sm">Mês</p>
+                        <p className="text-[color:var(--primary-foreground)]/70 text-sm">Mês</p>
                         <p className="text-2xl font-bold tabular-nums">{formatHours(hours.mes)}</p>
                       </div>
                     </div>
                   </div>
 
                   <div className="mt-6">
-                    <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">
+                    <h2 className="text-sm font-semibold text-[color:var(--primary-foreground)]/60 uppercase tracking-wider mb-3">
                       Tarefas dos seus projetos
                     </h2>
                     <div className="flex flex-wrap gap-6">
                       <div className="flex items-center gap-2">
                         <Loader2 className="h-5 w-5 text-amber-400" />
                         <div>
-                          <p className="text-slate-400 text-sm">Em execução</p>
+                          <p className="text-[color:var(--primary-foreground)]/70 text-sm">Em execução</p>
                           <p className="text-xl font-bold">{emExecucao}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <CheckCircle2 className="h-5 w-5 text-emerald-400" />
                         <div>
-                          <p className="text-slate-400 text-sm">Finalizadas</p>
+                          <p className="text-[color:var(--primary-foreground)]/70 text-sm">Finalizadas</p>
                           <p className="text-xl font-bold">{finalizadas}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <AlertCircle className="h-5 w-5 text-blue-400" />
                         <div>
-                          <p className="text-slate-400 text-sm">SLA AMS (finalizadas)</p>
+                          <p className="text-[color:var(--primary-foreground)]/70 text-sm">SLA AMS (finalizadas)</p>
                           <p className="text-xl font-bold tabular-nums">{slaLabel}</p>
                           {slaSummary?.aplicavel && slaSummary.total > 0 && (
-                            <p className="text-slate-500 text-xs">
+                            <p className="text-[color:var(--primary-foreground)]/60 text-xs">
                               {slaSummary.dentroPrazo}/{slaSummary.total} no prazo
                             </p>
                           )}
@@ -439,27 +447,27 @@ export default function ClienteHomePage() {
                       <div className="flex items-center gap-2">
                         <Target className="h-5 w-5 text-slate-400" />
                         <div>
-                          <p className="text-slate-400 text-sm">Horas contratadas</p>
+                          <p className="text-[color:var(--primary-foreground)]/70 text-sm">Horas contratadas</p>
                           <p className="text-xl font-bold tabular-nums">
                             {horasContratadas > 0 ? formatHours(horasContratadas) : "—"}
                           </p>
-                          <p className="text-slate-500 text-xs">T&M e AMS</p>
+                          <p className="text-[color:var(--primary-foreground)]/60 text-xs">T&M e AMS</p>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-2 text-right text-slate-300 shrink-0">
+                <div className="flex flex-col gap-2 text-right text-[color:var(--primary-foreground)]/80 shrink-0">
                   <div className="flex items-center justify-end gap-2">
-                    <Calendar className="h-5 w-5 text-slate-500" />
+                    <Calendar className="h-5 w-5 text-[color:var(--primary-foreground)]/55" />
                     <span className="font-medium capitalize">Mês atual: {mesAtual}</span>
                   </div>
                   <div className="flex items-center justify-end gap-2">
-                    <ListTodo className="h-5 w-5 text-slate-500" />
+                    <ListTodo className="h-5 w-5 text-[color:var(--primary-foreground)]/55" />
                     <span>Semana atual: {semanaAtualLabel}</span>
                   </div>
-                  <p className="text-slate-400 text-sm">Hoje é {hojeFormatado}</p>
+                  <p className="text-[color:var(--primary-foreground)]/60 text-sm">Hoje é {hojeFormatado}</p>
                 </div>
               </div>
             </div>

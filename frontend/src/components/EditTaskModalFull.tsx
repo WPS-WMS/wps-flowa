@@ -21,6 +21,8 @@ type EditTaskModalFullProps = {
   onClose: () => void;
   onSaved: () => void;
   readOnly?: boolean;
+  /** Permite apontar horas mesmo com readOnly (ex.: abrir pela Home). */
+  allowTimeEntryInReadOnly?: boolean;
 };
 
 type Tab = "descricao" | "horas" | "apontamentos" | "historico" | "orcamento" | "anexos";
@@ -85,6 +87,7 @@ export function EditTaskModalFull({
   onClose,
   onSaved,
   readOnly = false,
+  allowTimeEntryInReadOnly = false,
 }: EditTaskModalFullProps) {
   const isReadOnly = readOnly;
   const [activeTab, setActiveTab] = useState<Tab>("descricao");
@@ -383,8 +386,8 @@ export function EditTaskModalFull({
   }, [activeTab, ticket?.id]);
 
   useEffect(() => {
-    // Cliente não deve acessar abas de histórico/horas
-    if (isClienteProfile && (activeTab === "horas" || activeTab === "historico")) {
+    // Cliente não deve acessar aba de histórico
+    if (isClienteProfile && activeTab === "historico") {
       setActiveTab("descricao");
     }
     // Cliente só pode comentar em modo público
@@ -471,6 +474,7 @@ export function EditTaskModalFull({
     return s || "";
   }, [projectStatus]);
   const canLogTime = normalizedProjectStatus === "ATIVO" || normalizedProjectStatus === "";
+  const canManageTimeEntries = !isClienteProfile && canLogTime && (!isReadOnly || allowTimeEntryInReadOnly);
 
   // Atualiza o formulário quando o ticket mudar
   useEffect(() => {
@@ -884,7 +888,7 @@ export function EditTaskModalFull({
 
   // Carregar apontamentos quando a aba horas for aberta ou quando o ticket/projeto mudar
   useEffect(() => {
-    if ((activeTab === "horas" || activeTab === "apontamentos") && ticket.id) {
+    if (activeTab === "apontamentos" && ticket.id) {
       loadTimeEntries();
     }
   }, [activeTab, ticket.id]);
@@ -1435,14 +1439,20 @@ export function EditTaskModalFull({
   const readOnlyNoFocusClass = "focus:ring-0 focus:border-slate-200 focus:outline-none hover:border-slate-200 cursor-default";
   const labelClass = "block text-sm font-semibold text-slate-700 mb-2";
 
-  const tabs: { id: Tab; label: string }[] = [
-    { id: "descricao", label: "Descrição" },
-    ...(!isClienteProfile ? [{ id: "horas" as const, label: "Horas" }] : []),
-    ...(isClienteProfile ? [{ id: "apontamentos" as const, label: "Apontamentos" }] : []),
-    ...(!isClienteProfile ? [{ id: "historico" as const, label: "Histórico" }] : []),
-    { id: "orcamento", label: "Orçamento" },
-    { id: "anexos", label: "Anexos" },
-  ];
+  const tabs: { id: Tab; label: string }[] = isClienteProfile
+    ? [
+        { id: "descricao", label: "Descrição" },
+        { id: "apontamentos", label: "Apontamentos" },
+        { id: "orcamento", label: "Orçamento" },
+        { id: "anexos", label: "Anexos" },
+      ]
+    : [
+        { id: "descricao", label: "Descrição" },
+        { id: "apontamentos", label: "Apontamentos" },
+        { id: "historico", label: "Histórico" },
+        { id: "orcamento", label: "Orçamento" },
+        { id: "anexos", label: "Anexos" },
+      ];
 
   return (
     <div
@@ -2005,7 +2015,7 @@ export function EditTaskModalFull({
               </div>
             )}
 
-            {activeTab === "horas" && (
+            {activeTab === "apontamentos" && !isClienteProfile && (
               <div className="space-y-6">
                 {!canLogTime && (
                   <div className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-amber-800 text-sm">
@@ -2013,7 +2023,7 @@ export function EditTaskModalFull({
                   </div>
                 )}
                 {/* Formulário de apontamento */}
-                {!isReadOnly && canLogTime && <div
+                {canManageTimeEntries && <div
                   ref={timeEntryFormRef}
                   className="bg-white rounded-xl border border-slate-200 px-5 py-5 shadow-sm hover:shadow-md transition-shadow duration-200"
                 >
@@ -2195,7 +2205,9 @@ export function EditTaskModalFull({
                             <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Intervalo</th>
                             <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Horas totais</th>
                             <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Comentário</th>
-                            <th className="px-4 py-3 text-right text-xs font-bold text-slate-700 uppercase tracking-wider">Ações</th>
+                            {canManageTimeEntries && (
+                              <th className="px-4 py-3 text-right text-xs font-bold text-slate-700 uppercase tracking-wider">Ações</th>
+                            )}
                           </tr>
                         </thead>
                         <tbody>
@@ -2232,28 +2244,30 @@ export function EditTaskModalFull({
                                   {entry.description || "—"}
                                 </p>
                               </td>
-                              <td className="px-4 py-3">
-                                <div className="flex justify-end gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleEditTimeEntry(entry)}
-                                    disabled={savingTimeEntry || editingTimeEntry === entry.id}
-                                    className="p-2 rounded-lg hover:bg-blue-50 text-slate-500 hover:text-blue-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    title="Editar apontamento"
-                                  >
-                                    <Pencil className="h-4 w-4" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => setDeleteTimeEntryId(entry.id)}
-                                    disabled={savingTimeEntry}
-                                    className="p-2 rounded-lg hover:bg-red-50 text-slate-500 hover:text-red-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    title="Excluir apontamento"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </button>
-                                </div>
-                              </td>
+                              {canManageTimeEntries && (
+                                <td className="px-4 py-3">
+                                  <div className="flex justify-end gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleEditTimeEntry(entry)}
+                                      disabled={savingTimeEntry || editingTimeEntry === entry.id}
+                                      className="p-2 rounded-lg hover:bg-blue-50 text-slate-500 hover:text-blue-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                      title="Editar apontamento"
+                                    >
+                                      <Pencil className="h-4 w-4" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setDeleteTimeEntryId(entry.id)}
+                                      disabled={savingTimeEntry}
+                                      className="p-2 rounded-lg hover:bg-red-50 text-slate-500 hover:text-red-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                      title="Excluir apontamento"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                </td>
+                              )}
                             </tr>
                           ))}
                         </tbody>
@@ -2265,7 +2279,7 @@ export function EditTaskModalFull({
                             <td className="px-4 py-4 text-lg font-mono font-bold text-blue-600">
                               {fmtHoras(timeEntries.reduce((sum, e) => sum + e.totalHoras, 0))}
                             </td>
-                            <td colSpan={2}></td>
+                            <td colSpan={canManageTimeEntries ? 2 : 1}></td>
                           </tr>
                         </tfoot>
                       </table>
@@ -2273,14 +2287,16 @@ export function EditTaskModalFull({
                   ) : (
                     <div className="text-center py-12 border-2 border-dashed border-slate-200 rounded-lg bg-slate-50/50">
                       <p className="text-slate-400 mb-1">Nenhum apontamento registrado ainda.</p>
-                      <p className="text-xs text-slate-400">Use o formulário acima para registrar horas trabalhadas.</p>
+                      <p className="text-xs text-slate-400">
+                        {canManageTimeEntries ? "Use o formulário acima para registrar horas trabalhadas." : "Sem permissão para apontar horas neste contexto."}
+                      </p>
                     </div>
                   )}
                 </div>
               </div>
             )}
 
-            {activeTab === "apontamentos" && (
+            {activeTab === "apontamentos" && isClienteProfile && (
               <div className="space-y-6">
                 <div className="bg-white rounded-xl border border-slate-200 px-5 py-5 shadow-sm hover:shadow-md transition-shadow duration-200">
                   <h3 className="text-base font-bold text-slate-800 mb-5 flex items-center gap-2">

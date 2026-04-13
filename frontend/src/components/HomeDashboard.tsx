@@ -345,6 +345,7 @@ export function HomeDashboard({ basePath }: HomeDashboardProps) {
           projectId={(selectedTicket as unknown as TicketForHome).project?.id}
           projectName={(selectedTicket as unknown as TicketForHome).project?.name}
           readOnly={!canEditFromHome}
+          allowTimeEntryInReadOnly
           onClose={() => setSelectedTicket(null)}
           onSaved={() => {
             setSelectedTicket(null);
