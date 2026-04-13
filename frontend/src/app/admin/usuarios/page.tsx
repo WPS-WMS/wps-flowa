@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, type ReactNode, type Dispatch, type SetStateAction } from "react";
+import { useState, useEffect, type Dispatch, type SetStateAction } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { Plus, Pencil, Search, ChevronLeft } from "lucide-react";
 import { ConfirmarExclusaoModal } from "@/components/ConfirmarExclusaoModal";
+import { FormModalSection } from "@/components/FormModalPrimitives";
 
 type UserRow = {
   id: string;
@@ -56,28 +57,6 @@ const modalBackdropClass = "fixed inset-0 bg-black/50 backdrop-blur-sm flex item
 
 const userModalPanelClass =
   "bg-[color:var(--surface)] rounded-2xl border border-[color:var(--border)] w-full max-w-2xl max-h-[min(92vh,900px)] shadow-lg flex flex-col overflow-hidden";
-
-function UserFormModalSection({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description?: string;
-  children: ReactNode;
-}) {
-  return (
-    <section className="rounded-xl border border-[color:var(--border)]/90 bg-[color:var(--background)]/25 p-4 md:p-5 space-y-4">
-      <header className="space-y-1">
-        <h4 className="text-sm font-semibold text-[color:var(--foreground)]">{title}</h4>
-        {description ? (
-          <p className="text-xs leading-relaxed text-[color:var(--muted-foreground)]">{description}</p>
-        ) : null}
-      </header>
-      <div className="space-y-4">{children}</div>
-    </section>
-  );
-}
 
 export default function UsuariosPage() {
   const router = useRouter();
@@ -330,9 +309,6 @@ function LimitePorDiaGrid({
   return (
     <div>
       <label className={formLabelClass}>Limite diário de horas para apontamento</label>
-      <p className="text-xs text-[color:var(--muted-foreground)] mb-3 -mt-0.5">
-        Cada dia pode ter um limite distinto (acordo com a gestão). Não há registro de ponto: o usuário aponta horas em projetos conforme estas metas.
-      </p>
       <div className="overflow-x-auto pb-1 -mx-1 px-1 [scrollbar-width:thin]">
         <div className="flex gap-3 md:grid md:grid-cols-7 md:gap-2">
           {(Object.keys(DIA_LABELS) as DiaKey[]).map((k) => (
@@ -354,9 +330,6 @@ function LimitePorDiaGrid({
           ))}
         </div>
       </div>
-      <p className="mt-2 text-xs text-[color:var(--muted-foreground)]">
-        Você pode inserir no máximo 23:59 de horas trabalhadas por dia.
-      </p>
     </div>
   );
 }
@@ -747,7 +720,7 @@ function NovoUsuarioModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
           <div className="flex-1 overflow-y-auto px-5 py-4 md:px-6 space-y-5">
             {error && <p className="text-red-500 text-sm shrink-0">{error}</p>}
 
-            <UserFormModalSection
+            <FormModalSection
               title="Dados de acesso"
               description="Credenciais usadas para entrar no sistema."
             >
@@ -798,9 +771,9 @@ function NovoUsuarioModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
                   />
                 </div>
               </div>
-            </UserFormModalSection>
+            </FormModalSection>
 
-            <UserFormModalSection
+            <FormModalSection
               title="Perfil e cargo"
               description="Define permissões gerais e o papel na empresa."
             >
@@ -854,10 +827,10 @@ function NovoUsuarioModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
                   placeholder="Cargo na empresa"
                 />
               </div>
-            </UserFormModalSection>
+            </FormModalSection>
 
             {role !== "CLIENTE" && (
-              <UserFormModalSection title="Dados pessoais" description="Opcional; não afeta o apontamento.">
+              <FormModalSection title="Dados pessoais" description="Opcional; não afeta o apontamento.">
                 <div>
                   <label className={formLabelClass}>
                     Data de nascimento{" "}
@@ -870,11 +843,11 @@ function NovoUsuarioModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
                     className={formInputClass()}
                   />
                 </div>
-              </UserFormModalSection>
+              </FormModalSection>
             )}
 
             {role !== "CLIENTE" && (
-              <UserFormModalSection
+              <FormModalSection
                 title="Apontamento de horas"
                 description="Regras para registrar horas em projetos e limite por dia da semana (Dom–Sáb), conforme combinado com a gestão."
               >
@@ -965,7 +938,7 @@ function NovoUsuarioModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
                   />
                 </div>
                 <LimitePorDiaGrid limitesPorDia={limitesPorDia} setLimitesPorDia={setLimitesPorDia} />
-              </UserFormModalSection>
+              </FormModalSection>
             )}
           </div>
           <footer className="shrink-0 flex gap-3 px-5 py-4 md:px-6 border-t border-[color:var(--border)] bg-[color:var(--surface)]">
@@ -1164,7 +1137,7 @@ function EditarUsuarioModal({
           <div className="flex-1 overflow-y-auto px-5 py-4 md:px-6 space-y-5">
             {error && <p className="text-red-500 text-sm shrink-0">{error}</p>}
 
-            <UserFormModalSection
+            <FormModalSection
               title="Dados de acesso"
               description="Identificação no portal. A senha só é alterada se você preencher o campo."
             >
@@ -1210,9 +1183,9 @@ function EditarUsuarioModal({
                   />
                 </div>
               </div>
-            </UserFormModalSection>
+            </FormModalSection>
 
-            <UserFormModalSection
+            <FormModalSection
               title="Perfil e cargo"
               description="Define permissões gerais e o papel na empresa."
             >
@@ -1266,10 +1239,10 @@ function EditarUsuarioModal({
                   placeholder="Cargo na empresa"
                 />
               </div>
-            </UserFormModalSection>
+            </FormModalSection>
 
             {role !== "CLIENTE" && (
-              <UserFormModalSection title="Dados pessoais" description="Opcional; não afeta o apontamento.">
+              <FormModalSection title="Dados pessoais" description="Opcional; não afeta o apontamento.">
                 <div>
                   <label className={formLabelClass}>
                     Data de nascimento{" "}
@@ -1282,11 +1255,11 @@ function EditarUsuarioModal({
                     className={formInputClass()}
                   />
                 </div>
-              </UserFormModalSection>
+              </FormModalSection>
             )}
 
             {role !== "CLIENTE" && (
-              <UserFormModalSection
+              <FormModalSection
                 title="Apontamento de horas"
                 description="Data a partir da qual pode apontar, permissões e limite diário por dia da semana (Dom–Sáb), conforme combinado com a gestão."
               >
@@ -1377,7 +1350,7 @@ function EditarUsuarioModal({
                   </div>
                 )}
                 <LimitePorDiaGrid limitesPorDia={limitesPorDia} setLimitesPorDia={setLimitesPorDia} />
-              </UserFormModalSection>
+              </FormModalSection>
             )}
           </div>
           <footer className="shrink-0 flex gap-3 px-5 py-4 md:px-6 border-t border-[color:var(--border)] bg-[color:var(--surface)]">

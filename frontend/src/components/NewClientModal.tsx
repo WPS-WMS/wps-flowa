@@ -1,7 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { Loader2 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import {
+  formModalBackdropClass,
+  formModalInputClass,
+  formModalLabelClass,
+  formModalPanelWideClass,
+  FormModalSection,
+} from "@/components/FormModalPrimitives";
 
 type NewClientModalProps = {
   onClose: () => void;
@@ -44,7 +52,7 @@ export function NewClientModal({ onClose, onSaved }: NewClientModalProps) {
       setBairro(data.bairro || "");
       setCidade(data.localidade || "");
       setEstado(data.uf || "");
-    } catch (err) {
+    } catch {
       setError("Erro ao buscar CEP");
     } finally {
       setLoadingCep(false);
@@ -134,52 +142,42 @@ export function NewClientModal({ onClose, onSaved }: NewClientModalProps) {
     }
   }
 
-  const getInputClass = (hasError: boolean) => {
-    const baseClass =
-      "w-full px-3.5 py-2.5 rounded-xl border bg-[color:var(--surface)] text-sm text-[color:var(--foreground)] placeholder:text-[color:var(--muted-foreground)] focus:outline-none focus:ring-2";
-    const errorClass = hasError
-      ? "border-red-500 focus:ring-red-500/40 focus:border-red-500"
-      : "border-[color:var(--border)] focus:ring-[color:var(--primary)]/30";
-    return `${baseClass} ${errorClass}`;
-  };
-  const labelClass =
-    "block text-xs font-medium text-[color:var(--muted-foreground)] mb-1.5 uppercase tracking-wide";
-
   return (
-    <div
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 px-4 py-6"
-      onClick={onClose}
-    >
+    <div className={formModalBackdropClass} onClick={onClose}>
       <div
-        className="bg-[color:var(--surface)] rounded-2xl border border-[color:var(--border)] w-full max-w-3xl max-h-[90vh] shadow-lg overflow-hidden flex flex-col"
+        className={formModalPanelWideClass}
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="new-client-modal-title"
       >
-        {/* Header */}
-        <div className="px-6 pt-5 pb-4 border-b border-[color:var(--border)] bg-[color:var(--surface)]">
-          <h2 className="text-lg md:text-xl font-semibold text-[color:var(--foreground)]">Novo cliente</h2>
-          <p className="text-xs md:text-sm text-[color:var(--muted-foreground)] mt-1">
-            Preencha as informações do cliente. O campo marcado é obrigatório.
+        <header className="shrink-0 px-5 pt-5 pb-4 md:px-6 border-b border-[color:var(--border)]">
+          <h2
+            id="new-client-modal-title"
+            className="text-lg md:text-xl font-semibold text-[color:var(--foreground)]"
+          >
+            Novo cliente
+          </h2>
+          <p className="text-sm text-[color:var(--muted-foreground)] mt-1.5 leading-relaxed">
+            Cadastre a empresa no portal. Campos com asterisco são obrigatórios; demais ajudam em relatórios e contato.
           </p>
-        </div>
+        </header>
 
-        {/* Conteúdo */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-hidden flex flex-col">
-          {error ? (
-            <div className="px-6 pt-4 pb-2 bg-[color:var(--surface)]">
-              <div className="wps-apontamento-consultor-error rounded-xl border px-4 py-3">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <div className="flex-1 overflow-y-auto px-5 py-4 md:px-6 space-y-5">
+            {error ? (
+              <div className="wps-apontamento-consultor-error rounded-xl border px-4 py-3 shrink-0">
                 <p className="text-sm font-medium">{error}</p>
               </div>
-            </div>
-          ) : null}
-          <div className="p-6 space-y-6 flex-1 overflow-y-auto bg-[color:var(--background)]">
-            {/* Informações básicas */}
-            <div className="space-y-4">
-              <p className="text-[11px] font-semibold text-[color:var(--muted-foreground)] uppercase tracking-wide">
-                Informações básicas
-              </p>
+            ) : null}
+
+            <FormModalSection
+              title="Identificação e contato"
+              description="Nome e e-mail usados na comunicação e no cadastro."
+            >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className={labelClass}>
+                  <label className={formModalLabelClass}>
                     Nome do cliente <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -191,16 +189,16 @@ export function NewClientModal({ onClose, onSaved }: NewClientModalProps) {
                         setFieldErrors((prev) => ({ ...prev, name: false }));
                       }
                     }}
-                    className={getInputClass(!!fieldErrors.name)}
+                    className={formModalInputClass(!!fieldErrors.name)}
                     aria-invalid={fieldErrors.name ? "true" : "false"}
-                    placeholder="Ex: Empresa ABC Ltda"
+                    placeholder="Ex.: Empresa ABC Ltda"
                   />
-                  {fieldErrors.name && (
+                  {fieldErrors.name ? (
                     <p className="mt-1 text-xs text-red-600">Campo obrigatório.</p>
-                  )}
+                  ) : null}
                 </div>
                 <div>
-                  <label className={labelClass}>
+                  <label className={formModalLabelClass}>
                     E-mail de contato <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -212,30 +210,30 @@ export function NewClientModal({ onClose, onSaved }: NewClientModalProps) {
                         setFieldErrors((prev) => ({ ...prev, email: false }));
                       }
                     }}
-                    className={getInputClass(!!fieldErrors.email)}
+                    className={formModalInputClass(!!fieldErrors.email)}
                     aria-invalid={fieldErrors.email ? "true" : "false"}
-                    placeholder="Ex: contato@empresa.com.br"
+                    placeholder="Ex.: contato@empresa.com.br"
                   />
-                  {fieldErrors.email && (
+                  {fieldErrors.email ? (
                     <p className="mt-1 text-xs text-red-600">Campo obrigatório.</p>
-                  )}
+                  ) : null}
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className={labelClass}>CNPJ</label>
+                  <label className={formModalLabelClass}>CNPJ</label>
                   <input
                     type="text"
                     value={cnpj}
                     onChange={(e) => setCnpj(formatarCnpj(e.target.value))}
-                    className={getInputClass(false)}
+                    className={formModalInputClass(false)}
                     placeholder="00.000.000/0000-00"
                     inputMode="numeric"
                     maxLength={18}
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>Telefone</label>
+                  <label className={formModalLabelClass}>Telefone</label>
                   <input
                     type="text"
                     value={telefone}
@@ -243,23 +241,22 @@ export function NewClientModal({ onClose, onSaved }: NewClientModalProps) {
                       const formatted = formatarTelefone(e.target.value);
                       setTelefone(formatted);
                     }}
-                    className={getInputClass(false)}
-                    placeholder="Ex: (11) 98765-4321"
+                    className={formModalInputClass(false)}
+                    placeholder="Ex.: (11) 98765-4321"
                     maxLength={15}
                   />
                 </div>
               </div>
-            </div>
+            </FormModalSection>
 
-            {/* Endereço */}
-            <div className="space-y-4 pt-4 border-t border-[color:var(--border)]">
-              <p className="text-[11px] font-semibold text-[color:var(--muted-foreground)] uppercase tracking-wide">
-                Endereço
-              </p>
-              <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-4">
+            <FormModalSection
+              title="Endereço"
+              description="Opcional. Ao sair do campo CEP com 8 dígitos, buscamos o endereço automaticamente."
+            >
+              <div className="grid grid-cols-1 md:grid-cols-[minmax(0,11rem)_1fr] gap-4">
                 <div>
-                  <label className={labelClass}>CEP</label>
-                  <div className="flex gap-2">
+                  <label className={formModalLabelClass}>CEP</label>
+                  <div className="flex gap-2 items-center min-h-[3rem]">
                     <input
                       type="text"
                       value={cep}
@@ -268,103 +265,103 @@ export function NewClientModal({ onClose, onSaved }: NewClientModalProps) {
                         setCep(formatted);
                       }}
                       onBlur={buscarCep}
-                      className={getInputClass(false)}
+                      className={`${formModalInputClass(false)} min-w-0 flex-1`}
                       placeholder="00000-000"
                       maxLength={9}
                     />
-                    {loadingCep && (
-                      <div className="flex items-center px-3 text-xs text-[color:var(--muted-foreground)]">
-                        Buscando...
-                      </div>
-                    )}
+                    {loadingCep ? (
+                      <Loader2
+                        className="size-5 shrink-0 text-[color:var(--muted-foreground)] animate-spin"
+                        aria-hidden
+                      />
+                    ) : null}
                   </div>
                 </div>
-                <div>
-                  <label className={labelClass}>Endereço</label>
+                <div className="md:min-w-0">
+                  <label className={formModalLabelClass}>Logradouro</label>
                   <input
                     type="text"
                     value={endereco}
                     onChange={(e) => setEndereco(e.target.value)}
-                    className={getInputClass(false)}
-                    placeholder="Ex: Rua das Flores"
+                    className={formModalInputClass(false)}
+                    placeholder="Ex.: Rua das Flores"
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_2fr] gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className={labelClass}>Número</label>
+                  <label className={formModalLabelClass}>Número</label>
                   <input
                     type="text"
                     value={numero}
                     onChange={(e) => setNumero(e.target.value)}
-                    className={getInputClass(false)}
-                    placeholder="Ex: 123"
+                    className={formModalInputClass(false)}
+                    placeholder="Ex.: 123"
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>Complemento</label>
+                  <label className={formModalLabelClass}>Complemento</label>
                   <input
                     type="text"
                     value={complemento}
                     onChange={(e) => setComplemento(e.target.value)}
-                    className={getInputClass(false)}
-                    placeholder="Ex: Sala 45"
+                    className={formModalInputClass(false)}
+                    placeholder="Ex.: Sala 45"
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>Bairro</label>
+                  <label className={formModalLabelClass}>Bairro</label>
                   <input
                     type="text"
                     value={bairro}
                     onChange={(e) => setBairro(e.target.value)}
-                    className={getInputClass(false)}
-                    placeholder="Ex: Centro"
+                    className={formModalInputClass(false)}
+                    placeholder="Ex.: Centro"
                   />
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-4">
                 <div>
-                  <label className={labelClass}>Cidade</label>
+                  <label className={formModalLabelClass}>Cidade</label>
                   <input
                     type="text"
                     value={cidade}
                     onChange={(e) => setCidade(e.target.value)}
-                    className={getInputClass(false)}
-                    placeholder="Ex: São Paulo"
+                    className={formModalInputClass(false)}
+                    placeholder="Ex.: São Paulo"
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>Estado</label>
+                  <label className={formModalLabelClass}>UF</label>
                   <input
                     type="text"
                     value={estado}
                     onChange={(e) => setEstado(e.target.value.toUpperCase())}
-                    className={getInputClass(false)}
-                    placeholder="Ex: SP"
+                    className={formModalInputClass(false)}
+                    placeholder="SP"
                     maxLength={2}
                   />
                 </div>
               </div>
-            </div>
+            </FormModalSection>
           </div>
 
-          {/* Footer */}
-          <div className="border-t border-[color:var(--border)] px-6 py-4 bg-[color:var(--surface)] flex justify-end gap-3 shrink-0">
+          <footer className="shrink-0 flex gap-3 px-5 py-4 md:px-6 border-t border-[color:var(--border)] bg-[color:var(--surface)]">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] text-sm font-medium text-[color:var(--foreground)] hover:opacity-90"
+              className="flex-1 py-3 rounded-xl border border-[color:var(--border)] text-[color:var(--foreground)] font-medium hover:opacity-90 text-sm"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="px-5 py-2 rounded-xl bg-[color:var(--primary)] text-sm font-semibold text-[color:var(--primary-foreground)] shadow-sm hover:opacity-95 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="flex-1 py-3 rounded-xl bg-[color:var(--primary)] font-semibold text-[color:var(--primary-foreground)] hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
             >
-              {saving ? "Salvando..." : "Salvar"}
+              {saving ? "Salvando..." : "Salvar cliente"}
             </button>
-          </div>
+          </footer>
         </form>
       </div>
     </div>
