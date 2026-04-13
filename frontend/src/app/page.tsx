@@ -105,7 +105,7 @@ export default function LandingPage() {
                   </div>
                 </div>
                 <img
-                  src="/WPS One 2.png"
+                  src="/WPS One.png"
                   alt="One"
                   className="h-[56px] w-auto select-none"
                   draggable={false}
