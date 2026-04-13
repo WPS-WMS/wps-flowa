@@ -71,11 +71,11 @@ export default function ClientesPage() {
   }, []);
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-slate-50">
-      <header className="flex-shrink-0 bg-white border-b border-slate-200 px-6 py-4">
+    <div className="flex-1 flex flex-col min-h-0 bg-[color:var(--background)]">
+      <header className="flex-shrink-0 border-b border-[color:var(--border)] bg-[color:var(--surface)] px-6 py-4">
         <div className="max-w-6xl mx-auto">
-          <h1 className="text-xl md:text-2xl font-semibold text-slate-900">Clientes</h1>
-          <p className="text-xs md:text-sm text-slate-500 mt-1">
+          <h1 className="text-xl md:text-2xl font-semibold text-[color:var(--foreground)]">Clientes</h1>
+          <p className="text-xs md:text-sm text-[color:var(--muted-foreground)] mt-1">
             Gerencie todos os clientes cadastrados no sistema.
           </p>
         </div>
@@ -83,150 +83,146 @@ export default function ClientesPage() {
 
       <main className="flex-1 px-4 md:px-6 py-4 min-h-0 overflow-auto">
         <div className="max-w-6xl mx-auto space-y-4">
-          {/* Barra de ações */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-3">
+          <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] p-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => router.back()}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--foreground)] text-sm font-medium hover:opacity-90 transition-opacity"
+                >
+                  <ChevronLeft className="h-4 w-4 shrink-0" />
+                  Voltar
+                </button>
+                <div className="relative min-w-0 flex-1 max-w-md">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[color:var(--muted-foreground)]" />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Buscar clientes..."
+                    className="w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] py-2.5 pl-9 pr-3 text-sm text-[color:var(--foreground)] placeholder:text-[color:var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/30"
+                  />
+                </div>
+              </div>
               <button
                 type="button"
-                onClick={() => router.back()}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50 transition-colors"
+                onClick={() => setShowNewModal(true)}
+                className="inline-flex items-center gap-2 rounded-xl bg-[color:var(--primary)] px-4 py-2.5 text-sm font-semibold text-[color:var(--primary-foreground)] shadow-sm hover:opacity-95"
               >
-                <ChevronLeft className="h-4 w-4" />
-                Voltar
+                <Plus className="h-4 w-4 shrink-0" />
+                Novo Cliente
               </button>
-              <div className="relative w-56 sm:w-64">
-                <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Buscar clientes..."
-                  className="w-full rounded-full border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setShowNewModal(true)}
-              className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
-            >
-              <Plus className="h-4 w-4" />
-              Novo Cliente
-            </button>
           </div>
           {error && (
-            <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-red-700 text-sm">
+            <div className="wps-apontamento-consultor-error rounded-xl border px-4 py-3 text-sm">
               {error}
             </div>
           )}
 
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <p className="text-slate-500 text-sm">Carregando clientes...</p>
+            <div className="flex flex-col items-center justify-center py-16 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] shadow-sm">
+              <p className="text-[color:var(--muted-foreground)] text-sm">Carregando clientes...</p>
             </div>
           ) : clients.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 bg-white rounded-xl border border-slate-200">
-              <p className="text-slate-500 text-sm mb-4">Nenhum cliente cadastrado.</p>
+            <div className="flex flex-col items-center justify-center py-14 px-4 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] shadow-sm">
+              <p className="text-[color:var(--muted-foreground)] text-sm mb-4 text-center">Nenhum cliente cadastrado.</p>
               <button
                 type="button"
                 onClick={() => setShowNewModal(true)}
-                className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
+                className="inline-flex items-center gap-2 rounded-xl bg-[color:var(--primary)] px-4 py-2.5 text-sm font-semibold text-[color:var(--primary-foreground)] shadow-sm hover:opacity-95"
               >
-                <Plus className="h-4 w-4" />
+                <Plus className="h-4 w-4 shrink-0" />
                 Criar primeiro cliente
               </button>
             </div>
           ) : filteredClients.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 bg-white rounded-xl border border-slate-200">
-              <p className="text-slate-500 text-sm">Nenhum cliente encontrado para "{searchTerm}".</p>
+            <div className="flex flex-col items-center justify-center py-14 px-4 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] shadow-sm">
+              <p className="text-[color:var(--muted-foreground)] text-sm text-center">
+                Nenhum cliente encontrado para &quot;{searchTerm}&quot;.
+              </p>
             </div>
           ) : (
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-slate-50 border-b border-slate-200">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                      Nome
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                      E-mail
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                      Telefone
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                      Cidade/Estado
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                      Projetos
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                      Ações
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredClients.map((client) => (
-                    <tr key={client.id} className="hover:bg-slate-50">
-                      <td className="px-6 py-4">
-                        <div className="text-sm font-medium text-slate-900">{client.name}</div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-slate-600">{client.email || "—"}</div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-slate-600">{client.telefone || "—"}</div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-slate-600">
-                          {client.cidade && client.estado
-                            ? `${client.cidade}/${client.estado}`
-                            : "—"}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-slate-600">{client._count.projects}</div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            type="button"
-                            onClick={() => router.push(`${basePath}/clientes/${client.id}`)}
-                            className="p-2 rounded-lg text-gray-500 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                            title="Visualizar"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setEditingClient(client)}
-                            className="p-2 rounded-lg text-gray-500 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                            title="Editar"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (client._count.projects > 0) return;
-                              setDeletingId(client.id);
-                            }}
-                            disabled={client._count.projects > 0}
-                            className="p-2 rounded-lg text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-500"
-                            title={
-                              client._count.projects > 0
-                                ? "Não é possível excluir cliente com projetos associados"
-                                : "Excluir"
-                            }
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
+            <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[720px]">
+                  <thead>
+                    <tr className="border-b border-[color:var(--border)] bg-[color:var(--surface)]/80 text-left text-xs font-semibold uppercase tracking-wide text-[color:var(--muted-foreground)]">
+                      <th className="px-6 py-3">Nome</th>
+                      <th className="px-6 py-3">E-mail</th>
+                      <th className="px-6 py-3">Telefone</th>
+                      <th className="px-6 py-3">Cidade/Estado</th>
+                      <th className="px-6 py-3">Projetos</th>
+                      <th className="px-6 py-3 text-right">Ações</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {filteredClients.map((client) => (
+                      <tr
+                        key={client.id}
+                        className="border-t border-[color:var(--border)]/70 hover:bg-[color:var(--surface)]/60 transition-colors"
+                      >
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-medium text-[color:var(--foreground)]">{client.name}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-[color:var(--muted-foreground)]">{client.email || "—"}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-[color:var(--muted-foreground)]">{client.telefone || "—"}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-[color:var(--muted-foreground)]">
+                            {client.cidade && client.estado
+                              ? `${client.cidade}/${client.estado}`
+                              : "—"}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm tabular-nums text-[color:var(--muted-foreground)]">{client._count.projects}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              type="button"
+                              onClick={() => router.push(`${basePath}/clientes/${client.id}`)}
+                              className="p-2 rounded-xl text-[color:var(--muted-foreground)] hover:bg-[color:var(--primary)]/10 hover:text-[color:var(--primary)] transition-colors"
+                              title="Visualizar"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingClient(client)}
+                              className="p-2 rounded-xl text-[color:var(--muted-foreground)] hover:bg-[color:var(--primary)]/10 hover:text-[color:var(--primary)] transition-colors"
+                              title="Editar"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (client._count.projects > 0) return;
+                                setDeletingId(client.id);
+                              }}
+                              disabled={client._count.projects > 0}
+                              className="p-2 rounded-xl text-[color:var(--muted-foreground)] hover:bg-red-500/10 hover:text-red-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-[color:var(--muted-foreground)]"
+                              title={
+                                client._count.projects > 0
+                                  ? "Não é possível excluir cliente com projetos associados"
+                                  : "Excluir"
+                              }
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>

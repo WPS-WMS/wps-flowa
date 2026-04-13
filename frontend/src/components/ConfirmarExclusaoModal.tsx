@@ -26,24 +26,24 @@ export function ConfirmarExclusaoModal({
 
   return (
     <div
-      className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center z-50 px-4 py-6"
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 px-4 py-6"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-3xl border border-slate-200/70 w-full max-w-md shadow-[0_24px_80px_rgba(15,23,42,0.45)] overflow-hidden"
+        className="bg-[color:var(--surface)] rounded-2xl border border-[color:var(--border)] w-full max-w-md shadow-lg overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6">
-          <h3 className="text-lg font-semibold text-slate-900 mb-2">Confirmar exclusão</h3>
-          <p className="text-sm text-slate-600 mb-6">
-            Tem certeza que deseja excluir <strong>{userName}</strong>? Esta ação não pode ser desfeita.
+          <h3 className="text-lg font-semibold text-[color:var(--foreground)] mb-2">Confirmar exclusão</h3>
+          <p className="text-sm text-[color:var(--muted-foreground)] mb-6">
+            Tem certeza que deseja excluir <strong className="text-[color:var(--foreground)]">{userName}</strong>? Esta ação não pode ser desfeita.
           </p>
           <div className="flex justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="px-4 py-2 rounded-full border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              className="px-4 py-2 rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] text-sm font-medium text-[color:var(--foreground)] hover:opacity-90 disabled:opacity-50"
             >
               Cancelar
             </button>
@@ -51,7 +51,7 @@ export function ConfirmarExclusaoModal({
               type="button"
               onClick={handleConfirm}
               disabled={loading}
-              className="px-4 py-2 rounded-full bg-red-600 text-sm font-medium text-white shadow-sm hover:bg-red-700 disabled:opacity-50"
+              className="px-4 py-2 rounded-xl bg-red-600 text-sm font-semibold text-white shadow-sm hover:bg-red-700 disabled:opacity-50"
             >
               {loading ? "Excluindo..." : "Excluir"}
             </button>

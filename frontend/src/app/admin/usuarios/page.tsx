@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
-import { Plus, Pencil, Trash2, Search, ChevronLeft } from "lucide-react";
+import { Plus, Pencil, Search, ChevronLeft } from "lucide-react";
 import { ConfirmarExclusaoModal } from "@/components/ConfirmarExclusaoModal";
 
 type UserRow = {
@@ -43,6 +43,16 @@ const ROLE_OPTIONS = [
   { value: "CONSULTOR", label: "Consultor" },
   { value: "CLIENTE", label: "Cliente" },
 ];
+
+const formLabelClass = "block text-sm font-medium text-[color:var(--muted-foreground)] mb-1.5";
+function formInputClass(hasError?: boolean) {
+  const base =
+    "w-full px-4 py-3 rounded-xl border bg-[color:var(--surface)] text-[color:var(--foreground)] placeholder:text-[color:var(--muted-foreground)] focus:outline-none focus:ring-2";
+  return hasError
+    ? `${base} border-red-500 focus:ring-red-500/40`
+    : `${base} border-[color:var(--border)] focus:ring-[color:var(--primary)]/35`;
+}
+const modalBackdropClass = "fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4";
 
 export default function UsuariosPage() {
   const router = useRouter();
@@ -90,142 +100,149 @@ export default function UsuariosPage() {
   }, []);
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-slate-50">
-      <header className="flex-shrink-0 bg-white border-b border-slate-200 px-6 py-4">
+    <div className="flex-1 flex flex-col min-h-0 bg-[color:var(--background)]">
+      <header className="flex-shrink-0 border-b border-[color:var(--border)] bg-[color:var(--surface)] px-6 py-4">
         <div className="max-w-6xl mx-auto">
-          <h1 className="text-xl md:text-2xl font-semibold text-slate-900">Usuários</h1>
-          <p className="text-xs md:text-sm text-slate-500 mt-1">
+          <h1 className="text-xl md:text-2xl font-semibold text-[color:var(--foreground)]">Usuários</h1>
+          <p className="text-xs md:text-sm text-[color:var(--muted-foreground)] mt-1">
             Gerencie todos os usuários do sistema.
           </p>
         </div>
       </header>
       <main className="flex-1 px-4 md:px-6 py-4 min-h-0 overflow-auto">
         <div className="max-w-6xl mx-auto space-y-4">
-          {/* Barra de ações */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-3">
+          <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] p-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => router.back()}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--foreground)] text-sm font-medium hover:opacity-90 transition-opacity"
+                >
+                  <ChevronLeft className="h-4 w-4 shrink-0" />
+                  Voltar
+                </button>
+                <div className="relative min-w-0 flex-1 max-w-md">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[color:var(--muted-foreground)]" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Buscar usuários..."
+                    className="w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] py-2.5 pl-9 pr-3 text-sm text-[color:var(--foreground)] placeholder:text-[color:var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/30"
+                  />
+                </div>
+              </div>
               <button
                 type="button"
-                onClick={() => router.back()}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50 transition-colors"
+                onClick={() => setModalOpen(true)}
+                className="inline-flex items-center gap-2 rounded-xl bg-[color:var(--primary)] px-4 py-2.5 text-sm font-semibold text-[color:var(--primary-foreground)] shadow-sm hover:opacity-95"
               >
-                <ChevronLeft className="h-4 w-4" />
-                Voltar
+                <Plus className="h-4 w-4 shrink-0" />
+                Novo Usuário
               </button>
-              <div className="relative w-56 sm:w-64">
-                <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Buscar usuários..."
-                  className="w-full rounded-full border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setModalOpen(true)}
-              className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
-            >
-              <Plus className="h-4 w-4" />
-              Novo Usuário
-            </button>
           </div>
           {loadError && (
-            <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-red-700 text-sm">
+            <div className="wps-apontamento-consultor-error rounded-xl border px-4 py-3 text-sm">
               {loadError}
             </div>
           )}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-slate-50 border-b border-slate-200">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Nome</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">E-mail</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Tipo</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Cargo</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Empresas</th>
-                <th className="px-6 py-3 text-right text-xs font-semibold text-slate-600 uppercase tracking-wide">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {users.map((u) => (
-                <tr key={u.id} className="hover:bg-slate-50">
-                  <td className="px-6 py-4">
-                    <div className="text-sm font-medium text-slate-900">{u.name}</div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-slate-600">{u.email}</div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-slate-600">{ROLES[u.role] || u.role}</div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-slate-600">{u.cargo || "—"}</div>
-                  </td>
-                  <td className="px-6 py-4">
-                    {u.role === "CLIENTE" ? (() => {
-                      const ids = u.clientAccess?.map((a) => a.clientId) ?? [];
-                      if (ids.length === 0) return <div className="text-sm text-slate-600">—</div>;
-                      const names = ids.map((id) => clientsById[id]).filter(Boolean);
-                      const label = names.length > 0 ? names.join(", ") : `${ids.length} empresa(s)`;
-                      return (
-                        <div className="text-sm text-slate-600 max-w-[260px] truncate" title={label}>
-                          {label}
+          <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[960px]">
+                <thead>
+                  <tr className="border-b border-[color:var(--border)] bg-[color:var(--surface)]/80 text-left text-xs font-semibold uppercase tracking-wide text-[color:var(--muted-foreground)]">
+                    <th className="px-6 py-3">Nome</th>
+                    <th className="px-6 py-3">E-mail</th>
+                    <th className="px-6 py-3">Tipo</th>
+                    <th className="px-6 py-3">Cargo</th>
+                    <th className="px-6 py-3">Empresas</th>
+                    <th className="px-6 py-3 text-center">Status</th>
+                    <th className="px-6 py-3 text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map((u) => (
+                    <tr
+                      key={u.id}
+                      className="border-t border-[color:var(--border)]/70 hover:bg-[color:var(--surface)]/60 transition-colors"
+                    >
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-medium text-[color:var(--foreground)]">{u.name}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-[color:var(--muted-foreground)]">{u.email}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-[color:var(--muted-foreground)]">{ROLES[u.role] || u.role}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-[color:var(--muted-foreground)]">{u.cargo || "—"}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        {u.role === "CLIENTE" ? (() => {
+                          const ids = u.clientAccess?.map((a) => a.clientId) ?? [];
+                          if (ids.length === 0) return <div className="text-sm text-[color:var(--muted-foreground)]">—</div>;
+                          const names = ids.map((id) => clientsById[id]).filter(Boolean);
+                          const label = names.length > 0 ? names.join(", ") : `${ids.length} empresa(s)`;
+                          return (
+                            <div className="text-sm text-[color:var(--muted-foreground)] max-w-[260px] truncate" title={label}>
+                              {label}
+                            </div>
+                          );
+                        })() : (
+                          <div className="text-sm text-[color:var(--muted-foreground)]">—</div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        {u.ativo === false ? (
+                          <span className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-700">
+                            Inativo
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+                            Ativo
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setEditingUser(u)}
+                            className="p-2 rounded-xl text-[color:var(--muted-foreground)] hover:bg-[color:var(--primary)]/10 hover:text-[color:var(--primary)] transition-colors"
+                            title="Editar"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setStatusUser(u)}
+                            disabled={!!authUser && u.role === "SUPER_ADMIN" && u.id === authUser.id && u.ativo !== false}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${
+                              u.ativo === false
+                                ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                                : "border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
+                            } disabled:opacity-60 disabled:cursor-not-allowed`}
+                            title={
+                              !!authUser && u.role === "SUPER_ADMIN" && u.id === authUser.id && u.ativo !== false
+                                ? "O usuário Admin não pode se inativar"
+                                : u.ativo === false
+                                  ? "Ativar usuário"
+                                  : "Inativar usuário"
+                            }
+                          >
+                            {u.ativo === false ? "Ativar" : "Inativar"}
+                          </button>
                         </div>
-                      );
-                    })() : (
-                      <div className="text-sm text-slate-600">—</div>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-slate-700">
-                    {u.ativo === false ? (
-                      <span className="inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">
-                        Inativo
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                        Ativo
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setEditingUser(u)}
-                        className="p-2 rounded-lg text-slate-500 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                        title="Editar"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setStatusUser(u)}
-                        disabled={!!authUser && u.role === "SUPER_ADMIN" && u.id === authUser.id && u.ativo !== false}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                          u.ativo === false
-                            ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                            : "border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
-                        } disabled:opacity-60 disabled:cursor-not-allowed`}
-                        title={
-                          !!authUser && u.role === "SUPER_ADMIN" && u.id === authUser.id && u.ativo !== false
-                            ? "O usuário Admin não pode se inativar"
-                            : u.ativo === false
-                              ? "Ativar usuário"
-                              : "Inativar usuário"
-                        }
-                      >
-                        {u.ativo === false ? "Ativar" : "Inativar"}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </main>
 
@@ -402,74 +419,67 @@ function InativarUsuarioModal({
     }
   }
 
-  const labelClass = "block text-sm font-medium text-gray-600 mb-1.5";
-  const inputClass =
-    "w-full px-4 py-3 rounded-xl border border-blue-100 bg-white text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-300";
-
   return (
-    <div
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-      onClick={onClose}
-    >
+    <div className={modalBackdropClass} onClick={onClose}>
       <div
-        className="bg-white rounded-2xl border border-blue-100 w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl"
+        className="bg-[color:var(--surface)] rounded-2xl border border-[color:var(--border)] w-full max-w-md max-h-[90vh] overflow-y-auto shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6 space-y-4">
-          <h3 className="text-lg font-semibold text-gray-800">
+          <h3 className="text-lg font-semibold text-[color:var(--foreground)]">
             {isAtivar ? "Ativar usuário" : "Inativar usuário"}
           </h3>
-          <p className="text-sm text-gray-600">
-            Usuário: <span className="font-medium">{user.name}</span>
+          <p className="text-sm text-[color:var(--muted-foreground)]">
+            Usuário: <span className="font-medium text-[color:var(--foreground)]">{user.name}</span>
           </p>
           {!isAtivar && (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className={labelClass}>
+                <label className={formLabelClass}>
                   Motivo da inativação <span className="text-red-500">*</span>
                 </label>
                 <div className="space-y-2">
-                  <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                  <label className="flex items-center gap-2 text-sm text-[color:var(--foreground)] cursor-pointer">
                     <input
                       type="radio"
                       name="motivoInativacao"
                       value="ROMPIMENTO"
                       checked={motivo === "ROMPIMENTO"}
                       onChange={() => setMotivo("ROMPIMENTO")}
-                      className="text-blue-600 border-gray-300 focus:ring-blue-500"
+                      className="border-[color:var(--border)] text-[color:var(--primary)] focus:ring-[color:var(--primary)]/30"
                     />
                     Rompimento de contrato
                   </label>
-                  <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                  <label className="flex items-center gap-2 text-sm text-[color:var(--foreground)] cursor-pointer">
                     <input
                       type="radio"
                       name="motivoInativacao"
                       value="SOLICITACAO"
                       checked={motivo === "SOLICITACAO"}
                       onChange={() => setMotivo("SOLICITACAO")}
-                      className="text-blue-600 border-gray-300 focus:ring-blue-500"
+                      className="border-[color:var(--border)] text-[color:var(--primary)] focus:ring-[color:var(--primary)]/30"
                     />
                     Solicitação de rompimento de contrato
                   </label>
-                  <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                  <label className="flex items-center gap-2 text-sm text-[color:var(--foreground)] cursor-pointer">
                     <input
                       type="radio"
                       name="motivoInativacao"
                       value="OUTROS"
                       checked={motivo === "OUTROS"}
                       onChange={() => setMotivo("OUTROS")}
-                      className="text-blue-600 border-gray-300 focus:ring-blue-500"
+                      className="border-[color:var(--border)] text-[color:var(--primary)] focus:ring-[color:var(--primary)]/30"
                     />
                     Outros
                   </label>
                 </div>
               </div>
               <div>
-                <label className={labelClass}>Descrição breve (opcional)</label>
+                <label className={formLabelClass}>Descrição breve (opcional)</label>
                 <textarea
                   value={descricaoBreve}
                   onChange={(e) => setDescricaoBreve(e.target.value)}
-                  className={`${inputClass} min-h-[80px] resize-y`}
+                  className={`${formInputClass()} min-h-[80px] resize-y`}
                   placeholder="Inclua uma observação, se necessário..."
                   maxLength={500}
                 />
@@ -479,7 +489,7 @@ function InativarUsuarioModal({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-700 font-medium hover:bg-gray-50"
+                  className="flex-1 py-2.5 rounded-xl border border-[color:var(--border)] text-[color:var(--foreground)] font-medium hover:opacity-90"
                 >
                   Cancelar
                 </button>
@@ -496,14 +506,14 @@ function InativarUsuarioModal({
           {isAtivar && (
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && <p className="text-red-500 text-sm">{error}</p>}
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-[color:var(--muted-foreground)]">
                 Confirme a ativação deste usuário. Ele voltará a ter acesso ao sistema.
               </p>
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-700 font-medium hover:bg-gray-50"
+                  className="flex-1 py-2.5 rounded-xl border border-[color:var(--border)] text-[color:var(--foreground)] font-medium hover:opacity-90"
                 >
                   Cancelar
                 </button>
@@ -658,24 +668,17 @@ function NovoUsuarioModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
     }
   }
 
-  const inputBaseClass = "w-full px-4 py-3 rounded-xl bg-white text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2";
-  const inputClass = `${inputBaseClass} border border-blue-100 focus:ring-blue-300`;
-  const labelClass = "block text-sm font-medium text-gray-600 mb-1.5";
-
   return (
-    <div
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-      onClick={onClose}
-    >
+    <div className={modalBackdropClass} onClick={onClose}>
       <div
-        className="bg-white rounded-2xl border border-blue-100 w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl"
+        className="bg-[color:var(--surface)] rounded-2xl border border-[color:var(--border)] w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-8">
-          <h3 className="text-xl font-semibold text-gray-800 mb-6">Novo usuário</h3>
+          <h3 className="text-xl font-semibold text-[color:var(--foreground)] mb-6">Novo usuário</h3>
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className={labelClass}>
+              <label className={formLabelClass}>
                 Nome <span className="text-red-500">*</span>
               </label>
               <input
@@ -685,12 +688,12 @@ function NovoUsuarioModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
                   setName(e.target.value);
                   setFieldErrors((prev) => ({ ...prev, name: false }));
                 }}
-                className={`${inputClass} ${fieldErrors.name ? "border-red-400 focus:ring-red-300" : ""}`}
+                className={formInputClass(!!fieldErrors.name)}
                 placeholder="Nome completo"
               />
             </div>
             <div>
-              <label className={labelClass}>
+              <label className={formLabelClass}>
                 E-mail <span className="text-red-500">*</span>
               </label>
               <input
@@ -700,12 +703,12 @@ function NovoUsuarioModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
                   setEmail(e.target.value);
                   setFieldErrors((prev) => ({ ...prev, email: false }));
                 }}
-                className={`${inputClass} ${fieldErrors.email ? "border-red-400 focus:ring-red-300" : ""}`}
+                className={formInputClass(!!fieldErrors.email)}
                 placeholder="email@exemplo.com"
               />
             </div>
             <div>
-              <label className={labelClass}>
+              <label className={formLabelClass}>
                 Senha <span className="text-red-500">*</span>
               </label>
               <input
@@ -715,18 +718,18 @@ function NovoUsuarioModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
                   setPassword(e.target.value);
                   setFieldErrors((prev) => ({ ...prev, password: false }));
                 }}
-                className={`${inputClass} ${fieldErrors.password ? "border-red-400 focus:ring-red-300" : ""}`}
+                className={formInputClass(!!fieldErrors.password)}
                 placeholder="Senha de acesso"
               />
             </div>
             <div>
-              <label className={labelClass}>
+              <label className={formLabelClass}>
                 Perfil <span className="text-red-500">*</span>
               </label>
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
-                className={`${inputClass} cursor-pointer`}
+                className={`${formInputClass()} cursor-pointer`}
               >
                 {ROLE_OPTIONS.map((r) => (
                   <option key={r.value} value={r.value}>{r.label}</option>
@@ -735,7 +738,7 @@ function NovoUsuarioModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
             </div>
             {role === "CLIENTE" && (
               <div>
-                <label className={labelClass}>
+                <label className={formLabelClass}>
                   Empresa <span className="text-red-500">*</span>
                 </label>
                 <select
@@ -743,7 +746,7 @@ function NovoUsuarioModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
                   onChange={(e) =>
                     setClientIds(e.target.value ? [e.target.value] : [])
                   }
-                  className={`${inputClass} cursor-pointer`}
+                  className={`${formInputClass()} cursor-pointer`}
                 >
                   <option value="">Selecione</option>
                   {clients.map((c) => (
@@ -755,7 +758,7 @@ function NovoUsuarioModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
               </div>
             )}
             <div>
-              <label className={labelClass}>
+              <label className={formLabelClass}>
                 Cargo <span className="text-red-500">*</span>
               </label>
               <input
@@ -765,45 +768,46 @@ function NovoUsuarioModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
                   setCargo(e.target.value);
                   setFieldErrors((prev) => ({ ...prev, cargo: false }));
                 }}
-                className={`${inputClass} ${fieldErrors.cargo ? "border-red-400 focus:ring-red-300" : ""}`}
+                className={formInputClass(!!fieldErrors.cargo)}
                 placeholder="Cargo na empresa"
               />
             </div>
 
             {role !== "CLIENTE" && (
               <div>
-                <label className={labelClass}>
-                  Data de nascimento <span className="text-xs text-gray-400">(opcional)</span>
+                <label className={formLabelClass}>
+                  Data de nascimento{" "}
+                  <span className="text-xs text-[color:var(--muted-foreground)]">(opcional)</span>
                 </label>
                 <input
                   type="date"
                   value={birthDate}
                   onChange={(e) => setBirthDate(e.target.value)}
-                  className={inputClass}
+                  className={formInputClass()}
                 />
               </div>
             )}
 
             {role !== "CLIENTE" && (
-              <div className="pt-4 border-t border-blue-50 space-y-4">
-                <p className="text-sm font-medium text-gray-700">Permissões</p>
+              <div className="pt-4 border-t border-[color:var(--border)] space-y-4">
+                <p className="text-sm font-medium text-[color:var(--foreground)]">Permissões</p>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={permitirMaisHoras}
                     onChange={(e) => setPermitirMaisHoras(e.target.checked)}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="rounded border-[color:var(--border)] text-[color:var(--primary)] focus:ring-[color:var(--primary)]/30"
                   />
-                  <span className="text-sm text-gray-700">Permitido apontar mais horas que o planejado</span>
+                  <span className="text-sm text-[color:var(--foreground)]">Permitido apontar mais horas que o planejado</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={permitirFimDeSemana}
                     onChange={(e) => setPermitirFimDeSemana(e.target.checked)}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="rounded border-[color:var(--border)] text-[color:var(--primary)] focus:ring-[color:var(--primary)]/30"
                   />
-                  <span className="text-sm text-gray-700">Permitido apontar em final de semana e feriado</span>
+                  <span className="text-sm text-[color:var(--foreground)]">Permitido apontar em final de semana e feriado</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -814,13 +818,13 @@ function NovoUsuarioModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
                       setPermitirOutroPeriodo(checked);
                       if (!checked) setDiasPermitidos("");
                     }}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="rounded border-[color:var(--border)] text-[color:var(--primary)] focus:ring-[color:var(--primary)]/30"
                   />
-                  <span className="text-sm text-gray-700">Permitido apontar em outro período</span>
+                  <span className="text-sm text-[color:var(--foreground)]">Permitido apontar em outro período</span>
                 </label>
                 {permitirOutroPeriodo && (
                   <div>
-                    <label className={labelClass}>
+                    <label className={formLabelClass}>
                       Dias permitidos para apontamento <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -844,16 +848,16 @@ function NovoUsuarioModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
                           setDiasPermitidos(String(n));
                         }
                       }}
-                      className={inputClass}
+                      className={formInputClass()}
                       placeholder="Quantidade de dias (somente datas anteriores)"
                     />
-                    <p className="mt-1 text-xs text-gray-400">
+                    <p className="mt-1 text-xs text-[color:var(--muted-foreground)]">
                       Informe quantos dias para trás o usuário pode apontar (0 = apenas hoje).
                     </p>
                   </div>
                 )}
                 <div>
-                  <label className={labelClass}>
+                  <label className={formLabelClass}>
                     Data de início das atividades <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -863,30 +867,28 @@ function NovoUsuarioModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
                       setDataInicioAtividades(e.target.value);
                       setFieldErrors((prev) => ({ ...prev, dataInicioAtividades: false }));
                     }}
-                    className={`${inputClass} ${
-                      fieldErrors.dataInicioAtividades ? "border-red-400 focus:ring-red-300" : ""
-                    }`}
+                    className={formInputClass(!!fieldErrors.dataInicioAtividades)}
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>Limite diário de horas para apontamento</label>
+                  <label className={formLabelClass}>Limite diário de horas para apontamento</label>
                   <div className="grid grid-cols-7 gap-2 text-xs text-center mb-1">
                     {(Object.keys(DIA_LABELS) as DiaKey[]).map((k) => (
                       <div key={k} className="flex flex-col items-center gap-1">
-                        <span className="text-[11px] font-medium text-gray-600">{DIA_LABELS[k]}</span>
+                        <span className="text-[11px] font-medium text-[color:var(--muted-foreground)]">{DIA_LABELS[k]}</span>
                         <input
                           type="text"
                           value={limitesPorDia[k]}
                           onChange={(e) =>
                             setLimitesPorDia((prev) => ({ ...prev, [k]: e.target.value }))
                           }
-                          className="w-full px-2 py-1.5 rounded-lg border border-blue-100 text-xs text-center focus:outline-none focus:ring-2 focus:ring-blue-300"
+                          className="w-full px-2 py-1.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--foreground)] text-xs text-center focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/30"
                           placeholder="00:00"
                         />
                       </div>
                     ))}
                   </div>
-                  <p className="mt-1 text-xs text-gray-400">
+                  <p className="mt-1 text-xs text-[color:var(--muted-foreground)]">
                     Você pode inserir no máximo 23:59 de horas trabalhadas por dia.
                   </p>
                 </div>
@@ -898,14 +900,14 @@ function NovoUsuarioModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-700 font-medium hover:bg-gray-50"
+                className="flex-1 py-3 rounded-xl border border-[color:var(--border)] text-[color:var(--foreground)] font-medium hover:opacity-90"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={saving}
-                className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium disabled:opacity-50"
+                className="flex-1 py-3 rounded-xl bg-[color:var(--primary)] text-[color:var(--primary-foreground)] font-semibold hover:opacity-95 disabled:opacity-50"
               >
                 {saving ? "Salvando..." : "Salvar"}
               </button>
@@ -1078,23 +1080,17 @@ function EditarUsuarioModal({
     }
   }
 
-  const inputClass = "w-full px-4 py-3 rounded-xl border border-blue-100 bg-white text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-300";
-  const labelClass = "block text-sm font-medium text-gray-600 mb-1.5";
-
   return (
-    <div
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-      onClick={onClose}
-    >
+    <div className={modalBackdropClass} onClick={onClose}>
       <div
-        className="bg-white rounded-2xl border border-blue-100 w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl"
+        className="bg-[color:var(--surface)] rounded-2xl border border-[color:var(--border)] w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-8">
-          <h3 className="text-xl font-semibold text-gray-800 mb-6">Editar usuário</h3>
+          <h3 className="text-xl font-semibold text-[color:var(--foreground)] mb-6">Editar usuário</h3>
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className={labelClass}>
+              <label className={formLabelClass}>
                 Nome <span className="text-red-500">*</span>
               </label>
               <input
@@ -1104,12 +1100,12 @@ function EditarUsuarioModal({
                   setName(e.target.value);
                   setFieldErrors((prev) => ({ ...prev, name: false }));
                 }}
-                className={`${inputClass} ${fieldErrors.name ? "border-red-400 focus:ring-red-300" : ""}`}
+                className={formInputClass(!!fieldErrors.name)}
                 placeholder="Nome completo"
               />
             </div>
             <div>
-              <label className={labelClass}>
+              <label className={formLabelClass}>
                 E-mail <span className="text-red-500">*</span>
               </label>
               <input
@@ -1119,28 +1115,28 @@ function EditarUsuarioModal({
                   setEmail(e.target.value);
                   setFieldErrors((prev) => ({ ...prev, email: false }));
                 }}
-                className={`${inputClass} ${fieldErrors.email ? "border-red-400 focus:ring-red-300" : ""}`}
+                className={formInputClass(!!fieldErrors.email)}
                 placeholder="email@exemplo.com"
               />
             </div>
             <div>
-              <label className={labelClass}>Nova senha</label>
+              <label className={formLabelClass}>Nova senha</label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className={inputClass}
+                className={formInputClass()}
                 placeholder="Deixar em branco para não alterar"
               />
             </div>
             <div>
-              <label className={labelClass}>
+              <label className={formLabelClass}>
                 Perfil <span className="text-red-500">*</span>
               </label>
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
-                className={`${inputClass} cursor-pointer`}
+                className={`${formInputClass()} cursor-pointer`}
               >
                 {ROLE_OPTIONS.map((r) => (
                   <option key={r.value} value={r.value}>{r.label}</option>
@@ -1149,7 +1145,7 @@ function EditarUsuarioModal({
             </div>
             {role === "CLIENTE" && (
               <div>
-                <label className={labelClass}>
+                <label className={formLabelClass}>
                   Empresa <span className="text-red-500">*</span>
                 </label>
                 <select
@@ -1157,7 +1153,7 @@ function EditarUsuarioModal({
                   onChange={(e) =>
                     setClientIds(e.target.value ? [e.target.value] : [])
                   }
-                  className={`${inputClass} cursor-pointer`}
+                  className={`${formInputClass()} cursor-pointer`}
                 >
                   <option value="">Selecione</option>
                   {clients.map((c) => (
@@ -1169,7 +1165,7 @@ function EditarUsuarioModal({
               </div>
             )}
             <div>
-              <label className={labelClass}>
+              <label className={formLabelClass}>
                 Cargo <span className="text-red-500">*</span>
               </label>
               <input
@@ -1179,28 +1175,29 @@ function EditarUsuarioModal({
                   setCargo(e.target.value);
                   setFieldErrors((prev) => ({ ...prev, cargo: false }));
                 }}
-                className={`${inputClass} ${fieldErrors.cargo ? "border-red-400 focus:ring-red-300" : ""}`}
+                className={formInputClass(!!fieldErrors.cargo)}
                 placeholder="Cargo na empresa"
               />
             </div>
 
             {role !== "CLIENTE" && (
               <div>
-                <label className={labelClass}>
-                  Data de nascimento <span className="text-xs text-gray-400">(opcional)</span>
+                <label className={formLabelClass}>
+                  Data de nascimento{" "}
+                  <span className="text-xs text-[color:var(--muted-foreground)]">(opcional)</span>
                 </label>
                 <input
                   type="date"
                   value={birthDate}
                   onChange={(e) => setBirthDate(e.target.value)}
-                  className={inputClass}
+                  className={formInputClass()}
                 />
               </div>
             )}
             {role !== "CLIENTE" && (
               <>
                 <div>
-                  <label className={labelClass}>
+                  <label className={formLabelClass}>
                     Data de início das atividades <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -1210,31 +1207,29 @@ function EditarUsuarioModal({
                       setDataInicioAtividades(e.target.value);
                       setFieldErrors((prev) => ({ ...prev, dataInicioAtividades: false }));
                     }}
-                    className={`${inputClass} ${
-                      fieldErrors.dataInicioAtividades ? "border-red-400 focus:ring-red-300" : ""
-                    }`}
+                    className={formInputClass(!!fieldErrors.dataInicioAtividades)}
                   />
                 </div>
 
-                <div className="pt-4 border-t border-blue-50 space-y-4">
-                  <p className="text-sm font-medium text-gray-700">Permissões</p>
+                <div className="pt-4 border-t border-[color:var(--border)] space-y-4">
+                  <p className="text-sm font-medium text-[color:var(--foreground)]">Permissões</p>
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={permitirMaisHoras}
                       onChange={(e) => setPermitirMaisHoras(e.target.checked)}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="rounded border-[color:var(--border)] text-[color:var(--primary)] focus:ring-[color:var(--primary)]/30"
                     />
-                    <span className="text-sm text-gray-700">Permitido apontar mais horas que o planejado</span>
+                    <span className="text-sm text-[color:var(--foreground)]">Permitido apontar mais horas que o planejado</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={permitirFimDeSemana}
                       onChange={(e) => setPermitirFimDeSemana(e.target.checked)}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="rounded border-[color:var(--border)] text-[color:var(--primary)] focus:ring-[color:var(--primary)]/30"
                     />
-                    <span className="text-sm text-gray-700">Permitido apontar em final de semana e feriado</span>
+                    <span className="text-sm text-[color:var(--foreground)]">Permitido apontar em final de semana e feriado</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
@@ -1245,13 +1240,13 @@ function EditarUsuarioModal({
                         setPermitirOutroPeriodo(checked);
                         if (!checked) setDiasPermitidos("");
                       }}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="rounded border-[color:var(--border)] text-[color:var(--primary)] focus:ring-[color:var(--primary)]/30"
                     />
-                    <span className="text-sm text-gray-700">Permitido apontar em outro período</span>
+                    <span className="text-sm text-[color:var(--foreground)]">Permitido apontar em outro período</span>
                   </label>
                   {permitirOutroPeriodo && (
                     <div>
-                      <label className={labelClass}>
+                      <label className={formLabelClass}>
                         Dias permitidos para apontamento <span className="text-red-500">*</span>
                       </label>
                       <input
@@ -1275,33 +1270,33 @@ function EditarUsuarioModal({
                             setDiasPermitidos(String(n));
                           }
                         }}
-                        className={inputClass}
+                        className={formInputClass()}
                         placeholder="Quantidade de dias (somente datas anteriores)"
                       />
-                      <p className="mt-1 text-xs text-gray-400">
+                      <p className="mt-1 text-xs text-[color:var(--muted-foreground)]">
                         Informe quantos dias para trás o usuário pode apontar (0 = apenas hoje).
                       </p>
                     </div>
                   )}
                   <div>
-                    <label className={labelClass}>Limite diário de horas para apontamento</label>
+                    <label className={formLabelClass}>Limite diário de horas para apontamento</label>
                     <div className="grid grid-cols-7 gap-2 text-xs text-center mb-1">
                       {(Object.keys(DIA_LABELS) as DiaKey[]).map((k) => (
                         <div key={k} className="flex flex-col items-center gap-1">
-                          <span className="text-[11px] font-medium text-gray-600">{DIA_LABELS[k]}</span>
+                          <span className="text-[11px] font-medium text-[color:var(--muted-foreground)]">{DIA_LABELS[k]}</span>
                           <input
                             type="text"
                             value={limitesPorDia[k]}
                             onChange={(e) =>
                               setLimitesPorDia((prev) => ({ ...prev, [k]: e.target.value }))
                             }
-                            className="w-full px-2 py-1.5 rounded-lg border border-blue-100 text-xs text-center focus:outline-none focus:ring-2 focus:ring-blue-300"
+                            className="w-full px-2 py-1.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--foreground)] text-xs text-center focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/30"
                             placeholder="00:00"
                           />
                         </div>
                       ))}
                     </div>
-                    <p className="mt-1 text-xs text-gray-400">
+                    <p className="mt-1 text-xs text-[color:var(--muted-foreground)]">
                       Você pode inserir no máximo 23:59 de horas trabalhadas por dia.
                     </p>
                   </div>
@@ -1314,14 +1309,14 @@ function EditarUsuarioModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-700 font-medium hover:bg-gray-50"
+                className="flex-1 py-3 rounded-xl border border-[color:var(--border)] text-[color:var(--foreground)] font-medium hover:opacity-90"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={saving}
-                className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium disabled:opacity-50"
+                className="flex-1 py-3 rounded-xl bg-[color:var(--primary)] text-[color:var(--primary-foreground)] font-semibold hover:opacity-95 disabled:opacity-50"
               >
                 {saving ? "Salvando..." : "Salvar"}
               </button>
