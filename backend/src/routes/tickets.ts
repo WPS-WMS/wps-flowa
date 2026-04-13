@@ -129,6 +129,14 @@ function normalizeAmsPriority(value: string | null | undefined): "BAIXA" | "MEDI
   return null;
 }
 
+function escapeHtmlBasic(input: string): string {
+  return String(input ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 // O status do projeto é controlado manualmente (não sincronizar automaticamente por tarefas/tópicos).
 
 ticketsRouter.get("/", async (req, res) => {
@@ -765,6 +773,18 @@ ticketsRouter.post("/:id/budget", async (req, res) => {
     },
   });
 
+  // Ação na aba Orçamento deve aparecer como comentário público na tarefa.
+  await prisma.ticketComment.create({
+    data: {
+      ticketId,
+      userId: user.id,
+      visibility: "PUBLIC",
+      content: `<p><b>Orçamento enviado</b> e está <b>aguardando aprovação</b>.</p><p><b>Horas:</b> ${escapeHtmlBasic(
+        String(h),
+      )}<br/><b>Observação:</b> ${escapeHtmlBasic(obs)}</p>`,
+    },
+  });
+
   notifyTicketMembers({
     tenantId: user.tenantId,
     ticketId,
@@ -878,6 +898,15 @@ ticketsRouter.post("/:id/budget/approve", async (req, res) => {
       where: { id: ticketId },
       data: { status: "EXECUCAO" },
     }),
+    prisma.ticketComment.create({
+      data: {
+        ticketId,
+        userId: user.id,
+        visibility: "PUBLIC",
+        content:
+          "<p><b>Orçamento aprovado</b> pelo cliente. O chamado foi movido para <b>Em execução</b>.</p>",
+      },
+    }),
     prisma.ticketHistory.create({
       data: {
         ticketId,
@@ -970,6 +999,16 @@ ticketsRouter.post("/:id/budget/reject", async (req, res) => {
         status: "ENCERRADO",
         finalizacaoMotivo: "Orçamento reprovado",
         finalizacaoObservacao: reason,
+      },
+    }),
+    prisma.ticketComment.create({
+      data: {
+        ticketId,
+        userId: user.id,
+        visibility: "PUBLIC",
+        content: `<p><b>Orçamento reprovado</b> pelo cliente. O chamado foi <b>finalizado automaticamente</b>.</p><p><b>Motivo:</b> ${escapeHtmlBasic(
+          reason,
+        )}</p>`,
       },
     }),
     prisma.ticketHistory.create({

@@ -140,6 +140,7 @@ model Client {
   name      String
   tenantId  String
   email     String?
+  cnpj      String?
   telefone  String?
   cep       String?
   endereco  String?

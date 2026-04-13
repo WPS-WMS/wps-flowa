@@ -173,6 +173,7 @@ clientsRouter.post("/", requireFeature("configuracoes.clientes"), async (req, re
   const {
     name,
     email,
+    cnpj,
     telefone,
     cep,
     endereco,
@@ -188,11 +189,17 @@ clientsRouter.post("/", requireFeature("configuracoes.clientes"), async (req, re
     return;
   }
 
+  if (!email || !String(email).trim()) {
+    res.status(400).json({ error: "E-mail do cliente é obrigatório" });
+    return;
+  }
+
   try {
     const client = await prisma.client.create({
       data: {
         name: String(name).trim(),
-        email: email ? String(email).trim() : null,
+        email: String(email).trim(),
+        cnpj: cnpj ? String(cnpj).trim() : null,
         telefone: telefone ? String(telefone).trim() : null,
         cep: cep ? String(cep).trim() : null,
         endereco: endereco ? String(endereco).trim() : null,
@@ -220,6 +227,7 @@ clientsRouter.patch("/:id", requireFeature("configuracoes.clientes"), async (req
   const {
     name,
     email,
+    cnpj,
     telefone,
     cep,
     endereco,
@@ -245,6 +253,7 @@ clientsRouter.patch("/:id", requireFeature("configuracoes.clientes"), async (req
       data: {
         name: name ? String(name).trim() : undefined,
         email: email !== undefined ? (email ? String(email).trim() : null) : undefined,
+        cnpj: cnpj !== undefined ? (cnpj ? String(cnpj).trim() : null) : undefined,
         telefone: telefone !== undefined ? (telefone ? String(telefone).trim() : null) : undefined,
         cep: cep !== undefined ? (cep ? String(cep).trim() : null) : undefined,
         endereco: endereco !== undefined ? (endereco ? String(endereco).trim() : null) : undefined,

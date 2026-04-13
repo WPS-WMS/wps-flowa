@@ -23,7 +23,7 @@ type EditTaskModalFullProps = {
   readOnly?: boolean;
 };
 
-type Tab = "descricao" | "horas" | "historico" | "orcamento" | "anexos";
+type Tab = "descricao" | "horas" | "apontamentos" | "historico" | "orcamento" | "anexos";
 
 const PRIORIDADES = [
   { value: "Baixa", label: "Baixa", color: "bg-green-100 text-green-700 border-green-300" },
@@ -850,8 +850,8 @@ export function EditTaskModalFull({
   }
 
   function loadTimeEntries() {
-    if (!ticket.id || !projectId) {
-      console.log("loadTimeEntries: ticket.id ou projectId não disponível", { ticketId: ticket.id, projectId });
+    if (!ticket.id) {
+      console.log("loadTimeEntries: ticket.id não disponível", { ticketId: ticket.id });
       setTimeEntries([]);
       setHorasApontadas(0);
       return;
@@ -884,10 +884,10 @@ export function EditTaskModalFull({
 
   // Carregar apontamentos quando a aba horas for aberta ou quando o ticket/projeto mudar
   useEffect(() => {
-    if (activeTab === "horas" && ticket.id && projectId) {
+    if ((activeTab === "horas" || activeTab === "apontamentos") && ticket.id) {
       loadTimeEntries();
     }
-  }, [activeTab, ticket.id, projectId]);
+  }, [activeTab, ticket.id]);
 
   function loadHistory() {
     if (!ticket.id) {
@@ -1438,6 +1438,7 @@ export function EditTaskModalFull({
   const tabs: { id: Tab; label: string }[] = [
     { id: "descricao", label: "Descrição" },
     ...(!isClienteProfile ? [{ id: "horas" as const, label: "Horas" }] : []),
+    ...(isClienteProfile ? [{ id: "apontamentos" as const, label: "Apontamentos" }] : []),
     ...(!isClienteProfile ? [{ id: "historico" as const, label: "Histórico" }] : []),
     { id: "orcamento", label: "Orçamento" },
     { id: "anexos", label: "Anexos" },
@@ -2273,6 +2274,86 @@ export function EditTaskModalFull({
                     <div className="text-center py-12 border-2 border-dashed border-slate-200 rounded-lg bg-slate-50/50">
                       <p className="text-slate-400 mb-1">Nenhum apontamento registrado ainda.</p>
                       <p className="text-xs text-slate-400">Use o formulário acima para registrar horas trabalhadas.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === "apontamentos" && (
+              <div className="space-y-6">
+                <div className="bg-white rounded-xl border border-slate-200 px-5 py-5 shadow-sm hover:shadow-md transition-shadow duration-200">
+                  <h3 className="text-base font-bold text-slate-800 mb-5 flex items-center gap-2">
+                    <span className="h-1 w-1 rounded-full bg-blue-500"></span>
+                    Apontamentos registrados
+                  </h3>
+
+                  {timeEntries.length > 0 ? (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b-2 border-slate-200 bg-slate-50">
+                            <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Usuário</th>
+                            <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Horas trabalhadas</th>
+                            <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Intervalo</th>
+                            <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Horas totais</th>
+                            <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Comentário</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {timeEntries.map((entry) => (
+                            <tr key={entry.id} className="border-b border-slate-100 hover:bg-blue-50/50 transition-colors duration-150">
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-2">
+                                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white text-xs font-semibold">
+                                    {entry.user?.name ? getIniciais(entry.user.name) : "U"}
+                                  </span>
+                                  <div>
+                                    <p className="text-sm font-medium text-slate-800">
+                                      {entry.user?.name || "Usuário"}
+                                    </p>
+                                    <p className="text-xs text-slate-500">
+                                      {formatDateOnly(entry.date)}
+                                    </p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-sm text-slate-700">
+                                {entry.horaInicio} às {entry.horaFim}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-slate-700">
+                                {entry.intervaloInicio && entry.intervaloFim
+                                  ? `${entry.intervaloInicio} às ${entry.intervaloFim}`
+                                  : "—"}
+                              </td>
+                              <td className="px-4 py-3 text-sm font-mono font-semibold text-blue-600">
+                                {fmtHoras(entry.totalHoras)}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-slate-700 max-w-xs">
+                                <p className="truncate" title={entry.description || ""}>
+                                  {entry.description || "—"}
+                                </p>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="bg-blue-50 border-t-2 border-blue-200">
+                            <td colSpan={3} className="px-4 py-4 text-sm font-bold text-slate-800">
+                              Total de horas
+                            </td>
+                            <td className="px-4 py-4 text-lg font-mono font-bold text-blue-600">
+                              {fmtHoras(timeEntries.reduce((sum, e) => sum + e.totalHoras, 0))}
+                            </td>
+                            <td></td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="text-center py-12 border-2 border-dashed border-slate-200 rounded-lg bg-slate-50/50">
+                      <p className="text-slate-400 mb-1">Nenhum apontamento registrado ainda.</p>
+                      <p className="text-xs text-slate-400">Esta aba é somente para visualização.</p>
                     </div>
                   )}
                 </div>

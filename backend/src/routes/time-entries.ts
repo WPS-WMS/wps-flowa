@@ -95,13 +95,25 @@ timeEntriesRouter.get("/", async (req, res) => {
           id: String(ticketId),
           project: { client: { tenantId: user.tenantId } },
         },
-        select: { id: true },
+        select: {
+          id: true,
+          project: { select: { client: { select: { users: { select: { userId: true } } } } } },
+        },
       });
       
       if (!ticket) {
         console.log("Ticket não encontrado ou não pertence ao tenant:", ticketId);
         res.json([]);
         return;
+      }
+
+      // Cliente: só pode ver apontamentos de tickets do(s) seu(s) cliente(s)
+      if (user.role === "CLIENTE") {
+        const hasAccess = (ticket.project?.client?.users ?? []).some((u) => u.userId === user.id);
+        if (!hasAccess) {
+          res.status(403).json({ error: "Sem permissão para visualizar apontamentos deste ticket." });
+          return;
+        }
       }
       
       // Quando ticketId é fornecido, já verificamos que pertence ao tenant

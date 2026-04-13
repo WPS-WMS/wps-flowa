@@ -186,7 +186,7 @@ export default function ClienteHomePage() {
   useEffect(() => {
     if (!user?.id) return;
     const isCliente = user.role === "CLIENTE";
-    // Cliente é vinculado a uma empresa: deve ver todos os chamados/tarefas dos projetos da empresa.
+    // Cliente é vinculado a uma empresa: deve ver todas as tarefas dos projetos da empresa.
     // Outros perfis seguem respeitando a permissão de "projeto".
     if (!isCliente && !can("projeto")) {
       setTickets([]);
@@ -231,13 +231,13 @@ export default function ClienteHomePage() {
       .finally(() => setLoading(false));
   }, [user?.id, can]);
 
-  const chamadosQueAbri = useMemo(
+  const tarefasQueAbri = useMemo(
     () => tickets.filter((t) => t.createdBy?.id === user?.id),
     [tickets, user?.id]
   );
 
-  const chamadosQueAbriOrdenadosPorPrioridade = useMemo(() => {
-    return [...chamadosQueAbri].sort((a, b) => {
+  const tarefasQueAbriOrdenadasPorPrioridade = useMemo(() => {
+    return [...tarefasQueAbri].sort((a, b) => {
       const pa =
         PRIORITY_ORDER[String((a as { criticidade?: string | null }).criticidade ?? "").toUpperCase()] ?? 0;
       const pb =
@@ -245,7 +245,7 @@ export default function ClienteHomePage() {
       if (pb !== pa) return pb - pa;
       return String(a.code).localeCompare(String(b.code), undefined, { numeric: true });
     });
-  }, [chamadosQueAbri]);
+  }, [tarefasQueAbri]);
 
   function getPriorityDotClass(raw: unknown): string {
     const v = String(raw ?? "").toUpperCase();
@@ -553,17 +553,17 @@ export default function ClienteHomePage() {
             <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
               <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
                 <ListTodo className="h-5 w-5 text-slate-600" />
-                Chamados que eu abri
+                Tarefas que eu abri
               </h2>
-              <p className="text-sm text-slate-500 mt-0.5">Chamados abertos por você</p>
+              <p className="text-sm text-slate-500 mt-0.5">Tarefas abertas por você</p>
             </div>
             <div className="divide-y divide-slate-100">
-              {chamadosQueAbriOrdenadosPorPrioridade.length === 0 ? (
+              {tarefasQueAbriOrdenadasPorPrioridade.length === 0 ? (
                 <div className="px-6 py-8 text-center text-slate-500">
-                  Você ainda não abriu nenhum chamado.
+                  Você ainda não abriu nenhuma tarefa.
                 </div>
               ) : (
-                chamadosQueAbriOrdenadosPorPrioridade.map((t) => (
+                tarefasQueAbriOrdenadasPorPrioridade.map((t) => (
                   <button
                     key={t.id}
                     type="button"
@@ -600,14 +600,14 @@ export default function ClienteHomePage() {
             <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
               <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
                 <ListTodo className="h-5 w-5 text-slate-600" />
-                Chamados de todos os projetos
+                Tarefas de todos os projetos
               </h2>
               <p className="text-sm text-slate-500 mt-0.5">Visão geral de todas as tarefas dos projetos da sua empresa</p>
             </div>
             <div className="divide-y divide-slate-100">
               {tickets.length === 0 ? (
                 <div className="px-6 py-12 text-center text-slate-500">
-                  Nenhum chamado nos projetos da sua empresa no momento.
+                  Nenhuma tarefa nos projetos da sua empresa no momento.
                 </div>
               ) : (
                 ticketsOrdenadosPorPrioridade.slice(0, 20).map((t) => (
@@ -642,7 +642,7 @@ export default function ClienteHomePage() {
               )}
               {ticketsOrdenadosPorPrioridade.length > 20 && (
                 <div className="px-6 py-3 text-center text-slate-500 text-sm">
-                  e mais {ticketsOrdenadosPorPrioridade.length - 20} chamados
+                  e mais {ticketsOrdenadosPorPrioridade.length - 20} tarefas
                 </div>
               )}
             </div>

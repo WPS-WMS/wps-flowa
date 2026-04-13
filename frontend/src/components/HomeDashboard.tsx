@@ -163,7 +163,7 @@ export function HomeDashboard({ basePath }: HomeDashboardProps) {
 
   const tarefasTotal = tickets.length;
 
-  const chamadosPorPrioridade = useMemo(() => {
+  const tarefasPorPrioridade = useMemo(() => {
     return [...tickets].sort((a, b) => {
       const pa = PRIORITY_ORDER[a.criticidade ?? ""] ?? 0;
       const pb = PRIORITY_ORDER[b.criticidade ?? ""] ?? 0;
@@ -220,7 +220,7 @@ export function HomeDashboard({ basePath }: HomeDashboardProps) {
                   <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">
                     Olá, {user?.name ?? "Usuário"}!
                   </h1>
-                  <p className="mt-1 text-[color:var(--primary-foreground)]/70">Acompanhe suas horas e chamados em um só lugar.</p>
+                  <p className="mt-1 text-[color:var(--primary-foreground)]/70">Acompanhe suas horas e tarefas em um só lugar.</p>
 
                   <div className="mt-6">
                     <h2 className="text-sm font-semibold text-[color:var(--primary-foreground)]/60 uppercase tracking-wider mb-3">
@@ -287,22 +287,22 @@ export function HomeDashboard({ basePath }: HomeDashboardProps) {
             </div>
           </section>
 
-          {/* Lista de chamados por prioridade */}
+          {/* Lista de tarefas por prioridade */}
           <section className="rounded-2xl bg-[color:var(--surface)] border border-[color:var(--border)] shadow-sm overflow-hidden">
             <div className="px-6 py-4 border-b border-[color:var(--border)] bg-[color:var(--surface)]/55 backdrop-blur">
               <h2 className="text-lg font-semibold text-[color:var(--foreground)] flex items-center gap-2">
                 <ListTodo className="h-5 w-5 text-[color:var(--muted-foreground)]" />
-                Lista de chamados
+                Lista de tarefas
               </h2>
               <p className="text-sm text-[color:var(--muted-foreground)] mt-0.5">Ordenados por prioridade (Urgente → Alta → Média → Baixa)</p>
             </div>
             <div className="divide-y divide-[color:var(--border)]">
-              {chamadosPorPrioridade.length === 0 ? (
+              {tarefasPorPrioridade.length === 0 ? (
                 <div className="px-6 py-12 text-center text-[color:var(--muted-foreground)]">
-                  Nenhum chamado atribuído a você no momento.
+                  Nenhuma tarefa atribuída a você no momento.
                 </div>
               ) : (
-                chamadosPorPrioridade.map((t) => (
+                tarefasPorPrioridade.map((t) => (
                   <button
                     key={t.id}
                     type="button"

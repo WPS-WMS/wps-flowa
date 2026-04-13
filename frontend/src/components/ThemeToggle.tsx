@@ -8,8 +8,10 @@ type Theme = "light" | "dark";
 function getPreferredTheme(): Theme {
   if (typeof window === "undefined") return "light";
   const saved = window.localStorage.getItem("wps_theme");
-  if (saved === "light" || saved === "dark") return saved;
-  return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  // O sistema deve iniciar em modo claro: ignoramos preferência do SO
+  // e também não restauramos "dark" salvo anteriormente.
+  if (saved === "light") return "light";
+  return "light";
 }
 
 function applyTheme(theme: Theme) {
@@ -24,6 +26,7 @@ export function ThemeToggle() {
     const t = getPreferredTheme();
     setTheme(t);
     applyTheme(t);
+    if (typeof window !== "undefined") window.localStorage.setItem("wps_theme", t);
   }, []);
 
   const nextTheme = useMemo(() => (theme === "dark" ? "light" : "dark"), [theme]);
