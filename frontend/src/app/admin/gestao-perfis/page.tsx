@@ -2,10 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Link } from "@/components/Link";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch } from "@/lib/api";
-import { ChevronLeft } from "lucide-react";
+import { Check, ChevronLeft, Loader2, Search, Shield, X } from "lucide-react";
 
 type RoleId = "ADMIN_PORTAL" | "GESTOR_PROJETOS" | "CONSULTOR" | "CLIENTE";
 
@@ -156,18 +155,18 @@ export default function GestaoPerfisPage() {
 
   useEffect(() => {
     if (loading) return;
-      if (!user) {
+    if (!user) {
       router.replace("/login");
       return;
     }
     if (!can("configuracoes.gestaoPerfis")) {
-      const basePath =
+      const path =
         user.role === "CLIENTE"
           ? "/cliente"
           : user.role === "GESTOR_PROJETOS"
             ? "/gestor"
             : "/consultor";
-      router.replace(`${basePath}/configuracoes`);
+      router.replace(`${path}/configuracoes`);
     }
   }, [user, loading, can, router, basePath]);
 
@@ -175,6 +174,8 @@ export default function GestaoPerfisPage() {
   const [permissions, setPermissions] = useState<Permissions>(() => buildDefaultPermissions());
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [filter, setFilter] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (loading || !user) return;
@@ -195,9 +196,20 @@ export default function GestaoPerfisPage() {
       });
   }, [user, loading, can]);
 
+  const filteredFeatures = useMemo(() => {
+    const q = filter.trim().toLowerCase();
+    if (!q) return FEATURES;
+    return FEATURES.filter(
+      (f) =>
+        f.label.toLowerCase().includes(q) ||
+        f.section.toLowerCase().includes(q) ||
+        f.id.toLowerCase().includes(q),
+    );
+  }, [filter]);
+
   const sections = useMemo(
-    () => Array.from(new Set(FEATURES.map((f) => f.section))),
-    []
+    () => Array.from(new Set(filteredFeatures.map((f) => f.section))),
+    [filteredFeatures],
   );
 
   const hasPendingChanges = useMemo(() => {
@@ -217,8 +229,9 @@ export default function GestaoPerfisPage() {
 
   if (loading || !user) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-slate-50">
-        <p className="text-blue-700">Carregando...</p>
+      <div className="flex-1 flex flex-col items-center justify-center gap-3 bg-[color:var(--background)] min-h-[40vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-[color:var(--muted-foreground)]" aria-hidden />
+        <p className="text-sm text-[color:var(--muted-foreground)]">Carregando…</p>
       </div>
     );
   }
@@ -240,6 +253,7 @@ export default function GestaoPerfisPage() {
   function handleSave() {
     setSaveMessage(null);
     setLoadError(null);
+    setSaving(true);
     apiFetch("/api/access-control", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -257,110 +271,206 @@ export default function GestaoPerfisPage() {
         setSaveMessage("Permissões atualizadas com sucesso.");
         setTimeout(() => setSaveMessage(null), 3000);
       })
-      .catch((e) => {
+      .catch((e: Error) => {
         setLoadError(e?.message || "Erro ao salvar permissões.");
-      });
+      })
+      .finally(() => setSaving(false));
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-slate-50">
-      <header className="flex-shrink-0 bg-white border-b border-slate-200 px-6 py-4">
-        <div className="max-w-6xl mx-auto">
-          <h1 className="text-xl md:text-2xl font-semibold text-slate-900">Gestão de perfis</h1>
-          <p className="text-xs md:text-sm text-slate-500 mt-1">
-            Configure, por perfil, o acesso às telas e principais funcionalidades do sistema.
-          </p>
+    <div className="flex-1 flex flex-col min-h-0 bg-[color:var(--background)]">
+      <header className="flex-shrink-0 border-b border-[color:var(--border)] bg-[color:var(--surface)] px-6 py-4">
+        <div className="max-w-6xl mx-auto flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 text-[color:var(--muted-foreground)]">
+              <Shield className="h-5 w-5 shrink-0 text-[color:var(--primary)]" aria-hidden />
+              <span className="text-xs font-medium uppercase tracking-wide">Configurações</span>
+            </div>
+            <h1 className="text-xl md:text-2xl font-semibold text-[color:var(--foreground)] mt-0.5">
+              Gestão de perfis
+            </h1>
+            <p className="text-xs md:text-sm text-[color:var(--muted-foreground)] mt-1 max-w-2xl leading-relaxed">
+              Defina, por perfil, quais telas e funcionalidades ficam disponíveis. Toque em cada célula para alternar
+              entre permitir e bloquear.
+            </p>
+          </div>
         </div>
       </header>
+
       <main className="flex-1 px-4 md:px-6 py-4 min-h-0 overflow-auto">
         <div className="max-w-6xl mx-auto space-y-4">
-          <div className="flex items-center justify-between gap-3">
-            <button
-              type="button"
-              onClick={() => router.back()}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50 transition-colors"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              <span>Voltar</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={!hasPendingChanges}
-              className="inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-medium shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              Salvar alterações
-            </button>
-          </div>
-          {hasPendingChanges && (
-            <p className="text-[11px] text-amber-700">
-              Existem alterações de permissão ainda não salvas.
-            </p>
-          )}
-          {saveMessage && !hasPendingChanges && (
-            <p className="text-[11px] text-emerald-700">
-              {saveMessage}
-            </p>
-          )}
-          {loadError && (
-            <p className="text-[11px] text-red-700">
-              {loadError}
-            </p>
-          )}
-
-          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-            <div className="min-w-[720px]">
-              <div className="grid grid-cols-[minmax(220px,2fr)_repeat(4,minmax(120px,1fr))] bg-slate-100 border-b border-slate-200 text-xs font-semibold text-slate-700">
-                <div className="px-4 py-3 border-r border-slate-200">Tela / Funcionalidade</div>
-                {ROLES.map((role) => (
-                  <div
-                    key={role.id}
-                    className="px-3 py-3 text-center border-r last:border-r-0 border-slate-200"
-                  >
-                    {role.label}
-                  </div>
-                ))}
+          <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] p-4 shadow-sm">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex flex-wrap items-center gap-3 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => router.back()}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--foreground)] text-sm font-medium hover:opacity-90 transition-opacity"
+                >
+                  <ChevronLeft className="h-4 w-4 shrink-0" />
+                  Voltar
+                </button>
+                <div className="relative min-w-0 flex-1 max-w-md">
+                  <Search
+                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[color:var(--muted-foreground)]"
+                    aria-hidden
+                  />
+                  <input
+                    type="search"
+                    value={filter}
+                    onChange={(e) => setFilter(e.target.value)}
+                    placeholder="Filtrar por funcionalidade ou seção…"
+                    className="w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] py-2.5 pl-9 pr-3 text-sm text-[color:var(--foreground)] placeholder:text-[color:var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/30"
+                    aria-label="Filtrar lista de permissões"
+                  />
+                </div>
               </div>
+              <div className="flex flex-wrap items-center gap-3 justify-end">
+                <div className="flex items-center gap-3 text-xs text-[color:var(--muted-foreground)] border border-[color:var(--border)]/80 rounded-xl px-3 py-2 bg-[color:var(--background)]/40">
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">
+                      <Check className="h-3.5 w-3.5" aria-hidden />
+                    </span>
+                    Com acesso
+                  </span>
+                  <span className="text-[color:var(--border)]">|</span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-[color:var(--muted-foreground)]/15 text-[color:var(--muted-foreground)]">
+                      <X className="h-3.5 w-3.5" aria-hidden />
+                    </span>
+                    Sem acesso
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={!hasPendingChanges || saving}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl min-w-[160px] px-4 py-2.5 text-sm font-semibold shadow-sm transition-opacity disabled:opacity-50 disabled:cursor-not-allowed bg-[color:var(--primary)] text-[color:var(--primary-foreground)] hover:opacity-95"
+                >
+                  {saving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+                      Salvando…
+                    </>
+                  ) : (
+                    "Salvar alterações"
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
 
-              {sections.map((section) => (
-                <div key={section} className="border-t border-slate-200 first:border-t-0">
-                  <div className="bg-slate-50 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500 border-b border-slate-200">
-                    {section}
+          {hasPendingChanges && (
+            <div
+              className="rounded-xl border border-amber-200/80 bg-amber-50/90 dark:bg-amber-950/30 dark:border-amber-800/50 px-4 py-3 text-sm text-amber-900 dark:text-amber-100"
+              role="status"
+            >
+              Existem alterações ainda não salvas. Clique em <strong>Salvar alterações</strong> para aplicá-las.
+            </div>
+          )}
+
+          {saveMessage && !hasPendingChanges && (
+            <div
+              className="rounded-xl border border-emerald-200/80 bg-emerald-50/90 dark:bg-emerald-950/30 dark:border-emerald-800/50 px-4 py-3 text-sm text-emerald-900 dark:text-emerald-100"
+              role="status"
+            >
+              {saveMessage}
+            </div>
+          )}
+
+          {loadError && (
+            <div className="wps-apontamento-consultor-error rounded-xl border px-4 py-3 text-sm" role="alert">
+              {loadError}
+            </div>
+          )}
+
+          <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <div className="min-w-[720px]">
+                <div
+                  className="grid grid-cols-[minmax(240px,2fr)_repeat(4,minmax(112px,1fr))] border-b border-[color:var(--border)] bg-[color:var(--surface)] text-left"
+                  role="row"
+                >
+                  <div
+                    className="sticky left-0 z-[1] px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-[color:var(--muted-foreground)] bg-[color:var(--surface)] border-r border-[color:var(--border)] shadow-[4px_0_12px_-4px_rgba(0,0,0,0.12)]"
+                    role="columnheader"
+                  >
+                    Tela / funcionalidade
                   </div>
-                  {FEATURES.filter((f) => f.section === section).map((feature, idx) => {
-                    const rowKey = `${section}-${feature.id}`;
-                    const rowBg = idx % 2 === 0 ? "bg-white" : "bg-slate-50/80";
-                    return (
-                      <div
-                        key={rowKey}
-                        className={`grid grid-cols-[minmax(220px,2fr)_repeat(4,minmax(120px,1fr))] text-xs ${rowBg} border-b border-slate-100 last:border-b-0`}
-                      >
-                        <div className="px-4 py-2.5 border-r border-slate-100 text-slate-800">
-                          {feature.label}
-                        </div>
-                        {ROLES.map((role) => {
-                          const state = permissions[feature.id]?.[role.id] ?? "allow";
-                          const isAllow = state === "allow";
+                  {ROLES.map((role) => (
+                    <div
+                      key={role.id}
+                      className="px-2 py-3.5 text-center text-[11px] sm:text-xs font-semibold leading-tight text-[color:var(--foreground)] border-r border-[color:var(--border)] last:border-r-0"
+                      role="columnheader"
+                    >
+                      {role.label}
+                    </div>
+                  ))}
+                </div>
+
+                {sections.length === 0 ? (
+                  <div className="px-4 py-12 text-center text-sm text-[color:var(--muted-foreground)]">
+                    Nenhuma funcionalidade corresponde ao filtro. Ajuste o texto de busca.
+                  </div>
+                ) : (
+                  sections.map((section) => (
+                    <div key={section} className="border-t border-[color:var(--border)] first:border-t-0">
+                      <div className="bg-[color:var(--primary)]/[0.06] px-4 py-2 text-xs font-semibold text-[color:var(--foreground)] border-b border-[color:var(--border)]/80">
+                        {section}
+                      </div>
+                      {filteredFeatures
+                        .filter((f) => f.section === section)
+                        .map((feature, idx) => {
+                          const rowKey = `${section}-${feature.id}`;
+                          const rowBg =
+                            idx % 2 === 0 ? "bg-[color:var(--surface)]" : "bg-[color:var(--background)]/35";
                           return (
-                            <button
-                              key={`${rowKey}-${role.id}`}
-                              type="button"
-                              onClick={() => togglePermission(feature.id, role.id)}
-                              className={`m-1 inline-flex items-center justify-center rounded-full px-2.5 py-1 text-[11px] font-medium border transition ${
-                                isAllow
-                                  ? "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
-                                  : "bg-slate-50 text-slate-500 border-slate-300 hover:bg-slate-100"
-                              }`}
+                            <div
+                              key={rowKey}
+                              className={`grid grid-cols-[minmax(240px,2fr)_repeat(4,minmax(112px,1fr))] text-xs border-b border-[color:var(--border)]/60 last:border-b-0 ${rowBg}`}
+                              role="row"
                             >
-                              {isAllow ? "Com acesso" : "Sem acesso"}
-                            </button>
+                              <div
+                                className={`sticky left-0 z-[1] px-4 py-3 border-r border-[color:var(--border)]/70 text-[color:var(--foreground)] ${rowBg} shadow-[4px_0_12px_-4px_rgba(0,0,0,0.08)]`}
+                              >
+                                <span className="text-sm font-medium leading-snug">{feature.label}</span>
+                              </div>
+                              {ROLES.map((role) => {
+                                const state = permissions[feature.id]?.[role.id] ?? "allow";
+                                const isAllow = state === "allow";
+                                return (
+                                  <div
+                                    key={`${rowKey}-${role.id}`}
+                                    className="flex items-center justify-center p-2 border-r border-[color:var(--border)]/50 last:border-r-0"
+                                  >
+                                    <button
+                                      type="button"
+                                      onClick={() => togglePermission(feature.id, role.id)}
+                                      aria-pressed={isAllow}
+                                      aria-label={`${feature.label}: ${role.label} — ${isAllow ? "com acesso" : "sem acesso"}. Clique para alternar.`}
+                                      className={`w-full max-w-[7.5rem] inline-flex items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-[11px] font-semibold border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)]/40 ${
+                                        isAllow
+                                          ? "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border-emerald-300/60 hover:bg-emerald-500/15"
+                                          : "bg-[color:var(--muted-foreground)]/10 text-[color:var(--muted-foreground)] border-[color:var(--border)] hover:bg-[color:var(--muted-foreground)]/15"
+                                      }`}
+                                    >
+                                      {isAllow ? (
+                                        <Check className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                                      ) : (
+                                        <X className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                                      )}
+                                      <span className="truncate">{isAllow ? "Com acesso" : "Sem acesso"}</span>
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                            </div>
                           );
                         })}
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </div>
         </div>

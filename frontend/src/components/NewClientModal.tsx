@@ -171,10 +171,7 @@ export function NewClientModal({ onClose, onSaved }: NewClientModalProps) {
               </div>
             ) : null}
 
-            <FormModalSection
-              title="Identificação e contato"
-              description="Nome e e-mail usados na comunicação e no cadastro."
-            >
+            <FormModalSection title="Identificação e contato">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className={formModalLabelClass}>
@@ -249,10 +246,7 @@ export function NewClientModal({ onClose, onSaved }: NewClientModalProps) {
               </div>
             </FormModalSection>
 
-            <FormModalSection
-              title="Endereço"
-              description="Opcional. Ao sair do campo CEP com 8 dígitos, buscamos o endereço automaticamente."
-            >
+            <FormModalSection title="Endereço">
               <div className="grid grid-cols-1 md:grid-cols-[minmax(0,11rem)_1fr] gap-4">
                 <div>
                   <label className={formModalLabelClass}>CEP</label>
