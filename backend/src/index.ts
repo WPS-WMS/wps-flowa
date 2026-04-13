@@ -23,6 +23,7 @@ import { reportsRouter } from "./routes/reports.js";
 import { accessControlRouter } from "./routes/access-control.js";
 import { portalRouter } from "./routes/portal.js";
 import { clientReportsRouter } from "./routes/client-reports.js";
+import { publicContactRouter } from "./routes/public-contact.js";
 
 const app = express();
 app.disable("x-powered-by");
@@ -113,6 +114,7 @@ app.use(
   }),
 );
 
+app.use("/api/public", publicContactRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/projects", projectsRouter);
 app.use("/api/tickets", ticketsRouter);

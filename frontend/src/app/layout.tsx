@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { DM_Sans, Montserrat } from "next/font/google";
+import { Baumans, DM_Sans, Montserrat } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -8,6 +8,12 @@ const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-dm-sans" });
 const montserrat = Montserrat({
   subsets: ["latin"],
   variable: "--font-montserrat",
+  display: "swap",
+});
+const oneWordmarkFallback = Baumans({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-one-fallback",
   display: "swap",
 });
 
@@ -20,7 +26,10 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="pt-BR" className={`${dmSans.variable} ${montserrat.variable}`}>
+    <html
+      lang="pt-BR"
+      className={`${dmSans.variable} ${montserrat.variable} ${oneWordmarkFallback.variable}`}
+    >
       <body className="antialiased">
         <AuthProvider>
           <ThemeToggle />
