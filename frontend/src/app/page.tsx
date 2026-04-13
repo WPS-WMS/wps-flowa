@@ -333,31 +333,33 @@ export default function LandingPage() {
                 />
               </div>
 
-              <div className="order-1 space-y-8 text-center sm:text-left lg:order-2">
-                <p
-                  className="font-medium leading-[1.08] tracking-tight"
-                  style={{
-                    fontFamily: "var(--font-montserrat), system-ui, sans-serif",
-                    fontSize: "clamp(2rem, 5.5vw + 0.5rem, 6.0125rem)",
-                    color: isDark ? "rgba(255,255,255,0.92)" : "rgba(17,24,39,0.85)",
-                  }}
-                >
-                  Bem-vindo
-                </p>
-
-                <div className="flex flex-wrap items-end justify-center gap-3 sm:justify-start md:gap-4">
-                  <span
-                    className="font-quantify text-5xl leading-none tracking-tight md:text-7xl"
-                    style={{ color: isDark ? "#ffffff" : "#0b0b12" }}
+              <div className="order-1 flex flex-col gap-8 text-center sm:text-left lg:order-2">
+                <div className="space-y-2 md:space-y-2">
+                  <p
+                    className="font-medium leading-[1.08] tracking-tight"
+                    style={{
+                      fontFamily: "var(--font-montserrat), system-ui, sans-serif",
+                      fontSize: "clamp(2rem, 5.5vw + 0.5rem, 6.0125rem)",
+                      color: isDark ? "rgba(255,255,255,0.92)" : "rgba(17,24,39,0.85)",
+                    }}
                   >
-                    WPS
-                  </span>
-                  <img
-                    src="/WPS One.png"
-                    alt="One"
-                    className="h-[3.25rem] w-auto select-none sm:h-16 md:h-[5.25rem] lg:h-28"
-                    draggable={false}
-                  />
+                    Bem-vindo
+                  </p>
+
+                  <div className="flex flex-wrap items-end justify-center gap-2 sm:justify-start md:gap-3">
+                    <span
+                      className="font-quantify text-5xl leading-none tracking-tight md:text-7xl"
+                      style={{ color: isDark ? "#ffffff" : "#0b0b12" }}
+                    >
+                      WPS
+                    </span>
+                    <img
+                      src="/WPS One.png"
+                      alt="One"
+                      className="h-[4.25rem] w-auto max-w-[min(100%,280px)] shrink-0 select-none sm:h-[4.75rem] md:h-[6.75rem] lg:h-[7.5rem]"
+                      draggable={false}
+                    />
+                  </div>
                 </div>
 
                 <p
