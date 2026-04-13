@@ -8,18 +8,14 @@ import { API_BASE_URL } from "@/lib/api";
 import { Mail, MapPin, UserRound } from "lucide-react";
 
 const PURPLE = "#5c00e1";
-const ONE_LETTER_VIVID = "#5c00e1";
-const ONE_LETTER_MUTED = "#574276";
-/** 168px no desktop (Canva); escala em telas menores */
-const ONE_WORDMARK_MAX_REM = 168 / 16;
+
+/** Logo vetorial "One" (arquivo em `public/`) */
+const ONE_LOGO_SVG_SRC = "/WPS%20One.svg";
 
 const CONTACT_ADDRESS = "Av. Senador Tarso Dutra, 565 - Sala 1612. Porto Alegre/RS";
 const CONTACT_PHONE_DISPLAY = "55 51 99210 8997";
 const CONTACT_WHATSAPP_E164 = "5551992108997";
 const CONTACT_EMAIL = "contato@wpsconsult.com.br";
-
-/** ITC Bauhaus (+ Baumans em `layout` se `/fonts/ITC-Bauhaus.woff2` não existir) */
-const FONT_ITC_BAUHAUS = '"ITC Bauhaus", var(--font-one-fallback), system-ui, sans-serif';
 
 const SOCIAL_LINKEDIN = "https://www.linkedin.com/company/wps-consult";
 const SOCIAL_INSTAGRAM = "https://www.instagram.com/wpsconsult/";
@@ -70,23 +66,6 @@ function WhatsAppIcon({ className }: { className?: string }) {
 }
 
 type LandingSection = "home" | "sobre" | "contato";
-
-function OneWordmark() {
-  return (
-    <span
-      className="inline-flex shrink-0 select-none items-baseline leading-none tracking-[-0.07em]"
-      style={{
-        fontFamily: FONT_ITC_BAUHAUS,
-        fontSize: `clamp(2.5rem, 11vw, ${ONE_WORDMARK_MAX_REM}rem)`,
-      }}
-      aria-label="One"
-    >
-      <span style={{ color: ONE_LETTER_VIVID }}>O</span>
-      <span style={{ color: ONE_LETTER_MUTED }}>n</span>
-      <span style={{ color: ONE_LETTER_VIVID }}>e</span>
-    </span>
-  );
-}
 
 function readSectionFromLocation(): LandingSection {
   if (typeof window === "undefined") return "home";
@@ -230,11 +209,10 @@ function NavLink({
     <button
       type="button"
       onClick={onClick}
-      className="rounded-lg px-1 py-0.5 transition-opacity hover:opacity-90"
+      className="rounded-lg px-1 py-0.5 text-base transition-opacity hover:opacity-90 md:text-[1.0625rem]"
       style={{
-        fontFamily: FONT_ITC_BAUHAUS,
-        fontWeight: active ? 600 : 400,
-        letterSpacing: "-0.02em",
+        fontFamily: "var(--font-montserrat), system-ui, sans-serif",
+        fontWeight: active ? 700 : 500,
         color: active ? activeColor : inactiveColor,
         opacity: active ? 1 : 0.88,
       }}
@@ -352,7 +330,7 @@ export default function LandingPage() {
         <div className="mx-auto max-w-6xl px-6 pt-7">
           <div className="relative flex min-h-[40px] items-center justify-end">
             <nav
-              className="absolute left-1/2 top-1/2 hidden w-[90%] max-w-xl -translate-x-1/2 -translate-y-1/2 items-center justify-center gap-16 text-sm font-medium md:flex"
+              className="absolute left-1/2 top-1/2 hidden w-[90%] max-w-xl -translate-x-1/2 -translate-y-1/2 items-center justify-center gap-16 font-medium md:flex"
               style={{ color: navText }}
             >
               <NavLink
@@ -379,7 +357,7 @@ export default function LandingPage() {
             </nav>
 
             <div className="flex w-full items-center justify-between gap-3 md:w-auto md:justify-end">
-              <nav className="flex items-center gap-5 text-sm font-medium md:hidden" style={{ color: navText }}>
+              <nav className="flex items-center gap-5 font-medium md:hidden" style={{ color: navText }}>
                 <NavLink
                   label="Home"
                   active={section === "home"}
@@ -477,7 +455,17 @@ export default function LandingPage() {
                     >
                       WPS
                     </span>
-                    <OneWordmark />
+                    <img
+                      src={ONE_LOGO_SVG_SRC}
+                      alt="One"
+                      className="h-[4.25rem] w-auto max-w-[min(100%,280px)] shrink-0 select-none sm:h-[4.75rem] md:h-[6.75rem] lg:h-[7.5rem]"
+                      style={{
+                        filter: isDark
+                          ? "drop-shadow(0 10px 28px rgba(92,0,225,0.28))"
+                          : "drop-shadow(0 8px 22px rgba(17,24,39,0.12))",
+                      }}
+                      draggable={false}
+                    />
                   </div>
                 </div>
 
