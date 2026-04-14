@@ -68,21 +68,34 @@ export function ProjectPropostaComercialReadonly({ project }: Props) {
   }, [fullUrl, displayName]);
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-4 md:p-5 space-y-3 w-full">
+    <section
+      className="rounded-2xl border p-4 md:p-5 space-y-3 w-full bg-[color:var(--surface)]/80 backdrop-blur"
+      style={{ borderColor: "var(--border)" }}
+    >
       <div className="flex items-center gap-2">
-        <FileText className="h-4 w-4 text-slate-500 shrink-0" aria-hidden />
-        <h2 className="text-sm font-semibold text-slate-600 uppercase tracking-wide">Proposta comercial</h2>
+        <FileText className="h-4 w-4 shrink-0" style={{ color: "var(--muted-foreground)" }} aria-hidden />
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-[color:var(--muted-foreground)]">
+          Proposta comercial
+        </h2>
       </div>
       {!hasFile ? (
-        <p className="text-sm text-slate-600">Nenhum arquivo de proposta comercial foi anexado a este projeto.</p>
+        <p className="text-sm text-[color:var(--muted-foreground)]">
+          Nenhum arquivo de proposta comercial foi anexado a este projeto.
+        </p>
       ) : (
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50/80 px-4 py-3">
+        <div
+          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border px-4 py-3"
+          style={{
+            borderColor: "var(--border)",
+            background: "var(--surface-2)",
+          }}
+        >
           <div className="min-w-0">
-            <p className="text-sm font-medium text-slate-800 truncate" title={displayName}>
+            <p className="text-sm font-semibold text-[color:var(--foreground)] truncate" title={displayName}>
               {displayName}
             </p>
             {(project.anexoTamanho != null && project.anexoTamanho > 0) || project.anexoTipo ? (
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-[color:var(--muted-foreground)] mt-0.5">
                 {[tipoArquivoLabel(project.anexoTipo), formatFileSize(project.anexoTamanho ?? undefined)]
                   .filter(Boolean)
                   .join(" · ")}
@@ -94,7 +107,12 @@ export function ProjectPropostaComercialReadonly({ project }: Props) {
               href={fullUrl!}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 text-sm font-medium hover:bg-slate-50 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-semibold transition hover:opacity-95"
+              style={{
+                borderColor: "var(--border)",
+                background: "rgba(0,0,0,0.06)",
+                color: "var(--foreground)",
+              }}
             >
               <ExternalLink className="h-3.5 w-3.5" aria-hidden />
               Visualizar
@@ -103,7 +121,8 @@ export function ProjectPropostaComercialReadonly({ project }: Props) {
               type="button"
               onClick={handleDownload}
               disabled={downloading}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-60 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold text-white disabled:opacity-60 hover:opacity-95 transition-opacity"
+              style={{ background: "var(--primary)" }}
             >
               <Download className="h-3.5 w-3.5" aria-hidden />
               {downloading ? "Baixando…" : "Baixar"}

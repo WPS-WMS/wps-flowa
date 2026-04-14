@@ -202,7 +202,7 @@ export default function PerfilPage() {
               "radial-gradient(900px 420px at 20% 0%, rgba(92,0,225,0.16), transparent 55%), radial-gradient(720px 360px at 85% 30%, rgba(87,66,118,0.14), transparent 55%)",
           }}
         >
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <div className="flex items-center gap-3">
               <button
@@ -210,7 +210,7 @@ export default function PerfilPage() {
                 onClick={() => router.back()}
                 aria-label="Voltar"
                 title="Voltar"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border transition hover:opacity-90"
+                className="inline-flex h-10 w-10 -ml-2 md:ml-0 items-center justify-center rounded-xl border transition hover:opacity-90"
                 style={{
                   borderColor: "var(--border)",
                   background: "rgba(255,255,255,0.10)",
@@ -248,7 +248,7 @@ export default function PerfilPage() {
               <p className="text-xs text-[color:var(--muted-foreground)]">{user.email}</p>
             </div>
           </div>
-        </div>
+          </div>
         </div>
 
         {(error || success) && (

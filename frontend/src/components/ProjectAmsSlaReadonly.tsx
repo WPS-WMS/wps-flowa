@@ -24,29 +24,58 @@ export function ProjectAmsSlaReadonly({ project }: Props) {
   const hasAny = rows.some((row) => row.r != null || row.s != null);
 
   return (
-    <section className="rounded-xl border border-emerald-200/80 bg-emerald-50/40 p-4 md:p-5 space-y-3 w-full">
-      <h2 className="text-sm font-semibold text-slate-600 uppercase tracking-wide">SLA configurado (AMS)</h2>
-      <p className="text-xs text-slate-500">
+    <section
+      className="rounded-2xl border p-4 md:p-5 space-y-3 w-full bg-[color:var(--surface)]/80 backdrop-blur"
+      style={{ borderColor: "var(--border)" }}
+    >
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-[color:var(--muted-foreground)]">
+        SLA configurado (AMS)
+      </h2>
+      <p className="text-xs text-[color:var(--muted-foreground)]">
         Tempos em horas por prioridade de chamado (conforme cadastro do projeto).
       </p>
       {!hasAny ? (
-        <p className="text-sm text-slate-600">Nenhum SLA por prioridade foi cadastrado para este projeto.</p>
+        <p className="text-sm text-[color:var(--muted-foreground)]">
+          Nenhum SLA por prioridade foi cadastrado para este projeto.
+        </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-emerald-200/60 bg-white">
+        <div
+          className="overflow-x-auto rounded-xl border"
+          style={{
+            borderColor: "var(--border)",
+            background: "var(--surface-2)",
+          }}
+        >
           <table className="min-w-full text-sm">
-            <thead className="bg-slate-50 border-b border-slate-200">
+            <thead
+              className="border-b"
+              style={{
+                borderColor: "var(--border)",
+                background: "rgba(0,0,0,0.04)",
+              }}
+            >
               <tr>
-                <th className="px-3 py-2 text-left font-semibold text-slate-600">Prioridade</th>
-                <th className="px-3 py-2 text-right font-semibold text-slate-600">Tempo de resposta</th>
-                <th className="px-3 py-2 text-right font-semibold text-slate-600">Tempo de solução</th>
+                <th className="px-3 py-2 text-left font-semibold text-[color:var(--muted-foreground)]">
+                  Prioridade
+                </th>
+                <th className="px-3 py-2 text-right font-semibold text-[color:var(--muted-foreground)]">
+                  Tempo de resposta
+                </th>
+                <th className="px-3 py-2 text-right font-semibold text-[color:var(--muted-foreground)]">
+                  Tempo de solução
+                </th>
               </tr>
             </thead>
             <tbody>
               {rows.map((row) => (
-                <tr key={row.label} className="border-t border-slate-100">
-                  <td className="px-3 py-2 text-slate-800">{row.label}</td>
-                  <td className="px-3 py-2 text-right tabular-nums text-slate-700">{fmtHoras(row.r)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums text-slate-700">{fmtHoras(row.s)}</td>
+                <tr key={row.label} className="border-t" style={{ borderColor: "var(--border)" }}>
+                  <td className="px-3 py-2 text-[color:var(--foreground)]">{row.label}</td>
+                  <td className="px-3 py-2 text-right tabular-nums text-[color:var(--foreground)]">
+                    {fmtHoras(row.r)}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums text-[color:var(--foreground)]">
+                    {fmtHoras(row.s)}
+                  </td>
                 </tr>
               ))}
             </tbody>

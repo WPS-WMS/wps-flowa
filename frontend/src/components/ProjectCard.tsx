@@ -534,10 +534,11 @@ export function ProjectCard({
       {/* Menu de ações posicionado fixo fora do card */}
       {(canEdit || canDelete || canArchive) && showActionsMenu && menuPosition && (
         <div
-          className="fixed z-[100] w-44 rounded-lg border border-slate-200 bg-white shadow-lg py-1 text-sm"
+          className="fixed z-[100] w-44 rounded-xl border shadow-lg py-1 text-sm backdrop-blur-xl bg-[color:var(--surface)]/92"
           style={{
             top: `${menuPosition.top}px`,
             right: `${menuPosition.right}px`,
+            borderColor: "var(--border)",
           }}
           ref={(el) => {
             actionsRef.current = el;
@@ -552,9 +553,10 @@ export function ProjectCard({
                     setMenuPosition(null);
                     handleViewDetails();
                   }}
-                  className="flex w-full items-center gap-2 px-3 py-1.5 text-slate-700 hover:bg-slate-50"
+                  className="flex w-full items-center gap-2 px-3 py-1.5 rounded-lg transition hover:opacity-95"
+                  style={{ color: "var(--primary)" }}
                 >
-                  <Eye className="h-4 w-4 text-slate-400" />
+                  <Eye className="h-4 w-4" />
                   Ver detalhes
                 </button>
                 {canEdit && (
@@ -565,9 +567,10 @@ export function ProjectCard({
                       setMenuPosition(null);
                       setShowEditProjectModal(true);
                     }}
-                    className="flex w-full items-center gap-2 px-3 py-1.5 text-slate-700 hover:bg-slate-50"
+                    className="flex w-full items-center gap-2 px-3 py-1.5 rounded-lg transition hover:opacity-95"
+                    style={{ color: "var(--primary)" }}
                   >
-                    <Pencil className="h-4 w-4 text-slate-400" />
+                    <Pencil className="h-4 w-4" />
                     Editar
                   </button>
                 )}
@@ -594,16 +597,17 @@ export function ProjectCard({
                         alert(`Erro ao ${project.arquivado ? "desarquivar" : "arquivar"} projeto`);
                       }
                     }}
-                    className="flex w-full items-center gap-2 px-3 py-1.5 text-slate-700 hover:bg-slate-50"
+                    className="flex w-full items-center gap-2 px-3 py-1.5 rounded-lg transition hover:opacity-95"
+                    style={{ color: "var(--primary)" }}
                   >
                     {project.arquivado ? (
                       <>
-                        <RotateCcw className="h-4 w-4 text-slate-400" />
+                        <RotateCcw className="h-4 w-4" />
                         Desarquivar
                       </>
                     ) : (
                       <>
-                        <Archive className="h-4 w-4 text-slate-400" />
+                        <Archive className="h-4 w-4" />
                         Arquivar
                       </>
                     )}
@@ -611,7 +615,7 @@ export function ProjectCard({
                 )}
                 {canDelete && (
                   <>
-                    <div className="my-1 border-t border-slate-100" />
+                    <div className="my-1 border-t" style={{ borderColor: "var(--border)" }} />
                     <button
                       type="button"
                       onClick={() => {
@@ -620,7 +624,8 @@ export function ProjectCard({
                         setDeleteTarget(project as unknown as PackageTicket);
                         setDeleteType("project");
                       }}
-                      className="flex w-full items-center gap-2 px-3 py-1.5 text-red-600 hover:bg-red-50"
+                      className="flex w-full items-center gap-2 px-3 py-1.5 rounded-lg transition hover:opacity-95"
+                      style={{ color: "#ef4444" }}
                     >
                       <Trash2 className="h-4 w-4" />
                       Excluir

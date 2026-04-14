@@ -409,11 +409,14 @@ export default function ProjetoDetalheAdminPage({ params }: PageProps) {
         <ProjectAmsSlaReadonly project={project} />
 
         {project.tipoProjeto === "AMS" && (
-          <section className="rounded-xl border border-slate-200 bg-white p-4 md:p-5 space-y-4 w-full">
-            <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">
+          <section
+            className="rounded-2xl border p-4 md:p-5 space-y-4 w-full bg-[color:var(--surface)]/80 backdrop-blur"
+            style={{ borderColor: "var(--border)" }}
+          >
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-[color:var(--muted-foreground)]">
               Resumo AMS – Horas Mensais
             </h2>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-[color:var(--muted-foreground)]">
               Controle de horas contratadas, banco de horas e excedentes por mês para este
               projeto AMS.
             </p>
@@ -423,34 +426,34 @@ export default function ProjetoDetalheAdminPage({ params }: PageProps) {
               </p>
             )}
             {amsLoading && !amsError && (
-              <p className="text-xs text-slate-500">Carregando resumo de horas...</p>
+              <p className="text-xs text-[color:var(--muted-foreground)]">Carregando resumo de horas...</p>
             )}
             {!amsLoading && !amsError && amsResumo.length === 0 && (
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-[color:var(--muted-foreground)]">
                 Ainda não há apontamentos de horas para este projeto.
               </p>
             )}
             {!amsLoading && !amsError && amsResumo.length > 0 && (
               <div className="overflow-x-auto">
-                <table className="min-w-full text-xs border border-slate-200 rounded-lg overflow-hidden">
-                  <thead className="bg-slate-50">
+                <table className="min-w-full text-xs border rounded-xl overflow-hidden" style={{ borderColor: "var(--border)" }}>
+                  <thead style={{ background: "rgba(0,0,0,0.04)" }}>
                     <tr>
-                      <th className="px-3 py-2 text-left font-semibold text-slate-600">
+                      <th className="px-3 py-2 text-left font-semibold text-[color:var(--muted-foreground)]">
                         Mês / Ano
                       </th>
-                      <th className="px-3 py-2 text-right font-semibold text-slate-600">
+                      <th className="px-3 py-2 text-right font-semibold text-[color:var(--muted-foreground)]">
                         Horas contratadas
                       </th>
-                      <th className="px-3 py-2 text-right font-semibold text-slate-600">
+                      <th className="px-3 py-2 text-right font-semibold text-[color:var(--muted-foreground)]">
                         Banco inicial
                       </th>
-                      <th className="px-3 py-2 text-right font-semibold text-slate-600">
+                      <th className="px-3 py-2 text-right font-semibold text-[color:var(--muted-foreground)]">
                         Horas consumidas
                       </th>
-                      <th className="px-3 py-2 text-right font-semibold text-slate-600">
+                      <th className="px-3 py-2 text-right font-semibold text-[color:var(--muted-foreground)]">
                         Saldo banco
                       </th>
-                      <th className="px-3 py-2 text-right font-semibold text-slate-600">
+                      <th className="px-3 py-2 text-right font-semibold text-[color:var(--muted-foreground)]">
                         Excedentes
                       </th>
                     </tr>
@@ -459,26 +462,26 @@ export default function ProjetoDetalheAdminPage({ params }: PageProps) {
                     {amsResumo.map((mes) => (
                       <tr
                         key={mes.key}
-                        className={
-                          mes.excedentes > 0
-                            ? "bg-rose-50/60"
-                            : "hover:bg-slate-50/60"
-                        }
+                        className="border-t"
+                        style={{
+                          borderColor: "var(--border)",
+                          background: mes.excedentes > 0 ? "rgba(220, 38, 38, 0.10)" : "transparent",
+                        }}
                       >
-                        <td className="px-3 py-2 text-slate-800">{mes.label}</td>
-                        <td className="px-3 py-2 text-right text-slate-700">
+                        <td className="px-3 py-2 text-[color:var(--foreground)]">{mes.label}</td>
+                        <td className="px-3 py-2 text-right text-[color:var(--foreground)]">
                           {mes.contratadas.toFixed(1)}h
                         </td>
-                        <td className="px-3 py-2 text-right text-slate-700">
+                        <td className="px-3 py-2 text-right text-[color:var(--foreground)]">
                           {mes.bancoInicial.toFixed(1)}h
                         </td>
-                        <td className="px-3 py-2 text-right text-slate-700">
+                        <td className="px-3 py-2 text-right text-[color:var(--foreground)]">
                           {mes.consumidas.toFixed(1)}h
                         </td>
-                        <td className="px-3 py-2 text-right text-slate-700">
+                        <td className="px-3 py-2 text-right text-[color:var(--foreground)]">
                           {mes.saldoBanco.toFixed(1)}h
                         </td>
-                        <td className="px-3 py-2 text-right font-semibold text-slate-800">
+                        <td className="px-3 py-2 text-right font-semibold text-[color:var(--foreground)]">
                           {mes.excedentes.toFixed(1)}h
                         </td>
                       </tr>
