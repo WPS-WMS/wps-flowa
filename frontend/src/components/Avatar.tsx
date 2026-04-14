@@ -10,6 +10,7 @@ type Props = {
   /** Use para cache-bust quando a foto muda (ex.: user.updatedAt) */
   avatarVersion?: string | number | Date | null;
   size?: number; // px
+  showBorder?: boolean;
   className?: string;
   imgClassName?: string;
   fallbackClassName?: string;
@@ -38,6 +39,7 @@ export function Avatar({
   avatarUrl,
   avatarVersion,
   size = 36,
+  showBorder = true,
   className,
   imgClassName,
   fallbackClassName,
@@ -79,7 +81,8 @@ export function Avatar({
       <div
         style={baseStyle}
         className={
-          "relative bg-[color:var(--surface)] border border-[color:var(--border)] " +
+          "relative bg-[color:var(--surface)] " +
+          (showBorder ? "border border-[color:var(--border)] " : "") +
           (className ? `${className} ` : "") +
           "rounded-full overflow-hidden"
         }

@@ -256,7 +256,9 @@ export function Sidebar({
               <button
                 type="button"
                 onClick={() => setUserMenuOpen((v) => !v)}
-                className="w-full rounded-xl px-3 py-3 text-left transition hover:bg-[color:var(--sidebar-item-hover)] focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/50 focus:ring-inset"
+                className={`w-full rounded-2xl px-4 py-3 text-left transition hover:bg-[color:var(--sidebar-item-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)]/35 focus-visible:ring-inset ${
+                  userMenuOpen ? "bg-[color:var(--sidebar-item-hover)]" : ""
+                }`}
                 aria-haspopup="menu"
                 aria-expanded={userMenuOpen}
               >
@@ -266,10 +268,11 @@ export function Sidebar({
                     email={user.email}
                     avatarUrl={user.avatarUrl}
                     avatarVersion={user.updatedAt}
-                    size={36}
+                    size={40}
+                    showBorder={false}
                     fallbackClassName="text-sm"
-                    className="border border-[color:var(--sidebar-border)]"
-                    imgClassName="border border-[color:var(--sidebar-border)]"
+                    className=""
+                    imgClassName=""
                   />
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium" title={user.name}>
@@ -320,7 +323,9 @@ export function Sidebar({
               <button
                 type="button"
                 onClick={() => setUserMenuOpen((v) => !v)}
-                className="flex w-full items-center justify-center rounded-lg px-3 py-2 transition hover:bg-[color:var(--sidebar-item-hover)] focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/50 focus:ring-inset"
+                className={`flex w-full items-center justify-center rounded-2xl px-3 py-3 transition hover:bg-[color:var(--sidebar-item-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)]/35 focus-visible:ring-inset ${
+                  userMenuOpen ? "bg-[color:var(--sidebar-item-hover)]" : ""
+                }`}
                 aria-label="Menu do usuário"
                 aria-haspopup="menu"
                 aria-expanded={userMenuOpen}
@@ -330,10 +335,11 @@ export function Sidebar({
                   email={user.email}
                   avatarUrl={user.avatarUrl}
                   avatarVersion={user.updatedAt}
-                  size={34}
+                  size={40}
+                  showBorder={false}
                   fallbackClassName="text-sm"
-                  className="border border-[color:var(--sidebar-border)]"
-                  imgClassName="border border-[color:var(--sidebar-border)]"
+                  className=""
+                  imgClassName=""
                 />
               </button>
 
