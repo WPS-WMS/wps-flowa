@@ -10,6 +10,7 @@ const BACKEND_URL =
 
 const ONE_LOGO_SVG_SRC = "/WPS%20One.svg";
 const WPS_ONE_ICON_SVG_SRC = "/WPS%20One%20%C3%ADcone.svg";
+const WPS_ONE_SETA_SVG_SRC = "/WPS%20One%20Seta.svg";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -157,6 +158,14 @@ export default function LoginPage() {
               </span>
             </span>
           </h1>
+          <div className="mt-2 flex justify-center">
+            <img
+              src={WPS_ONE_SETA_SVG_SRC}
+              alt=""
+              className="h-6 w-auto select-none opacity-90"
+              draggable={false}
+            />
+          </div>
           <p className="mt-1 text-sm text-[color:var(--muted-foreground)]">Gestão de projetos e apontamento de horas</p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
