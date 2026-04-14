@@ -203,27 +203,25 @@ export default function PerfilPage() {
           }}
         >
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="space-y-2">
-            <button
-              type="button"
-              onClick={() => router.back()}
-              className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition hover:opacity-90"
-              style={{
-                borderColor: "var(--border)",
-                background: "rgba(92,0,225,0.10)",
-                color: "var(--foreground)",
-              }}
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              <span>Voltar</span>
-            </button>
-            <div>
+          <div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => router.back()}
+                aria-label="Voltar"
+                title="Voltar"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border transition hover:opacity-90"
+                style={{
+                  borderColor: "var(--border)",
+                  background: "rgba(0,0,0,0.06)",
+                  color: "var(--foreground)",
+                }}
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </button>
               <h1 className="text-xl font-semibold tracking-tight text-[color:var(--foreground)] md:text-2xl">
                 Configurações do usuário
               </h1>
-              <p className="text-sm text-[color:var(--muted-foreground)]">
-                Atualize suas informações básicas, senha e foto de perfil.
-              </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
