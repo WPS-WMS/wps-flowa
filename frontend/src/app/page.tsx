@@ -437,18 +437,18 @@ export default function LandingPage() {
 
               <div className="order-1 flex flex-col gap-8 text-center sm:text-left lg:order-2">
                 <div className="space-y-2 md:space-y-2">
-                  <p
-                    className="font-medium leading-[1.08] tracking-tight"
-                    style={{
-                      fontFamily: "var(--font-montserrat), system-ui, sans-serif",
-                      fontSize: "clamp(2rem, 5.5vw + 0.5rem, 6.0125rem)",
-                      color: isDark ? "rgba(255,255,255,0.92)" : "rgba(17,24,39,0.85)",
-                    }}
-                  >
-                    Bem-vindo
-                  </p>
+                  <div className="mx-auto w-fit text-left sm:mx-0">
+                    <p
+                      className="font-medium leading-[1.08] tracking-tight"
+                      style={{
+                        fontFamily: "var(--font-montserrat), system-ui, sans-serif",
+                        fontSize: "clamp(2rem, 5.5vw + 0.5rem, 6.0125rem)",
+                        color: isDark ? "rgba(255,255,255,0.92)" : "rgba(17,24,39,0.85)",
+                      }}
+                    >
+                      Bem-vindo
+                    </p>
 
-                  <div className="flex justify-center sm:justify-start">
                     <div className="inline-flex items-baseline whitespace-nowrap">
                       <span
                         className="font-quantify leading-none tracking-tight text-5xl md:text-7xl"
