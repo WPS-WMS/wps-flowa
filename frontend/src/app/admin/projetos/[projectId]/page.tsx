@@ -6,6 +6,8 @@ import { apiFetch } from "@/lib/api";
 import { type ProjectForCard } from "@/components/ProjectCard";
 import { ProjectAmsSlaReadonly } from "@/components/ProjectAmsSlaReadonly";
 import { ProjectPropostaComercialReadonly } from "@/components/ProjectPropostaComercialReadonly";
+import { Avatar } from "@/components/Avatar";
+import { ArrowLeft, Calendar, ClipboardList, Flag, Users } from "lucide-react";
 
 type PageProps = {
   params: Promise<{ projectId: string }>;
@@ -212,67 +214,65 @@ export default function ProjetoDetalheAdminPage({ params }: PageProps) {
   const tarefas = project.tickets?.filter((t) => t.type !== "SUBPROJETO" && t.type !== "SUBTAREFA") ?? [];
   const totalTarefas = tarefas.length;
   const responsibles = project.responsibles?.map((r) => r.user) ?? [];
+  const membros =
+    responsibles.length > 0
+      ? responsibles
+      : project.createdBy
+        ? [project.createdBy]
+        : [];
   const horasPlanejamento = getHorasPlanejamentoByTipo(project);
 
   return (
-    <div className="flex-1 flex flex-col min-h-0">
-      <header className="flex-shrink-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+    <div className="flex-1 flex flex-col min-h-0 bg-[color:var(--background)]">
+      <header className="flex-shrink-0 border-b px-4 py-4 md:px-6 md:py-5 flex items-center justify-between bg-[color:var(--surface)]/80 backdrop-blur-xl" style={{ borderColor: "var(--border)" }}>
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-lg font-semibold text-slate-800">{project.name}</h1>
+            <h1 className="text-lg font-semibold tracking-tight text-[color:var(--foreground)] md:text-xl">{project.name}</h1>
             {project.tipoProjeto && (
               <span className="wps-projeto-tipo-badge inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold">
                 {getTipoProjetoLabel(project.tipoProjeto)}
               </span>
             )}
           </div>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-xs mt-0.5 text-[color:var(--muted-foreground)]">
             {project.client?.name ?? "—"} · {totalTarefas} tarefas
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => router.push("/admin/projetos?tab=" + fromTab)}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
-        >
-          ← Voltar
+        <button type="button" onClick={() => router.push("/admin/projetos?tab=" + fromTab)} aria-label="Voltar" title="Voltar" className="inline-flex h-10 w-10 items-center justify-center rounded-xl border transition hover:opacity-90" style={{ borderColor: "var(--border)", background: "rgba(0,0,0,0.06)", color: "var(--foreground)" }}>
+          <ArrowLeft className="h-4 w-4" />
         </button>
       </header>
       <main className="flex-1 p-4 md:p-6 min-h-0 overflow-auto space-y-6">
-        <section className="rounded-xl border border-slate-200 bg-white p-4 md:p-5 space-y-4 w-full">
-          <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">Informações</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 text-sm">
-            <div>
-              <p className="text-slate-500">Nome do Projeto</p>
-              <p className="font-medium text-slate-800">{project.name}</p>
-            </div>
-            <div>
-              <p className="text-slate-500">Cliente</p>
-              <p className="font-medium text-slate-800">{project.client?.name ?? "—"}</p>
-            </div>
-            <div className="sm:col-span-2 lg:col-span-1">
-              <p className="text-slate-500 mb-2">Responsável(is)</p>
-              <div className="flex flex-wrap gap-2">
-                {responsibles.length > 0 ? (
-                  responsibles.map((u) => (
-                    <div
-                      key={u.id}
-                      className="flex items-center gap-2 rounded-full bg-slate-100 pl-1 pr-3 py-1 border border-slate-200"
-                    >
-                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white text-xs font-semibold">
-                        {getIniciais(u.name)}
-                      </span>
-                      <span className="text-slate-800 truncate max-w-[120px]">{u.name}</span>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-slate-500">{project.createdBy?.name ?? "—"}</p>
-                )}
+        <section className="rounded-2xl border p-4 md:p-5 space-y-5 w-full bg-[color:var(--surface)]/80 backdrop-blur" style={{ borderColor: "var(--border)" }}>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-[color:var(--muted-foreground)]">Visão geral</h2>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-xl border p-3" style={{ borderColor: "var(--border)", background: "rgba(0,0,0,0.04)" }}>
+              <div className="flex items-center gap-2">
+                <ClipboardList className="h-4 w-4" style={{ color: "var(--muted-foreground)" }} />
+                <p className="text-xs font-medium text-[color:var(--muted-foreground)]">Total de tarefas</p>
               </div>
+              <p className="mt-1 text-lg font-semibold tabular-nums text-[color:var(--foreground)]">{totalTarefas}</p>
             </div>
-            <div>
-              <p className="text-slate-500">Data de Início</p>
-              <p className="font-medium text-slate-800">
+
+            <div className="rounded-xl border p-3" style={{ borderColor: "var(--border)", background: "rgba(0,0,0,0.04)" }}>
+              <div className="flex items-center gap-2">
+                <Flag className="h-4 w-4" style={{ color: "var(--muted-foreground)" }} />
+                <p className="text-xs font-medium text-[color:var(--muted-foreground)]">Status inicial</p>
+              </div>
+              <p className="mt-1 text-sm font-semibold text-[color:var(--foreground)]">
+                {project.statusInicial ? STATUS_LABELS[project.statusInicial] ?? project.statusInicial : "—"}
+              </p>
+            </div>
+
+            <div className="rounded-xl border p-3" style={{ borderColor: "var(--border)", background: "rgba(0,0,0,0.04)" }}>
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4" style={{ color: "var(--muted-foreground)" }} />
+                <p className="text-xs font-medium text-[color:var(--muted-foreground)]">Início</p>
+              </div>
+              <p className="mt-1 text-sm font-semibold text-[color:var(--foreground)]">
                 {project.dataInicio
                   ? new Date(project.dataInicio).toLocaleDateString("pt-BR", {
                       day: "2-digit",
@@ -288,23 +288,87 @@ export default function ProjetoDetalheAdminPage({ params }: PageProps) {
                     : "—"}
               </p>
             </div>
-            <div>
-              <p className="text-slate-500">Status Inicial</p>
-              <p className="font-medium text-slate-800">
-                {project.statusInicial ? STATUS_LABELS[project.statusInicial] ?? project.statusInicial : "—"}
+
+            <div className="rounded-xl border p-3" style={{ borderColor: "var(--border)", background: "rgba(0,0,0,0.04)" }}>
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4" style={{ color: "var(--muted-foreground)" }} />
+                <p className="text-xs font-medium text-[color:var(--muted-foreground)]">Membros</p>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center">
+                {membros.length > 0 ? (
+                  <>
+                    {membros.slice(0, 6).map((u) => (
+                      <div key={u.id} className="relative -ml-1 first:ml-0">
+                        <div className="group">
+                          <Avatar
+                            name={u.name}
+                            email={u.email}
+                            avatarUrl={(u as { avatarUrl?: string | null }).avatarUrl ?? null}
+                            size={32}
+                            className="ring-2 ring-white shadow-sm"
+                            imgClassName="ring-2 ring-white shadow-sm"
+                            fallbackClassName="text-xs"
+                          />
+                          <div className="pointer-events-none absolute left-1/2 top-full z-10 mt-2 w-max -translate-x-1/2 opacity-0 transition group-hover:opacity-100">
+                            <div className="rounded-lg bg-slate-900 px-2 py-1 text-[11px] font-medium text-white shadow-lg">
+                              {u.name}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {membros.length > 6 && (
+                      <div className="relative -ml-1">
+                        <div className="group">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-slate-700 text-[11px] font-semibold ring-2 ring-white">
+                            +{membros.length - 6}
+                          </div>
+                          <div className="pointer-events-none absolute left-1/2 top-full z-10 mt-2 w-max -translate-x-1/2 opacity-0 transition group-hover:opacity-100">
+                            <div className="rounded-lg bg-slate-900 px-2 py-1 text-[11px] font-medium text-white shadow-lg">
+                              {membros.length - 6} membro(s) a mais
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-sm text-[color:var(--muted-foreground)]">—</p>
+                )}
               </p>
             </div>
           </div>
 
-          <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide pt-2">Mais informações</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 text-sm">
-            <div className="sm:col-span-2 lg:col-span-3 xl:col-span-4">
-              <p className="text-slate-500">Descrição do Projeto</p>
-              <p className="font-medium text-slate-800 whitespace-pre-wrap">{project.description ?? "—"}</p>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+            <div className="lg:col-span-8 rounded-xl border p-4" style={{ borderColor: "var(--border)", background: "rgba(0,0,0,0.03)" }}>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[color:var(--muted-foreground)]">Descrição</p>
+              <p className="mt-2 text-sm leading-relaxed text-[color:var(--foreground)] whitespace-pre-wrap">
+                {project.description ?? "—"}
+              </p>
             </div>
-            <div>
-              <p className="text-slate-500">Data Prevista de Término</p>
-              <p className="font-medium text-slate-800">
+            <div className="lg:col-span-4 space-y-3">
+              <div className="rounded-xl border p-3" style={{ borderColor: "var(--border)", background: "rgba(0,0,0,0.03)" }}>
+                <p className="text-xs font-medium text-[color:var(--muted-foreground)]">Cliente</p>
+                <p className="mt-1 text-sm font-semibold text-[color:var(--foreground)]">{project.client?.name ?? "—"}</p>
+              </div>
+              <div className="rounded-xl border p-3" style={{ borderColor: "var(--border)", background: "rgba(0,0,0,0.03)" }}>
+                <p className="text-xs font-medium text-[color:var(--muted-foreground)]">Prioridade</p>
+                <p className="mt-1 text-sm font-semibold text-[color:var(--foreground)]">
+                  {project.prioridade
+                    ? PRIORIDADE_LABELS[project.prioridade === "CRITICA" ? "URGENTE" : project.prioridade] ??
+                      (project.prioridade === "CRITICA" ? "Urgente" : project.prioridade)
+                    : "—"}
+                </p>
+              </div>
+              <div className="rounded-xl border p-3" style={{ borderColor: "var(--border)", background: "rgba(0,0,0,0.03)" }}>
+                <p className="text-xs font-medium text-[color:var(--muted-foreground)]">{horasPlanejamento.label}</p>
+                <p className="mt-1 text-sm font-semibold text-[color:var(--foreground)]">
+                  {horasPlanejamento.value != null ? horasPlanejamento.value : "—"}
+                </p>
+              </div>
+              <div className="rounded-xl border p-3" style={{ borderColor: "var(--border)", background: "rgba(0,0,0,0.03)" }}>
+                <p className="text-xs font-medium text-[color:var(--muted-foreground)]">Data prevista de término</p>
+                <p className="mt-1 text-sm font-semibold text-[color:var(--foreground)]">
                 {project.dataFimPrevista
                   ? new Date(project.dataFimPrevista).toLocaleDateString("pt-BR", {
                       day: "2-digit",
@@ -312,36 +376,18 @@ export default function ProjetoDetalheAdminPage({ params }: PageProps) {
                       year: "numeric",
                     })
                   : "—"}
-              </p>
-            </div>
-            <div>
-              <p className="text-slate-500">Prioridade</p>
-              <p className="font-medium text-slate-800">
-                {project.prioridade
-                  ? PRIORIDADE_LABELS[project.prioridade === "CRITICA" ? "URGENTE" : project.prioridade] ??
-                    (project.prioridade === "CRITICA" ? "Urgente" : project.prioridade)
-                  : "—"}
-              </p>
-            </div>
-            <div>
-              <p className="text-slate-500">{horasPlanejamento.label}</p>
-              <p className="font-medium text-slate-800">
-                {horasPlanejamento.value != null ? horasPlanejamento.value : "—"}
-              </p>
-            </div>
-            <div>
-              <p className="text-slate-500">Data de criação</p>
-              <p className="font-medium text-slate-800">
-                {new Date(project.createdAt).toLocaleDateString("pt-BR", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric",
-                })}
-              </p>
-            </div>
-            <div>
-              <p className="text-slate-500">Total de tarefas</p>
-              <p className="font-medium text-slate-800">{totalTarefas}</p>
+                </p>
+              </div>
+              <div className="rounded-xl border p-3" style={{ borderColor: "var(--border)", background: "rgba(0,0,0,0.03)" }}>
+                <p className="text-xs font-medium text-[color:var(--muted-foreground)]">Criado em</p>
+                <p className="mt-1 text-sm font-semibold text-[color:var(--foreground)]">
+                  {new Date(project.createdAt).toLocaleDateString("pt-BR", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                </p>
+              </div>
             </div>
           </div>
         </section>
