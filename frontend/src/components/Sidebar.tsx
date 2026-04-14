@@ -7,6 +7,8 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Menu, LogOut, ChevronDown, ChevronRight, Settings } from "lucide-react";
 
+const WPS_ONE_ICON_SVG_SRC = "/WPS%20One%20%C3%ADcone.svg";
+
 const ROLE_LABELS: Record<string, string> = {
   ADMIN: "Admin",
   GESTOR_PROJETOS: "Gestor de Projetos",
@@ -128,9 +130,7 @@ export function Sidebar({
       >
         {/* Header com toggle */}
         <div className={`flex h-14 shrink-0 items-center border-b border-[color:var(--sidebar-border)] ${collapsed ? "justify-center" : "justify-between gap-2 px-4"}`}>
-          {!collapsed && (
-            <h1 className="font-bold text-white tracking-tight truncate">WPS One</h1>
-          )}
+          {!collapsed && <img src={WPS_ONE_ICON_SVG_SRC} alt="WPS One" className="h-8 w-8 shrink-0 select-none" draggable={false} />}
           <button
             onClick={() => setCollapsed(!collapsed)}
             className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[color:var(--primary-foreground)]/80 transition hover:bg-[color:var(--sidebar-item-hover)] hover:text-[color:var(--primary-foreground)] focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)] focus:ring-inset ${!collapsed ? "ml-auto" : ""}`}
