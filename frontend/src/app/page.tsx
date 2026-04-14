@@ -5,17 +5,18 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { API_BASE_URL } from "@/lib/api";
-import { Mail, MapPin, UserRound } from "lucide-react";
+import { Mail, MapPin } from "lucide-react";
 
 const PURPLE = "#5c00e1";
 
 /** Logo vetorial "One" (arquivo em `public/`) */
 const ONE_LOGO_SVG_SRC = "/WPS%20One.svg";
+const WPS_ONE_ICON_SVG_SRC = "/WPS%20One%20%C3%ADcone.svg";
 
 const CONTACT_ADDRESS = "Av. Senador Tarso Dutra, 565 - Sala 1612. Porto Alegre/RS";
 const CONTACT_PHONE_DISPLAY = "55 51 99210 8997";
 const CONTACT_WHATSAPP_E164 = "5551992108997";
-const CONTACT_EMAIL = "contato@wpsconsult.com.br";
+const CONTACT_EMAIL = "contato@wpsone.com.br";
 
 const SOCIAL_LINKEDIN = "https://www.linkedin.com/company/wps-consult";
 const SOCIAL_INSTAGRAM = "https://www.instagram.com/wpsconsult/";
@@ -149,7 +150,7 @@ function LandingAppPreview({ isDark }: { isDark: boolean }) {
                     Administrador
                   </p>
                   <p className="truncate text-[10px]" style={{ color: sidebarMuted }}>
-                    admin@wpsconsult.com.br
+                    admin@wpsone.com.br
                   </p>
                 </div>
               </div>
@@ -514,9 +515,11 @@ export default function LandingPage() {
                     border: `1px solid ${isDark ? "rgba(255,255,255,0.10)" : "rgba(17,24,39,0.14)"}`,
                   }}
                 >
-                  <UserRound
-                    className="h-5 w-5"
-                    style={{ color: isDark ? "rgba(244,242,255,0.70)" : PURPLE }}
+                  <img
+                    src={WPS_ONE_ICON_SVG_SRC}
+                    alt=""
+                    className="h-5 w-5 select-none"
+                    draggable={false}
                   />
                 </Link>
               </div>
