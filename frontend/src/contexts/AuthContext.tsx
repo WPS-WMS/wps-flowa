@@ -10,6 +10,7 @@ type User = {
   name: string;
   role: string;
   avatarUrl?: string;
+  updatedAt?: string;
   tenantId?: string;
   allowedFeatures?: string[];
   cargo?: string;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { API_BASE_URL } from "@/lib/api";
 
 type Props = {
   name?: string | null;
@@ -27,10 +28,7 @@ function resolveAvatarSrc(avatarUrl: string) {
   const raw = avatarUrl.trim();
   if (!raw) return "";
   if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
-  const base =
-    process.env.NEXT_PUBLIC_API_URL && process.env.NEXT_PUBLIC_API_URL.length > 0
-      ? process.env.NEXT_PUBLIC_API_URL
-      : "https://wps-one-backend-production.onrender.com";
+  const base = API_BASE_URL;
   return `${base}${raw.startsWith("/") ? raw : `/${raw}`}`;
 }
 
@@ -55,7 +53,7 @@ export function Avatar({
 
   const baseStyle: React.CSSProperties = { width: size, height: size };
 
-  const defaultSrc = "/uploads/users/default-avatar.svg";
+  const defaultSrc = resolveAvatarSrc("/uploads/users/default-avatar.svg");
 
   const versionParam = useMemo(() => {
     if (avatarVersion == null) return "";
@@ -84,9 +82,10 @@ export function Avatar({
         style={baseStyle}
         onError={() => setImgError(true)}
         className={
-          "block rounded-full object-cover bg-[color:var(--surface)] border border-[color:var(--border)] " +
-          (imgClassName || "") +
-          (className ? ` ${className}` : "")
+          "block bg-[color:var(--surface)] border border-[color:var(--border)] " +
+          (imgClassName ? `${imgClassName} ` : "") +
+          (className ? `${className} ` : "") +
+          "rounded-full object-cover"
         }
       />
     );
@@ -97,9 +96,10 @@ export function Avatar({
     <div
       style={baseStyle}
       className={
-        "rounded-full grid place-items-center font-semibold bg-[color:var(--primary)] text-[color:var(--primary-foreground)] " +
-        (fallbackClassName || "text-sm") +
-        (className ? ` ${className}` : "")
+        "grid place-items-center font-semibold bg-[color:var(--primary)] text-[color:var(--primary-foreground)] " +
+        (fallbackClassName ? `${fallbackClassName} ` : "text-sm ") +
+        (className ? `${className} ` : "") +
+        "rounded-full"
       }
       aria-label={name || email || "Avatar"}
       title={name || email || undefined}

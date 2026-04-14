@@ -54,7 +54,7 @@ export function Sidebar({
   onLogout,
 }: {
   items: NavItem[];
-  user: { name: string; role: string; email?: string; avatarUrl?: string };
+  user: { name: string; role: string; email?: string; avatarUrl?: string; updatedAt?: string };
   onLogout?: () => void;
 }) {
   const pathname = usePathname();
@@ -265,6 +265,7 @@ export function Sidebar({
                     name={user.name}
                     email={user.email}
                     avatarUrl={user.avatarUrl}
+                    avatarVersion={user.updatedAt}
                     size={36}
                     fallbackClassName="text-sm"
                     className="border border-[color:var(--sidebar-border)]"
@@ -328,6 +329,7 @@ export function Sidebar({
                   name={user.name}
                   email={user.email}
                   avatarUrl={user.avatarUrl}
+                  avatarVersion={user.updatedAt}
                   size={34}
                   fallbackClassName="text-sm"
                   className="border border-[color:var(--sidebar-border)]"
