@@ -53,7 +53,13 @@ export function Avatar({
     setImgError(false);
   }, [src]);
 
-  const baseStyle: React.CSSProperties = { width: size, height: size };
+  const baseStyle: React.CSSProperties = {
+    width: size,
+    height: size,
+    minWidth: size,
+    minHeight: size,
+    aspectRatio: "1 / 1",
+  };
 
   const defaultSrc = resolveAvatarSrc("/uploads/users/default-avatar.svg");
 
@@ -81,7 +87,7 @@ export function Avatar({
       <div
         style={baseStyle}
         className={
-          "relative bg-[color:var(--surface)] " +
+          "relative shrink-0 flex-none bg-[color:var(--surface)] " +
           (showBorder ? "border border-[color:var(--border)] " : "") +
           (className ? `${className} ` : "") +
           "rounded-full overflow-hidden"
@@ -108,7 +114,7 @@ export function Avatar({
     <div
       style={baseStyle}
       className={
-        "grid place-items-center font-semibold bg-[color:var(--primary)] text-[color:var(--primary-foreground)] " +
+        "grid shrink-0 flex-none place-items-center font-semibold bg-[color:var(--primary)] text-[color:var(--primary-foreground)] " +
         (fallbackClassName ? `${fallbackClassName} ` : "text-sm ") +
         (className ? `${className} ` : "") +
         "rounded-full overflow-hidden"
