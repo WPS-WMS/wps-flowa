@@ -195,6 +195,13 @@ export default function PerfilPage() {
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-8 bg-[color:var(--background)]">
       <div className="w-full max-w-4xl rounded-3xl border border-[color:var(--border)] bg-[color:var(--surface)]/80 backdrop-blur-xl shadow-2xl p-6 md:p-8 space-y-6">
+        <div
+          className="-mx-6 -mt-6 rounded-t-3xl px-6 pt-6 md:-mx-8 md:-mt-8 md:px-8 md:pt-8"
+          style={{
+            background:
+              "radial-gradient(900px 420px at 20% 0%, rgba(92,0,225,0.16), transparent 55%), radial-gradient(720px 360px at 85% 30%, rgba(87,66,118,0.14), transparent 55%)",
+          }}
+        >
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="space-y-2">
             <button
@@ -244,6 +251,7 @@ export default function PerfilPage() {
             </div>
           </div>
         </div>
+        </div>
 
         {(error || success) && (
           <div
@@ -263,7 +271,10 @@ export default function PerfilPage() {
           <form
             onSubmit={handleSaveProfile}
             className="rounded-2xl border p-5 md:p-6"
-            style={{ borderColor: "var(--border)", background: "rgba(0,0,0,0.06)" }}
+            style={{
+              borderColor: "var(--border)",
+              background: "linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.04))",
+            }}
           >
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -321,7 +332,10 @@ export default function PerfilPage() {
           <form
             onSubmit={handleChangePassword}
             className="rounded-2xl border p-5 md:p-6"
-            style={{ borderColor: "var(--border)", background: "rgba(0,0,0,0.06)" }}
+            style={{
+              borderColor: "var(--border)",
+              background: "linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.04))",
+            }}
           >
             <div>
               <h2 className="text-sm font-semibold text-[color:var(--foreground)]">Segurança</h2>
@@ -384,9 +398,11 @@ export default function PerfilPage() {
                   disabled={savingPassword}
                   className="inline-flex h-11 items-center justify-center rounded-xl border px-5 text-sm font-semibold transition disabled:opacity-60 hover:opacity-95"
                   style={{
-                    borderColor: "rgba(92,0,225,0.45)",
-                    color: "var(--foreground)",
-                    background: "rgba(92,0,225,0.10)",
+                    borderColor: "rgba(92,0,225,0.55)",
+                    color: "#ffffff",
+                    background:
+                      "linear-gradient(90deg, rgba(92,0,225,0.95), rgba(87,66,118,0.75))",
+                    boxShadow: "0 14px 30px rgba(92,0,225,0.18)",
                   }}
                 >
                   {savingPassword ? "Trocando senha..." : "Trocar senha"}
