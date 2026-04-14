@@ -80,6 +80,7 @@ function LandingAppPreview({ isDark }: { isDark: boolean }) {
   const cardBg = isDark ? "rgba(18,12,28,0.85)" : "#ffffff";
   const muted = isDark ? "rgba(244,242,255,0.65)" : "rgba(17,24,39,0.55)";
   const fg = isDark ? "#f4f2ff" : "#111827";
+  const soft = isDark ? "rgba(255,255,255,0.06)" : "rgba(17,24,39,0.06)";
 
   return (
     <div
@@ -90,53 +91,54 @@ function LandingAppPreview({ isDark }: { isDark: boolean }) {
         boxShadow: isDark ? "0 40px 100px rgba(0,0,0,0.45)" : "0 32px 80px rgba(17,24,39,0.12)",
       }}
     >
-      <div className="flex min-h-[280px] md:min-h-[320px]">
+      <div className="flex min-h-[300px] md:min-h-[340px]">
         <aside
-          className="hidden w-[108px] shrink-0 flex-col gap-2 p-3 sm:flex"
+          className="hidden w-[112px] shrink-0 flex-col gap-2 p-3 sm:flex"
           style={{
             background: "#291349",
             borderRight: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)"}`,
           }}
         >
           <div className="rounded-lg px-2 py-2 text-[10px]" style={{ background: PURPLE, color: "#fff" }}>
-            <p className="opacity-80">Início</p>
+            <p className="opacity-80">Visão geral</p>
             <p className="text-[11px] font-semibold">Resumo</p>
           </div>
-          <div className="rounded-lg px-2 py-2 text-[10px]" style={{ color: "rgba(249,249,249,0.75)" }}>
-            <p className="opacity-70">Projetos</p>
-            <p className="text-[11px] font-medium text-white/90">Kanban</p>
-          </div>
-          <div className="rounded-lg px-2 py-2 text-[10px]" style={{ color: "rgba(249,249,249,0.75)" }}>
-            <p className="opacity-70">Chamados</p>
-            <p className="text-[11px] font-medium text-white/90">Backlog</p>
-          </div>
-          <div className="rounded-lg px-2 py-2 text-[10px]" style={{ color: "rgba(249,249,249,0.75)" }}>
-            <p className="opacity-70">Relatórios</p>
-            <p className="text-[11px] font-medium text-white/90">Horas</p>
-          </div>
+          {[
+            { a: "Projetos", b: "Kanban" },
+            { a: "Chamados", b: "Fila e SLA" },
+            { a: "Horas", b: "Apontamentos" },
+            { a: "Relatórios", b: "Gestão" },
+          ].map((i) => (
+            <div key={i.a} className="rounded-lg px-2 py-2 text-[10px]" style={{ color: "rgba(249,249,249,0.78)" }}>
+              <p className="opacity-70">{i.a}</p>
+              <p className="text-[11px] font-medium text-white/90">{i.b}</p>
+            </div>
+          ))}
         </aside>
         <div className="min-w-0 flex-1 space-y-3 p-4">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <div>
-              <p className="text-sm font-semibold" style={{ color: fg }}>
-                Seu resumo
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold" style={{ color: fg }}>
+                Painel executivo
               </p>
               <p className="text-[11px] md:text-xs" style={{ color: muted }}>
-                Visão geral de projetos, tarefas e horas.
+                Projetos, chamados, horas e SLA em um só lugar.
               </p>
             </div>
-            <span
-              className="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold text-white"
-              style={{ background: PURPLE }}
-            >
-              Semana atual • 03
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="hidden rounded-full px-2.5 py-1 text-[10px] font-semibold md:inline-flex" style={{ border: `1px solid ${border}`, color: muted, background: cardBg }}>
+                Filtros • Cliente A
+              </span>
+              <span className="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold text-white" style={{ background: PURPLE }}>
+                Semana • 03
+              </span>
+            </div>
           </div>
           <div className="grid grid-cols-3 gap-2">
             {[
               { label: "Horas apontadas", value: "32,5 h", hint: "Últimos 7 dias" },
-              { label: "Tarefas", value: "18", hint: "Backlog e execução" },
-              { label: "SLA clientes", value: "90%", hint: "No prazo", accent: true },
+              { label: "Chamados abertos", value: "18", hint: "Backlog + execução" },
+              { label: "SLA no prazo", value: "92%", hint: "Rolling 30 dias", accent: true },
             ].map((c) => (
               <div
                 key={c.label}
@@ -161,32 +163,160 @@ function LandingAppPreview({ isDark }: { isDark: boolean }) {
               </div>
             ))}
           </div>
-          <div className="rounded-xl p-3" style={{ background: cardBg, border: `1px solid ${border}` }}>
-            <p className="text-xs font-medium" style={{ color: fg }}>
-              Chamados do dia
-            </p>
-            <div className="mt-2 grid grid-cols-3 gap-1.5 text-[10px]">
-              <div className="rounded-lg px-2 py-1.5" style={{ border: `1px solid ${border}` }}>
-                <p style={{ color: muted }}>Backlog</p>
-                <p className="font-semibold tabular-nums" style={{ color: fg }}>
-                  6
-                </p>
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-[1.05fr_0.95fr]">
+            <div className="rounded-xl p-3" style={{ background: cardBg, border: `1px solid ${border}` }}>
+              <p className="text-xs font-medium" style={{ color: fg }}>
+                Chamados por status
+              </p>
+              <div className="mt-2 grid grid-cols-3 gap-1.5 text-[10px]">
+                <div className="rounded-lg px-2 py-1.5" style={{ border: `1px solid ${border}` }}>
+                  <p style={{ color: muted }}>Backlog</p>
+                  <p className="font-semibold tabular-nums" style={{ color: fg }}>
+                    6
+                  </p>
+                </div>
+                <div className="rounded-lg px-2 py-1.5 border border-amber-500/30 bg-amber-500/12">
+                  <p style={{ color: isDark ? "#fcd34d" : "#b45309" }}>Em execução</p>
+                  <p className="font-semibold tabular-nums" style={{ color: isDark ? "#fde68a" : "#92400e" }}>
+                    4
+                  </p>
+                </div>
+                <div className="rounded-lg px-2 py-1.5 border border-emerald-500/30 bg-emerald-500/12">
+                  <p style={{ color: isDark ? "#6ee7b7" : "#047857" }}>Finalizados</p>
+                  <p className="font-semibold tabular-nums" style={{ color: isDark ? "#a7f3d0" : "#065f46" }}>
+                    12
+                  </p>
+                </div>
               </div>
-              <div className="rounded-lg px-2 py-1.5 border border-amber-500/30 bg-amber-500/12">
-                <p style={{ color: isDark ? "#fcd34d" : "#b45309" }}>Em execução</p>
-                <p className="font-semibold tabular-nums" style={{ color: isDark ? "#fde68a" : "#92400e" }}>
-                  4
-                </p>
+              <div className="mt-2 grid grid-cols-3 gap-1.5 text-[10px]">
+                <div className="rounded-lg px-2 py-1.5" style={{ border: `1px solid ${border}`, background: soft }}>
+                  <p style={{ color: muted }}>SLA 24h</p>
+                  <p className="font-semibold tabular-nums" style={{ color: fg }}>
+                    9
+                  </p>
+                </div>
+                <div className="rounded-lg px-2 py-1.5" style={{ border: `1px solid ${border}`, background: soft }}>
+                  <p style={{ color: muted }}>SLA 72h</p>
+                  <p className="font-semibold tabular-nums" style={{ color: fg }}>
+                    7
+                  </p>
+                </div>
+                <div className="rounded-lg px-2 py-1.5" style={{ border: `1px solid ${border}`, background: soft }}>
+                  <p style={{ color: muted }}>Risco</p>
+                  <p className="font-semibold tabular-nums" style={{ color: "#ef4444" }}>
+                    2
+                  </p>
+                </div>
               </div>
-              <div className="rounded-lg px-2 py-1.5 border border-emerald-500/30 bg-emerald-500/12">
-                <p style={{ color: isDark ? "#6ee7b7" : "#047857" }}>Finalizados</p>
-                <p className="font-semibold tabular-nums" style={{ color: isDark ? "#a7f3d0" : "#065f46" }}>
-                  12
-                </p>
+            </div>
+            <div className="rounded-xl p-3" style={{ background: cardBg, border: `1px solid ${border}` }}>
+              <p className="text-xs font-medium" style={{ color: fg }}>
+                Próximas entregas
+              </p>
+              <div className="mt-2 space-y-1.5 text-[10px]">
+                {[
+                  { t: "Portal • Ajuste de permissões", d: "Hoje", c: PURPLE },
+                  { t: "Cliente A • Relatório horas", d: "Amanhã", c: "rgba(16,185,129,0.95)" },
+                  { t: "Kanban • Revisão backlog", d: "Sex", c: "rgba(245,158,11,0.95)" },
+                ].map((i) => (
+                  <div key={i.t} className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5" style={{ border: `1px solid ${border}` }}>
+                    <div className="min-w-0">
+                      <p className="truncate" style={{ color: fg }}>
+                        {i.t}
+                      </p>
+                      <p className="truncate" style={{ color: muted }}>
+                        {i.d}
+                      </p>
+                    </div>
+                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: i.c }} aria-hidden />
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function LandingKanbanPreview({ isDark }: { isDark: boolean }) {
+  const border = isDark ? "rgba(255,255,255,0.12)" : "rgba(17,24,39,0.12)";
+  const cardBg = isDark ? "rgba(18,12,28,0.85)" : "#ffffff";
+  const muted = isDark ? "rgba(244,242,255,0.65)" : "rgba(17,24,39,0.55)";
+  const fg = isDark ? "#f4f2ff" : "#111827";
+
+  const colBg = isDark ? "rgba(255,255,255,0.04)" : "rgba(17,24,39,0.04)";
+
+  return (
+    <div
+      className="overflow-hidden rounded-2xl shadow-2xl"
+      style={{
+        border: `1px solid ${border}`,
+        background: isDark ? "rgba(12,8,18,0.9)" : "#f8fafc",
+        boxShadow: isDark ? "0 40px 100px rgba(0,0,0,0.45)" : "0 32px 80px rgba(17,24,39,0.12)",
+      }}
+    >
+      <div className="flex items-center justify-between gap-3 px-4 py-3" style={{ borderBottom: `1px solid ${border}` }}>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold" style={{ color: fg }}>
+            Kanban do projeto
+          </p>
+          <p className="truncate text-[11px]" style={{ color: muted }}>
+            Prioridades, WIP e SLA em tempo real.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="rounded-full px-2.5 py-1 text-[10px] font-semibold" style={{ border: `1px solid ${border}`, color: muted, background: cardBg }}>
+            Sprint 03
+          </span>
+          <span className="rounded-full px-2.5 py-1 text-[10px] font-semibold text-white" style={{ background: PURPLE }}>
+            + Novo
+          </span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2 p-4">
+        {[
+          { title: "Backlog", count: 6, dot: "rgba(148,163,184,0.95)" },
+          { title: "Em execução", count: 4, dot: "rgba(245,158,11,0.95)" },
+          { title: "Concluído", count: 12, dot: "rgba(16,185,129,0.95)" },
+        ].map((col) => (
+          <div key={col.title} className="rounded-xl p-2.5" style={{ background: colBg, border: `1px solid ${border}` }}>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full" style={{ background: col.dot }} aria-hidden />
+                <p className="text-[11px] font-semibold" style={{ color: fg }}>
+                  {col.title}
+                </p>
+              </div>
+              <p className="text-[11px] font-semibold tabular-nums" style={{ color: muted }}>
+                {col.count}
+              </p>
+            </div>
+            <div className="mt-2 space-y-2">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="rounded-lg p-2" style={{ background: cardBg, border: `1px solid ${border}` }}>
+                  <p className="text-[10px] font-semibold" style={{ color: fg }}>
+                    {col.title === "Concluído"
+                      ? `Entrega ${i + 1} • Finalizada`
+                      : col.title === "Em execução"
+                        ? `Chamado ${i + 1} • Em andamento`
+                        : `Item ${i + 1} • Priorizado`}
+                  </p>
+                  <div className="mt-1 flex items-center justify-between gap-2 text-[9px]">
+                    <p className="truncate" style={{ color: muted }}>
+                      {col.title === "Backlog" ? "Aguardando início" : col.title === "Em execução" ? "WIP 2/3" : "No prazo"}
+                    </p>
+                    <span className="rounded-full px-2 py-0.5 font-semibold" style={{ border: `1px solid ${border}`, color: muted }}>
+                      {col.title === "Concluído" ? "OK" : col.title === "Em execução" ? "SLA" : "P1"}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -514,34 +644,40 @@ export default function LandingPage() {
                     className="mt-3 text-2xl font-bold leading-tight md:text-3xl"
                     style={{ color: isDark ? "#fff" : "#0b0b12" }}
                   >
-                    Menos planilha, mais clareza. Um lugar para o time inteiro respirar no ritmo do cliente.
+                    Controle total da operação de serviços — com visão executiva, foco no SLA e rentabilidade no dia a dia.
                   </h2>
                   <p className="mt-4 text-sm leading-relaxed md:text-base" style={{ color: mutedBody }}>
-                    Imagine abrir um único painel e ver projetos, chamados, horas e SLA conversando entre si — sem
-                    versões duplicadas, sem “cadê o status?”. O WPS One foi pensado para consultorias e operações de
-                    serviço: você fecha o dia sabendo o que foi entregue, o que está travado e onde está o risco de
-                    estourar contrato ou prazo.
+                    O WPS One centraliza o que normalmente fica espalhado em planilhas, e-mails e mensagens: projetos,
+                    chamados, horas, banco de horas e indicadores. Em poucos cliques você enxerga o que está em atraso,
+                    o que virou risco de SLA e onde a margem está sendo consumida — com contexto, histórico e dono.
                   </p>
                   <ul className="mt-6 space-y-3 text-sm md:text-[15px]" style={{ color: mutedBody }}>
                     <li className="flex gap-2">
                       <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: PURPLE }} />
                       <span>
-                        <strong className="font-semibold text-[color:inherit]">Projetos com dono:</strong> escopo, horas
-                        contratadas e banco de horas no mesmo lugar.
+                        <strong className="font-semibold text-[color:inherit]">Projetos com previsibilidade:</strong>{" "}
+                        escopo, horas contratadas, banco de horas e status real — sem “cadê o andamento?”.
                       </span>
                     </li>
                     <li className="flex gap-2">
                       <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: PURPLE }} />
                       <span>
-                        <strong className="font-semibold text-[color:inherit]">Chamados com histórico:</strong> do backlog
-                        ao encerramento, com comentários e anexos.
+                        <strong className="font-semibold text-[color:inherit]">Chamados com SLA na mão:</strong> fila,
+                        prioridade, responsáveis, comentários e anexos — com alerta de risco antes do atraso.
                       </span>
                     </li>
                     <li className="flex gap-2">
                       <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: PURPLE }} />
                       <span>
-                        <strong className="font-semibold text-[color:inherit]">Relatórios que geram ação:</strong> horas,
-                        utilização e visão para gestão e faturamento.
+                        <strong className="font-semibold text-[color:inherit]">Horas e margem sob controle:</strong>{" "}
+                        apontamentos, utilização e relatórios prontos para gestão e faturamento — com rastreabilidade.
+                      </span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: PURPLE }} />
+                      <span>
+                        <strong className="font-semibold text-[color:inherit]">Decisão em minutos:</strong> dashboard
+                        executivo para priorizar o que traz resultado e reduzir retrabalho da operação.
                       </span>
                     </li>
                   </ul>
@@ -572,9 +708,12 @@ export default function LandingPage() {
                     className="mb-3 text-center text-[11px] font-medium uppercase tracking-wide lg:text-left"
                     style={{ color: isDark ? "rgba(244,242,255,0.45)" : "rgba(17,24,39,0.45)" }}
                   >
-                    Prévia da interface — o mesmo fluxo que seu time usa no dia a dia
+                    Prévia da interface — dashboards e Kanban como no uso real
                   </p>
-                  <LandingAppPreview isDark={isDark} />
+                  <div className="space-y-3">
+                    <LandingAppPreview isDark={isDark} />
+                    <LandingKanbanPreview isDark={isDark} />
+                  </div>
                 </div>
               </div>
             </div>
