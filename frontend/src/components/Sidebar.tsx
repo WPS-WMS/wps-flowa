@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@/components/Link";
 import { Avatar } from "@/components/Avatar";
 import { usePathname } from "next/navigation";
@@ -60,6 +60,8 @@ export function Sidebar({
   const pathname = usePathname();
   const { logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement | null>(null);
 
   const allNavHrefs = useMemo(() => collectNavHrefs(items), [items]);
   const bestNavHref = useMemo(
@@ -92,6 +94,28 @@ export function Sidebar({
     });
     setOpenSubmenus((prev) => ({ ...prev, ...newOpenSubmenus }));
   }, [pathname, items]);
+
+  useEffect(() => {
+    if (!userMenuOpen) return;
+    const onDocMouseDown = (e: MouseEvent) => {
+      const el = userMenuRef.current;
+      if (!el) return;
+      if (e.target instanceof Node && !el.contains(e.target)) setUserMenuOpen(false);
+    };
+    const onDocKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setUserMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDocMouseDown);
+    document.addEventListener("keydown", onDocKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onDocMouseDown);
+      document.removeEventListener("keydown", onDocKeyDown);
+    };
+  }, [userMenuOpen]);
+
+  useEffect(() => {
+    if (collapsed) setUserMenuOpen(false);
+  }, [collapsed]);
 
   return (
     <>
@@ -225,12 +249,18 @@ export function Sidebar({
           })}
         </nav>
 
-        {/* User card + Logout */}
+        {/* User menu */}
         <div className="shrink-0 border-t border-[color:var(--sidebar-border)] p-3">
           {!collapsed ? (
-            <div className="space-y-2">
-              <div className="rounded-xl bg-[color:var(--sidebar-item-hover)] px-3 py-3 text-[color:var(--primary-foreground)] shadow-sm">
-                <div className="flex items-center gap-3">
+            <div ref={userMenuRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setUserMenuOpen((v) => !v)}
+                className="w-full rounded-xl px-3 py-3 text-left transition hover:bg-[color:var(--sidebar-item-hover)] focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/50 focus:ring-inset"
+                aria-haspopup="menu"
+                aria-expanded={userMenuOpen}
+              >
+                <div className="flex items-center gap-3 text-[color:var(--primary-foreground)]">
                   <Avatar
                     name={user.name}
                     email={user.email}
@@ -250,33 +280,91 @@ export function Sidebar({
                       </p>
                     )}
                   </div>
+                  <ChevronDown className={`ml-auto h-4 w-4 shrink-0 transition ${userMenuOpen ? "rotate-180" : ""}`} />
                 </div>
-                <div className="mt-3 space-y-1 border-t border-[color:var(--sidebar-border)] pt-2 text-sm">
+              </button>
+
+              {userMenuOpen && (
+                <div
+                  role="menu"
+                  aria-label="Menu do usuário"
+                  className="absolute bottom-14 left-0 w-full overflow-hidden rounded-xl border border-[color:var(--sidebar-border)] bg-[color:var(--sidebar-bg)] shadow-2xl"
+                >
                   <Link
                     href="/perfil"
-                    className="flex items-center gap-2 text-[color:var(--primary-foreground)]/90 hover:text-[color:var(--primary-foreground)]"
+                    role="menuitem"
+                    onClick={() => setUserMenuOpen(false)}
+                    className="flex items-center gap-2 px-3 py-2.5 text-sm text-[color:var(--primary-foreground)]/90 transition hover:bg-[color:var(--sidebar-item-hover)] hover:text-[color:var(--primary-foreground)]"
                   >
                     <Settings className="h-4 w-4" />
                     <span>Configurações</span>
                   </Link>
                   <button
                     type="button"
-                    onClick={onLogout ?? logout}
-                    className="flex items-center gap-2 text-red-200 hover:text-red-100"
+                    role="menuitem"
+                    onClick={() => {
+                      setUserMenuOpen(false);
+                      (onLogout ?? logout)();
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-red-200 transition hover:bg-red-500/10 hover:text-red-100"
                   >
                     <LogOut className="h-4 w-4" />
                     <span>Sair</span>
                   </button>
                 </div>
-              </div>
+              )}
             </div>
           ) : (
-            <button
-              onClick={onLogout ?? logout}
-              className="mt-2 flex w-full items-center justify-center gap-3 rounded-lg px-3 py-2 text-sm text-red-300 transition hover:bg-red-500/10 hover:text-red-200 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:ring-inset"
-            >
-              <LogOut className="h-5 w-5 shrink-0" />
-            </button>
+            <div ref={userMenuRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setUserMenuOpen((v) => !v)}
+                className="flex w-full items-center justify-center rounded-lg px-3 py-2 transition hover:bg-[color:var(--sidebar-item-hover)] focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/50 focus:ring-inset"
+                aria-label="Menu do usuário"
+                aria-haspopup="menu"
+                aria-expanded={userMenuOpen}
+              >
+                <Avatar
+                  name={user.name}
+                  email={user.email}
+                  avatarUrl={user.avatarUrl}
+                  size={34}
+                  fallbackClassName="text-sm"
+                  className="border border-[color:var(--sidebar-border)]"
+                  imgClassName="border border-[color:var(--sidebar-border)]"
+                />
+              </button>
+
+              {userMenuOpen && (
+                <div
+                  role="menu"
+                  aria-label="Menu do usuário"
+                  className="absolute bottom-12 left-0 w-56 overflow-hidden rounded-xl border border-[color:var(--sidebar-border)] bg-[color:var(--sidebar-bg)] shadow-2xl"
+                >
+                  <Link
+                    href="/perfil"
+                    role="menuitem"
+                    onClick={() => setUserMenuOpen(false)}
+                    className="flex items-center gap-2 px-3 py-2.5 text-sm text-[color:var(--primary-foreground)]/90 transition hover:bg-[color:var(--sidebar-item-hover)] hover:text-[color:var(--primary-foreground)]"
+                  >
+                    <Settings className="h-4 w-4" />
+                    <span>Configurações</span>
+                  </Link>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setUserMenuOpen(false);
+                      (onLogout ?? logout)();
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-red-200 transition hover:bg-red-500/10 hover:text-red-100"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    <span>Sair</span>
+                  </button>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </aside>
