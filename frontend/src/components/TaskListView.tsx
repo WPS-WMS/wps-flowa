@@ -48,7 +48,7 @@ export function TaskListView({ tickets, onTicketClick, onTicketDelete }: TaskLis
   if (tickets.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-sm text-slate-500">Nenhuma tarefa encontrada.</p>
+        <p className="text-sm text-[color:var(--muted-foreground)]">Nenhuma tarefa encontrada.</p>
       </div>
     );
   }
@@ -59,18 +59,18 @@ export function TaskListView({ tickets, onTicketClick, onTicketDelete }: TaskLis
         {tickets.map((ticket) => (
         <div
           key={ticket.id}
-          className="relative rounded-lg border border-slate-200 bg-white p-4 hover:shadow-md hover:border-slate-300 transition-all"
+          className="relative rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] p-4 hover:shadow-md transition-all"
         >
           <button
             type="button"
             onClick={() => onTicketClick?.(ticket)}
-            className="w-full text-left focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-1 rounded-lg"
+            className="w-full text-left focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/35 focus:ring-offset-1 focus:ring-offset-[color:var(--background)] rounded-lg"
           >
             <div className="flex items-start gap-4">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 mb-2">
                   {!isTopicTicket(ticket.type) && (
-                    <span className="text-xs font-mono font-semibold text-slate-600">#{ticket.code}</span>
+                    <span className="text-xs font-mono font-semibold text-[color:var(--muted-foreground)]">#{ticket.code}</span>
                   )}
                   <span
                     className={`px-2 py-0.5 rounded text-xs font-medium text-white ${getStatusColor(ticket.status)}`}
@@ -78,15 +78,15 @@ export function TaskListView({ tickets, onTicketClick, onTicketDelete }: TaskLis
                     {getStatusLabel(ticket.status)}
                   </span>
                 </div>
-                <h4 className="text-sm font-medium text-slate-800 mb-1 line-clamp-1" title={ticket.title}>
+                <h4 className="text-sm font-medium text-[color:var(--foreground)] mb-1 line-clamp-1" title={ticket.title}>
                   {ticket.title}
                 </h4>
                 {ticket.description && (
-                  <p className="text-xs text-slate-500 line-clamp-2 mt-1" title={ticket.description}>
+                  <p className="text-xs text-[color:var(--muted-foreground)] line-clamp-2 mt-1" title={ticket.description}>
                     {ticket.description}
                   </p>
                 )}
-                <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
+                <div className="flex items-center gap-4 mt-2 text-xs text-[color:var(--muted-foreground)]">
                   <span>{ticket.type}</span>
                   {!hideMembers &&
                     (() => {
@@ -100,7 +100,7 @@ export function TaskListView({ tickets, onTicketClick, onTicketDelete }: TaskLis
                       );
                     })()}
                   {ticket.criticidade && (
-                    <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+                    <span className="px-2 py-0.5 rounded border border-[color:var(--border)] bg-[color:var(--surface)]/60 text-[color:var(--foreground)]">
                       {ticket.criticidade}
                     </span>
                   )}
@@ -115,7 +115,7 @@ export function TaskListView({ tickets, onTicketClick, onTicketDelete }: TaskLis
                 e.stopPropagation();
                 setDeleteTarget(ticket);
               }}
-              className="absolute top-4 right-4 p-1.5 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-300"
+              className="absolute top-4 right-4 p-1.5 rounded-md text-[color:var(--muted-foreground)] hover:text-red-300 hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-400/40"
               title="Excluir tarefa"
               aria-label="Excluir tarefa"
             >

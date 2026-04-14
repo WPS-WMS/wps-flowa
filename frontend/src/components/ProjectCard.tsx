@@ -696,7 +696,7 @@ export function ProjectCard({
                         e.stopPropagation();
                         handleViewKanban();
                       }}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 text-sm font-medium hover:bg-slate-50 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-1"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--foreground)] text-sm font-medium hover:opacity-90 transition focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/35 focus:ring-offset-1 focus:ring-offset-[color:var(--background)]"
                     >
                       <LayoutGrid className="h-4 w-4" />
                       Ver Kanban
@@ -707,7 +707,7 @@ export function ProjectCard({
                         e.stopPropagation();
                         setShowCreateSubprojectModal(true);
                       }}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-1"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[color:var(--primary)] text-[color:var(--primary-foreground)] text-sm font-medium hover:opacity-90 transition focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/35 focus:ring-offset-1 focus:ring-offset-[color:var(--background)]"
                     >
                       <Plus className="h-4 w-4" />
                       Criar tópico
@@ -735,10 +735,10 @@ export function ProjectCard({
                         />
                         {/* Lista de tarefas aparece embaixo do tópico selecionado */}
                         {selectedPackage?.id === ticket.id && (
-                          <div className="mt-3 ml-4 pl-4 border-l-2 border-blue-300">
-                            <div className="bg-blue-50 rounded-lg p-4">
+                          <div className="mt-3 ml-4 pl-4 border-l-2 border-[color:var(--border)]">
+                            <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)]/55 backdrop-blur p-4">
                               <div className="flex items-center justify-between mb-3">
-                                <h5 className="text-sm font-semibold text-slate-800">
+                                <h5 className="text-sm font-semibold text-[color:var(--foreground)]">
                                   Tarefas - {selectedPackage.title}
                                 </h5>
                                 <button
@@ -747,7 +747,7 @@ export function ProjectCard({
                                     e.stopPropagation();
                                     setShowCreateTaskModal(true);
                                   }}
-                                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm"
+                                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[color:var(--primary)] text-[color:var(--primary-foreground)] text-sm font-medium hover:opacity-90 transition shadow-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/35 focus:ring-offset-1 focus:ring-offset-[color:var(--background)]"
                                 >
                                   <Plus className="h-4 w-4" />
                                   Nova tarefa

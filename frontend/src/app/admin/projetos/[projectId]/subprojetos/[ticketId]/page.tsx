@@ -114,25 +114,25 @@ export default function TopicoKanbanAdminPage({ params }: PageProps) {
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
-      <header className="flex-shrink-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+      <header className="flex-shrink-0 bg-[color:var(--surface)]/60 backdrop-blur border-b border-[color:var(--border)] px-6 py-4 flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold text-slate-800">
+          <h1 className="text-lg font-semibold text-[color:var(--foreground)]">
             {ticket.type === "SUBPROJETO" ? ticket.title : `${ticket.code}: ${ticket.title}`}
           </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-xs text-[color:var(--muted-foreground)] mt-0.5">
             {ticket.type} · {ticket.status}
           </p>
         </div>
         <div className="flex items-center gap-2">
           {/* Botões de toggle Kanban/Lista */}
-          <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1">
+          <div className="inline-flex rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] p-1">
             <button
               type="button"
               onClick={() => setViewMode("kanban")}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                 viewMode === "kanban"
-                  ? "bg-blue-600 text-white"
-                  : "text-slate-600 hover:bg-slate-50"
+                  ? "bg-[color:var(--primary)] text-[color:var(--primary-foreground)]"
+                  : "text-[color:var(--muted-foreground)] hover:bg-[color:var(--surface)]/70"
               }`}
               title="Visualização Kanban"
             >
@@ -144,8 +144,8 @@ export default function TopicoKanbanAdminPage({ params }: PageProps) {
               onClick={() => setViewMode("list")}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                 viewMode === "list"
-                  ? "bg-blue-600 text-white"
-                  : "text-slate-600 hover:bg-slate-50"
+                  ? "bg-[color:var(--primary)] text-[color:var(--primary-foreground)]"
+                  : "text-[color:var(--muted-foreground)] hover:bg-[color:var(--surface)]/70"
               }`}
               title="Visualização Lista"
             >
@@ -162,7 +162,7 @@ export default function TopicoKanbanAdminPage({ params }: PageProps) {
                 router.push(`/admin/projetos/${projectId}?from=${fromTab}`);
               }
             }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[color:var(--primary)] text-[color:var(--primary-foreground)] text-sm font-medium hover:opacity-90 transition"
           >
             ← Voltar
           </button>
@@ -171,11 +171,11 @@ export default function TopicoKanbanAdminPage({ params }: PageProps) {
       <main className="flex-1 p-4 md:p-6 min-h-0 overflow-auto">
         <div className="w-full">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold text-slate-800">Tarefas do Tópico</h2>
+            <h2 className="text-base font-semibold text-[color:var(--foreground)]">Tarefas do Tópico</h2>
             <button
               type="button"
               onClick={() => setShowCreateTaskModal(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[color:var(--primary)] text-[color:var(--primary-foreground)] text-sm font-medium hover:opacity-90 transition"
             >
               <Plus className="h-4 w-4" />
               Nova tarefa

@@ -69,70 +69,70 @@ export function TaskCardHorizontal({ ticket, onClick, onDelete }: TaskCardHorizo
 
   return (
     <div className="w-full">
-      <div className="flex rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden hover:shadow-md hover:border-slate-300 transition-all">
+      <div className="flex rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] shadow-sm overflow-hidden hover:shadow-md transition-all">
         <div className={`w-2 flex-shrink-0 ${kanbanStatus.color}`} aria-hidden />
         <button
           type="button"
           onClick={() => onClick?.(ticket)}
-          className={`flex-1 min-w-0 grid gap-x-4 items-start py-3 px-4 text-left focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-1 ${hideMembers ? "grid-cols-[1fr_14rem_7rem_6rem]" : "grid-cols-[1fr_14rem_7rem_8rem_6rem]"}`}
+          className={`flex-1 min-w-0 grid gap-x-4 items-start py-3 px-4 text-left focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/35 focus:ring-offset-1 focus:ring-offset-[color:var(--background)] ${hideMembers ? "grid-cols-[1fr_14rem_7rem_6rem]" : "grid-cols-[1fr_14rem_7rem_8rem_6rem]"}`}
         >
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               {!isTopicTicket(ticket.type) && (
-                <span className="text-xs font-mono font-semibold text-slate-600 shrink-0">#{ticket.code}</span>
+                <span className="text-xs font-mono font-semibold text-[color:var(--muted-foreground)] shrink-0">#{ticket.code}</span>
               )}
-              <span className="text-sm font-semibold text-slate-800 truncate" title={ticket.title}>
+              <span className="text-sm font-semibold text-[color:var(--foreground)] truncate" title={ticket.title}>
                 {ticket.title}
               </span>
             </div>
             <div className="mt-1">
-              <p className="text-slate-800 font-medium text-sm truncate">{kanbanStatus.label}</p>
+              <p className="text-[color:var(--foreground)] font-medium text-sm truncate">{kanbanStatus.label}</p>
             </div>
             {(ticket.finalizacaoMotivo || ticket.finalizacaoObservacao) && (
-              <div className="mt-2 rounded-md border border-emerald-100 bg-emerald-50/70 px-2 py-1.5 text-[11px] leading-snug text-emerald-900 max-w-full">
+              <div className="mt-2 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2 py-1.5 text-[11px] leading-snug text-emerald-200 max-w-full">
                 {ticket.finalizacaoMotivo && (
                   <p className="font-medium line-clamp-2">
                     Motivo: <span className="font-normal">{ticket.finalizacaoMotivo}</span>
                   </p>
                 )}
                 {ticket.finalizacaoObservacao && (
-                  <p className="mt-0.5 text-emerald-800/95 line-clamp-2">Obs.: {ticket.finalizacaoObservacao}</p>
+                  <p className="mt-0.5 text-emerald-200/90 line-clamp-2">Obs.: {ticket.finalizacaoObservacao}</p>
                 )}
               </div>
             )}
           </div>
           <div className="min-w-0 flex gap-4">
             <div>
-              <p className="text-slate-500 text-xs">Orçado</p>
-              <p className="text-slate-800 font-medium text-sm">
+              <p className="text-[color:var(--muted-foreground)] text-xs">Orçado</p>
+              <p className="text-[color:var(--foreground)] font-medium text-sm">
                 {formatHorasDecimalToHm(ticket.estimativaHoras ?? 0)}
               </p>
             </div>
             <div>
-              <p className="text-slate-500 text-xs">Executado</p>
-              <p className="text-slate-800 font-medium text-sm">
+              <p className="text-[color:var(--muted-foreground)] text-xs">Executado</p>
+              <p className="text-[color:var(--foreground)] font-medium text-sm">
                 {formatHorasDecimalToHm(ticket.totalHorasApontadas ?? 0)}
               </p>
             </div>
           </div>
           <div className="min-w-0">
-            <p className="text-slate-500 text-xs">Prioridade</p>
-            <p className="inline-flex items-center gap-1.5 font-medium text-slate-800 text-sm">
+            <p className="text-[color:var(--muted-foreground)] text-xs">Prioridade</p>
+            <p className="inline-flex items-center gap-1.5 font-medium text-[color:var(--foreground)] text-sm">
               {ticket.criticidade != null && ticket.criticidade !== "" ? (
                 <>
                   <span className={`h-2 w-2 rounded-full shrink-0 ${ticket.criticidade === "Urgente" || ticket.criticidade === "URGENTE" ? "bg-red-500" : ticket.criticidade === "Alta" || ticket.criticidade === "ALTA" ? "bg-orange-500" : ticket.criticidade === "Média" || ticket.criticidade === "MEDIA" ? "bg-amber-500" : ticket.criticidade === "Baixa" || ticket.criticidade === "BAIXA" ? "bg-blue-500" : "bg-slate-400"}`} aria-hidden />
                   <span className="truncate">{ticket.criticidade}</span>
                 </>
               ) : (
-                <span className="text-slate-400">—</span>
+                <span className="text-[color:var(--muted-foreground)]">—</span>
               )}
             </p>
           </div>
           {!hideMembers && (
             <div className="min-w-0">
-              <p className="text-slate-500 text-xs">Membros</p>
+              <p className="text-[color:var(--muted-foreground)] text-xs">Membros</p>
               <p
-                className="text-slate-800 font-medium text-sm truncate"
+                className="text-[color:var(--foreground)] font-medium text-sm truncate"
                 title={memberChip.title ?? memberChip.display ?? undefined}
               >
                 {memberChip.display ?? "—"}
@@ -140,8 +140,8 @@ export function TaskCardHorizontal({ ticket, onClick, onDelete }: TaskCardHorizo
             </div>
           )}
           <div className="min-w-0">
-            <p className="text-slate-500 text-xs">Criação</p>
-            <p className="text-slate-800 font-medium text-sm">
+            <p className="text-[color:var(--muted-foreground)] text-xs">Criação</p>
+            <p className="text-[color:var(--foreground)] font-medium text-sm">
               {new Date(ticket.createdAt).toLocaleDateString("pt-BR", {
                 day: "2-digit",
                 month: "2-digit",
@@ -158,7 +158,7 @@ export function TaskCardHorizontal({ ticket, onClick, onDelete }: TaskCardHorizo
                 e.stopPropagation();
                 setShowDeleteModal(true);
               }}
-              className="shrink-0 px-3 text-slate-400 hover:text-red-600 hover:bg-red-50 flex items-center transition-colors"
+              className="shrink-0 px-3 text-[color:var(--muted-foreground)] hover:text-red-300 hover:bg-red-500/10 flex items-center transition-colors"
               title="Excluir tarefa"
               aria-label="Excluir tarefa"
             >
