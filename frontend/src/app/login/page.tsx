@@ -8,6 +8,9 @@ import { useAuth } from "@/contexts/AuthContext";
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "https://wps-one-backend.onrender.com";
 
+const ONE_LOGO_SVG_SRC = "/WPS%20One.svg";
+const WPS_ONE_ICON_SVG_SRC = "/WPS%20One%20%C3%ADcone.svg";
+
 export default function LoginPage() {
   const router = useRouter();
   const { setUser } = useAuth();
@@ -132,10 +135,22 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-[color:var(--background)] px-4">
       <div className="w-full max-w-md p-8 rounded-2xl shadow-2xl border border-[color:var(--border)] bg-[color:var(--surface)]/80 backdrop-blur-xl">
         <div className="text-center mb-8">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[color:var(--primary)] text-[color:var(--primary-foreground)] text-xl font-bold shadow-md mb-3">
-            W
+          <div className="mx-auto mb-3 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[color:var(--primary)] shadow-md">
+            <img src={WPS_ONE_ICON_SVG_SRC} alt="" className="h-7 w-7 select-none" draggable={false} />
           </div>
-          <h1 className="text-2xl font-bold text-[color:var(--foreground)] tracking-tight">WPS One</h1>
+          <h1 className="mx-auto w-fit text-[color:var(--foreground)]">
+            <span className="inline-flex items-baseline whitespace-nowrap">
+              <span className="font-quantify text-3xl font-semibold leading-none tracking-tight">WPS</span>
+              <span className="ml-[0.12em] inline-flex items-baseline leading-none">
+                <img
+                  src={ONE_LOGO_SVG_SRC}
+                  alt="One"
+                  className="block h-[1.35em] w-auto shrink-0 select-none translate-y-[0.12em]"
+                  draggable={false}
+                />
+              </span>
+            </span>
+          </h1>
           <p className="mt-1 text-sm text-[color:var(--muted-foreground)]">Gestão de projetos e apontamento de horas</p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
