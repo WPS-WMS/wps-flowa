@@ -553,10 +553,19 @@ export function ProjectCard({
                     setMenuPosition(null);
                     handleViewDetails();
                   }}
-                  className="flex w-full items-center gap-2 px-3 py-1.5 rounded-lg transition hover:opacity-95"
-                  style={{ color: "var(--primary)" }}
+                  className="flex w-full items-center gap-2 px-3 py-2 rounded-lg transition"
+                  style={{
+                    color: "var(--foreground)",
+                    background: "transparent",
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.background = "rgba(92, 0, 225, 0.12)";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+                  }}
                 >
-                  <Eye className="h-4 w-4" />
+                  <Eye className="h-4 w-4" style={{ color: "var(--primary)" }} />
                   Ver detalhes
                 </button>
                 {canEdit && (
@@ -567,10 +576,19 @@ export function ProjectCard({
                       setMenuPosition(null);
                       setShowEditProjectModal(true);
                     }}
-                    className="flex w-full items-center gap-2 px-3 py-1.5 rounded-lg transition hover:opacity-95"
-                    style={{ color: "var(--primary)" }}
+                    className="flex w-full items-center gap-2 px-3 py-2 rounded-lg transition"
+                    style={{
+                      color: "var(--foreground)",
+                      background: "transparent",
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background = "rgba(92, 0, 225, 0.12)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+                    }}
                   >
-                    <Pencil className="h-4 w-4" />
+                    <Pencil className="h-4 w-4" style={{ color: "var(--primary)" }} />
                     Editar
                   </button>
                 )}
@@ -597,17 +615,26 @@ export function ProjectCard({
                         alert(`Erro ao ${project.arquivado ? "desarquivar" : "arquivar"} projeto`);
                       }
                     }}
-                    className="flex w-full items-center gap-2 px-3 py-1.5 rounded-lg transition hover:opacity-95"
-                    style={{ color: "var(--primary)" }}
+                    className="flex w-full items-center gap-2 px-3 py-2 rounded-lg transition"
+                    style={{
+                      color: "var(--foreground)",
+                      background: "transparent",
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background = "rgba(92, 0, 225, 0.12)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+                    }}
                   >
                     {project.arquivado ? (
                       <>
-                        <RotateCcw className="h-4 w-4" />
+                        <RotateCcw className="h-4 w-4" style={{ color: "var(--primary)" }} />
                         Desarquivar
                       </>
                     ) : (
                       <>
-                        <Archive className="h-4 w-4" />
+                        <Archive className="h-4 w-4" style={{ color: "var(--primary)" }} />
                         Arquivar
                       </>
                     )}
@@ -624,8 +651,17 @@ export function ProjectCard({
                         setDeleteTarget(project as unknown as PackageTicket);
                         setDeleteType("project");
                       }}
-                      className="flex w-full items-center gap-2 px-3 py-1.5 rounded-lg transition hover:opacity-95"
-                      style={{ color: "#ef4444" }}
+                      className="flex w-full items-center gap-2 px-3 py-2 rounded-lg transition"
+                      style={{
+                        color: "#ef4444",
+                        background: "transparent",
+                      }}
+                      onMouseEnter={(e) => {
+                        (e.currentTarget as HTMLButtonElement).style.background = "rgba(239, 68, 68, 0.12)";
+                      }}
+                      onMouseLeave={(e) => {
+                        (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+                      }}
                     >
                       <Trash2 className="h-4 w-4" />
                       Excluir
