@@ -456,11 +456,11 @@ export default function LandingPage() {
                       >
                         WPS
                       </span>
-                      <span className="ml-[0.16em] inline-flex items-baseline leading-none">
+                      <span className="ml-[0.06em] inline-flex items-baseline leading-none">
                         <img
                           src={ONE_LOGO_SVG_SRC}
                           alt="One"
-                          className="block h-[1.75em] md:h-[1.85em] w-auto max-w-[min(100%,360px)] shrink-0 select-none translate-y-[0.14em] md:translate-y-[0.135em]"
+                          className="block h-[2.55em] md:h-[2.75em] w-auto max-w-[min(100%,520px)] shrink-0 select-none translate-y-[0.20em] md:translate-y-[0.19em]"
                           style={{
                             filter: isDark
                               ? "drop-shadow(0 10px 28px rgba(92,0,225,0.28))"
