@@ -159,6 +159,9 @@ uploadsRouter.post("/user-avatar", async (req, res) => {
     res.json({
       fileName,
       fileUrl,
+      // Também retornamos o data URL para permitir persistência sem depender do filesystem do servidor.
+      // Em ambientes com storage efêmero (ex.: deploys/restarts), a URL pode deixar de existir.
+      dataUrl: fileData,
       version: timestamp,
       fileType: fileType || mimeFromDataUrl || "image/png",
       fileSize: fileSize || buffer.length,

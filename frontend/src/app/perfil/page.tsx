@@ -172,12 +172,13 @@ export default function PerfilPage() {
         setError(data.error || "Erro ao enviar imagem");
         return;
       }
-      setAvatarPreview({ url: data.fileUrl, name: file.name });
+      const persistedAvatarUrl = String(data.dataUrl || data.fileUrl || "");
+      setAvatarPreview({ url: persistedAvatarUrl, name: file.name });
       // Persistir avatar no usuário (não basta fazer upload do arquivo)
       const saveRes = await apiFetch("/api/users/me", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ avatarUrl: String(data.fileUrl).split("?")[0] }),
+        body: JSON.stringify({ avatarUrl: persistedAvatarUrl.split("?")[0] }),
       });
       const saved = await saveRes.json().catch(() => null);
       if (!saveRes.ok) {
