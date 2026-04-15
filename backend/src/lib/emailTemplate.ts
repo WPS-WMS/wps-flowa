@@ -152,22 +152,9 @@ export function renderEmailLayout(args: {
             <tr>
               <td style="background:#ffffff;border-radius:20px;overflow:hidden;border:1px solid rgba(255,255,255,.08)">
                 <div style="padding:22px 22px 18px 22px;background:radial-gradient(900px 420px at 20% 0%, rgba(92,0,225,0.18), transparent 55%), radial-gradient(720px 360px at 85% 30%, rgba(87,66,118,0.16), transparent 55%)">
-                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">
-                    <tr>
-                      <td align="left" valign="middle" style="padding:0">
-                        <div style="color:#0f172a;font-size:18px;line-height:24px;font-weight:900;letter-spacing:-.02em">
-                          ${escapeHtml(args.title)}
-                        </div>
-                      </td>
-                      <td align="right" valign="middle" style="padding:0">
-                        ${
-                          brand.iconUrl
-                            ? `<img src="${escapeHtml(brand.iconUrl)}" alt="${escapeHtml(brand.brandName)}" height="24" style="display:block;height:24px;width:24px" />`
-                            : ""
-                        }
-                      </td>
-                    </tr>
-                  </table>
+                  <div style="color:#0f172a;font-size:18px;line-height:24px;font-weight:900;letter-spacing:-.02em">
+                    ${escapeHtml(args.title)}
+                  </div>
                 </div>
                 <div style="padding:18px 22px 22px 22px">
                   ${summary}
