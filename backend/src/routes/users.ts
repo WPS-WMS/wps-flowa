@@ -556,6 +556,8 @@ usersRouter.patch("/:id", async (req, res) => {
         email: true,
         name: true,
         role: true,
+        avatarUrl: true,
+        updatedAt: true,
         cargo: true,
         cargaHorariaSemanal: true,
         permitirMaisHoras: true,
