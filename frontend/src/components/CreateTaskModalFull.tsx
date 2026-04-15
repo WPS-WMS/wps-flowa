@@ -19,6 +19,13 @@ type CreateTaskModalFullProps = {
 
 type Tab = "descricao" | "horas" | "historico" | "anexos";
 
+type LightTicket = {
+  id: string;
+  code: string;
+  title: string;
+  type: string;
+};
+
 const PRIORIDADES_DEFAULT = [
   { value: "BAIXA", label: "Baixa", color: "bg-green-100 text-green-700 border-green-300" },
   { value: "MEDIA", label: "Média", color: "bg-yellow-100 text-yellow-700 border-yellow-300" },
@@ -45,24 +52,15 @@ function getIniciais(name: string): string {
 
 // Cor do pill de status = cor da coluna do Kanban
 function getStatusPillClass(status: string): string {
-  if (!status) return "bg-slate-100 text-slate-700 border-slate-200";
-  if (["EXECUCAO", "TESTE"].includes(status)) return "bg-blue-50 text-blue-700 border-blue-200";
-  if (status === "ENCERRADO") return "bg-emerald-50 text-emerald-700 border-emerald-200";
-  return "bg-slate-100 text-slate-700 border-slate-200";
+  // Estilo neutro (compatível com tema). A cor fica nos detalhes (ex.: dot).
+  if (!status) return "bg-[color:var(--background)]/25 text-[color:var(--muted-foreground)] border-[color:var(--border)]";
+  return "bg-[color:var(--background)]/25 text-[color:var(--foreground)] border-[color:var(--border)]";
 }
 
 // Cor do pill de prioridade = mesma paleta
 function getPrioridadePillClass(prioridade: string): string {
-  if (!prioridade) return "bg-slate-100 text-slate-600 border-slate-200";
-  const map: Record<string, string> = {
-    Urgente: "bg-red-50 text-red-700 border-red-200",
-    URGENTE: "bg-red-50 text-red-700 border-red-200",
-    CRITICA: "bg-red-50 text-red-700 border-red-200",
-    Alta: "bg-orange-50 text-orange-700 border-orange-200", ALTA: "bg-orange-50 text-orange-700 border-orange-200",
-    Média: "bg-amber-50 text-amber-700 border-amber-200", MEDIA: "bg-amber-50 text-amber-700 border-amber-200",
-    Baixa: "bg-blue-50 text-blue-700 border-blue-200", BAIXA: "bg-blue-50 text-blue-700 border-blue-200",
-  };
-  return map[prioridade] ?? "bg-slate-100 text-slate-600 border-slate-200";
+  if (!prioridade) return "bg-[color:var(--background)]/25 text-[color:var(--muted-foreground)] border-[color:var(--border)]";
+  return "bg-[color:var(--background)]/25 text-[color:var(--foreground)] border-[color:var(--border)]";
 }
 
 // Cor da bolinha de prioridade
@@ -74,7 +72,7 @@ function getPrioridadeDotClass(prioridade: string): string {
     CRITICA: "bg-red-500",
     Alta: "bg-orange-500", ALTA: "bg-orange-500",
     Média: "bg-amber-500", MEDIA: "bg-amber-500",
-    Baixa: "bg-blue-500", BAIXA: "bg-blue-500",
+    Baixa: "bg-[color:var(--primary)]", BAIXA: "bg-[color:var(--primary)]",
   };
   return map[prioridade] ?? "bg-slate-400";
 }
@@ -196,14 +194,15 @@ export function CreateTaskModalFull({
     // Buscar tópicos do projeto através da API de tickets
     apiFetch(`/api/tickets?projectId=${projectId}&light=true`)
       .then((r) => (r.ok ? r.json() : []))
-      .then((tickets) => {
-        const topicos = tickets
-          .filter((t: any) => t.type === "SUBPROJETO")
-          .map((t: any) => ({ id: t.id, code: t.code, title: t.title }));
+      .then((tickets: unknown) => {
+        const list: LightTicket[] = Array.isArray(tickets) ? (tickets as LightTicket[]) : [];
+        const topicos = list
+          .filter((t) => t && t.type === "SUBPROJETO")
+          .map((t) => ({ id: t.id, code: t.code, title: t.title }));
         setTopics(topicos);
         
         // Se já houver um parentTicketId inicial e ele estiver na lista, usar como selecionado
-        if (parentTicketId && topicos.some((t: any) => t.id === parentTicketId)) {
+        if (parentTicketId && topicos.some((t) => t.id === parentTicketId)) {
           setSelectedTopicId(parentTicketId);
         } else if (parentTicketId) {
           // Se parentTicketId foi passado mas não está na lista, ainda assim usar
@@ -487,8 +486,8 @@ export function CreateTaskModalFull({
   }
 
   const inputClass =
-    "w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400";
-  const labelClass = "block text-sm font-medium text-slate-600 mb-1.5";
+    "w-full px-4 py-2.5 rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--foreground)] placeholder:text-[color:var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/35 focus:border-[color:var(--primary)] transition";
+  const labelClass = "block text-sm font-medium text-[color:var(--muted-foreground)] mb-1.5";
 
   const tabs: { id: Tab; label: string }[] = [
     { id: "descricao", label: "Descrição" },
@@ -499,22 +498,22 @@ export function CreateTaskModalFull({
 
   return (
     <div
-      className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center z-50 px-4 py-6"
+      className="fixed inset-0 bg-black/55 backdrop-blur-sm flex items-center justify-center z-50 px-4 py-6"
       onClick={onClose}
     >
       <form
         onSubmit={handleSubmit}
-        className="bg-white rounded-3xl border border-slate-200/70 w-full max-w-5xl shadow-[0_24px_80px_rgba(15,23,42,0.45)] h-[88vh] flex flex-col"
+        className="bg-[color:var(--surface)] rounded-3xl border border-[color:var(--border)] w-full max-w-5xl shadow-[0_24px_80px_rgba(0,0,0,0.45)] h-[88vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header + Tabs fixos */}
-        <div className="border-b border-slate-100 bg-white rounded-t-3xl">
+        <div className="border-b border-[color:var(--border)] bg-[color:var(--surface)] rounded-t-3xl">
           <div className="flex items-start justify-between px-6 pt-5 pb-3 gap-4">
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1 text-[11px] text-slate-500">
-                {projectName && <span className="text-slate-400/90">• {projectName}</span>}
+              <div className="flex items-center gap-2 mb-1 text-[11px] text-[color:var(--muted-foreground)]">
+                {projectName && <span className="opacity-90">• {projectName}</span>}
               </div>
-              <h2 className="text-lg md:text-xl font-semibold text-slate-900 truncate">
+              <h2 className="text-lg md:text-xl font-semibold text-[color:var(--foreground)] truncate">
                 {title || "Nova tarefa"}
               </h2>
               <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -532,14 +531,14 @@ export function CreateTaskModalFull({
               <button
                 type="button"
                 onClick={onClose}
-                className="p-2 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                className="p-2 rounded-full text-[color:var(--muted-foreground)] hover:opacity-90 hover:bg-black/5"
                 aria-label="Fechar"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
           </div>
-          <div className="flex items-center border-t border-slate-100 px-3 sm:px-6 overflow-x-auto bg-slate-50/60">
+          <div className="flex items-center border-t border-[color:var(--border)] px-3 sm:px-6 overflow-x-auto bg-[color:var(--background)]/25">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
@@ -547,13 +546,13 @@ export function CreateTaskModalFull({
                 onClick={() => setActiveTab(tab.id)}
                 className={`relative px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-medium whitespace-nowrap transition-colors ${
                   activeTab === tab.id
-                    ? "text-blue-600"
-                    : "text-slate-500 hover:text-slate-700"
+                    ? "text-[color:var(--primary)]"
+                    : "text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]"
                 }`}
               >
                 {tab.label}
                 {activeTab === tab.id && (
-                  <span className="absolute inset-x-2 -bottom-0.5 h-0.5 rounded-full bg-blue-600" />
+                  <span className="absolute inset-x-2 -bottom-0.5 h-0.5 rounded-full bg-[color:var(--primary)]" />
                 )}
               </button>
             ))}
@@ -561,13 +560,13 @@ export function CreateTaskModalFull({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-hidden bg-slate-50">
+        <div className="flex-1 overflow-hidden bg-[color:var(--background)]">
           <div className="h-full overflow-y-auto px-4 sm:px-6 pb-6 pt-4">
             {activeTab === "descricao" && (
               <div className="space-y-6">
                 <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,2fr)_minmax(0,2fr)] gap-6 xl:gap-8">
                   {/* Coluna Esquerda */}
-                  <div className="space-y-5 bg-white rounded-xl border border-slate-100 px-4 py-4 shadow-sm">
+                  <div className="space-y-5 bg-[color:var(--surface)] rounded-2xl border border-[color:var(--border)] px-4 py-4 shadow-sm">
                     <div>
                       <label className={labelClass}>
                         Título <span className="text-red-500">*</span>
@@ -601,7 +600,7 @@ export function CreateTaskModalFull({
                             </option>
                           ))}
                         </select>
-                        <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-400 text-xs">
+                        <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[color:var(--muted-foreground)] text-xs">
                           ▾
                         </span>
                       </div>
@@ -642,28 +641,29 @@ export function CreateTaskModalFull({
                   </div>
 
                   {/* Coluna Direita */}
-                  <div className="space-y-5 bg-white rounded-xl border border-slate-100 px-4 py-4 shadow-sm">
+                  <div className="space-y-5 bg-[color:var(--surface)] rounded-2xl border border-[color:var(--border)] px-4 py-4 shadow-sm">
                     <div>
                       <label className={labelClass}>Membros</label>
                       <div className="flex flex-wrap items-center gap-2 mb-2">
                         {selectedUsers.map((u) => (
                           <div
                             key={u.id}
-                            className="flex items-center gap-1.5 rounded-full bg-slate-100 pl-1 pr-2 py-1 border border-slate-200"
+                            className="flex items-center gap-1.5 rounded-full bg-[color:var(--background)]/25 pl-1 pr-2 py-1 border border-[color:var(--border)]"
                           >
                             <span
-                              className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white text-xs font-semibold"
+                              className="flex h-8 w-8 items-center justify-center rounded-full text-[color:var(--primary-foreground)] text-xs font-semibold"
+                              style={{ background: "var(--primary)" }}
                               title={u.name}
                             >
                               {getIniciais(u.name)}
                             </span>
-                            <span className="text-sm text-slate-700 max-w-[100px] truncate">
+                            <span className="text-sm text-[color:var(--foreground)] max-w-[100px] truncate">
                               {u.name}
                             </span>
                             <button
                               type="button"
                               onClick={() => removeResponsible(u.id)}
-                              className="ml-0.5 text-slate-400 hover:text-red-600 p-0.5"
+                              className="ml-0.5 text-[color:var(--muted-foreground)] hover:text-red-600 p-0.5"
                               aria-label="Remover"
                             >
                               ×
@@ -674,16 +674,16 @@ export function CreateTaskModalFull({
                           <button
                             type="button"
                             onClick={() => setShowUserPicker(!showUserPicker)}
-                            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full border border-slate-200 bg-slate-50 text-slate-600 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 text-sm font-medium transition-colors"
+                            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full border border-[color:var(--border)] bg-[color:var(--background)]/25 text-[color:var(--foreground)] hover:opacity-90 text-sm font-medium transition-colors"
                             title="Adicionar membro"
                           >
                             <Plus className="h-4 w-4" />
                             Adicionar
                           </button>
                           {showUserPicker && (
-                            <div className="absolute left-0 top-full mt-1 z-10 w-56 rounded-lg border border-slate-200 bg-white shadow-lg py-1 max-h-48 overflow-y-auto">
+                            <div className="absolute left-0 top-full mt-1 z-10 w-56 rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] shadow-lg py-1 max-h-48 overflow-y-auto">
                               {availableToAdd.length === 0 ? (
-                                <p className="px-3 py-2 text-xs text-slate-500">
+                                <p className="px-3 py-2 text-xs text-[color:var(--muted-foreground)]">
                                   Todos já adicionados
                                 </p>
                               ) : (
@@ -692,9 +692,9 @@ export function CreateTaskModalFull({
                                     key={u.id}
                                     type="button"
                                     onClick={() => addResponsible(u.id)}
-                                    className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                                    className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm text-[color:var(--foreground)] hover:bg-black/5"
                                   >
-                                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-200 text-xs font-medium text-slate-600">
+                                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-black/10 text-xs font-medium text-[color:var(--muted-foreground)]">
                                       {getIniciais(u.name)}
                                     </span>
                                     {u.name}
@@ -757,7 +757,7 @@ export function CreateTaskModalFull({
                         <button
                           type="button"
                           onClick={() => setShowPrioridadeOpen(!showPrioridadeOpen)}
-                          className={`w-full flex items-center gap-2 px-4 py-2.5 rounded-xl border bg-white text-left text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 ${showPrioridadeOpen ? "border-blue-400 ring-2 ring-blue-400" : "border-slate-200"}`}
+                          className={`w-full flex items-center gap-2 px-4 py-2.5 rounded-xl border bg-[color:var(--surface)] text-left text-sm text-[color:var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/35 focus:border-[color:var(--primary)] transition ${showPrioridadeOpen ? "shadow-sm" : ""}`}
                         >
                           {prioridade ? (
                             <>
@@ -765,19 +765,19 @@ export function CreateTaskModalFull({
                               <span>{prioridades.find((p) => p.value === prioridade)?.label ?? prioridade}</span>
                             </>
                           ) : (
-                            <span className="text-slate-400">Selecione...</span>
+                            <span className="text-[color:var(--muted-foreground)]">Selecione...</span>
                           )}
-                          <span className="ml-auto text-slate-400 pointer-events-none">▼</span>
+                          <span className="ml-auto text-[color:var(--muted-foreground)] pointer-events-none">▼</span>
                         </button>
                         {showPrioridadeOpen && (
-                          <div className="absolute left-0 right-0 top-full mt-1 z-20 rounded-xl border border-slate-200 bg-white shadow-lg py-1 max-h-56 overflow-y-auto">
+                          <div className="absolute left-0 right-0 top-full mt-1 z-20 rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] shadow-lg py-1 max-h-56 overflow-y-auto">
                             <button
                               type="button"
                               onClick={() => {
                                 setPrioridade("");
                                 setShowPrioridadeOpen(false);
                               }}
-                              className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-500 hover:bg-slate-50"
+                              className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm text-[color:var(--muted-foreground)] hover:bg-black/5"
                             >
                               Selecione...
                             </button>
@@ -789,7 +789,7 @@ export function CreateTaskModalFull({
                                   setPrioridade(p.value);
                                   setShowPrioridadeOpen(false);
                                 }}
-                                className={`w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm ${prioridade === p.value ? "bg-blue-50 text-blue-800" : "text-slate-700 hover:bg-slate-50"}`}
+                                className={`w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm ${prioridade === p.value ? "bg-[color:var(--background)]/35 text-[color:var(--foreground)]" : "text-[color:var(--foreground)] hover:bg-black/5"}`}
                               >
                                 <span className={`h-2.5 w-2.5 rounded-full flex-shrink-0 ${getPrioridadeDotClass(p.value)}`} aria-hidden />
                                 {p.label}
@@ -809,18 +809,18 @@ export function CreateTaskModalFull({
                         defaultValue="0"
                         className={inputClass}
                       />
-                      <div className="mt-2 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                        <div className="h-full bg-blue-600 w-0" />
+                      <div className="mt-2 h-1.5 bg-black/10 rounded-full overflow-hidden">
+                        <div className="h-full w-0" style={{ background: "var(--primary)" }} />
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-white rounded-xl border border-slate-100 px-4 py-4 shadow-sm">
+                <div className="bg-[color:var(--surface)] rounded-2xl border border-[color:var(--border)] px-4 py-4 shadow-sm">
                   <label className={labelClass}>
                     Descrição{" "}
                     {description.length > 0 && (
-                      <span className="text-xs text-slate-400 font-normal">
+                      <span className="text-xs text-[color:var(--muted-foreground)] font-normal">
                         ({description.length}/1000)
                       </span>
                     )}
@@ -840,8 +840,8 @@ export function CreateTaskModalFull({
                 </div>
 
                 {/* Seção de Comentários */}
-                <div className="border-t border-slate-200 pt-6 mt-2">
-                  <h3 className="text-sm font-semibold text-slate-700 mb-4">Comentários</h3>
+                <div className="border-t border-[color:var(--border)] pt-6 mt-2">
+                  <h3 className="text-sm font-semibold text-[color:var(--foreground)] mb-4">Comentários</h3>
                   
                   {/* Lista de comentários */}
                   {comments.length > 0 ? (
@@ -854,11 +854,11 @@ export function CreateTaskModalFull({
                         const isDeleting = deletingCommentId === c.id;
 
                         return (
-                          <div key={c.id} className="bg-white border border-slate-200 rounded-lg p-4">
+                          <div key={c.id} className="bg-[color:var(--surface)] border border-[color:var(--border)] rounded-2xl p-4">
                             <div className="flex items-start justify-between mb-2">
                               <div className="flex items-center gap-2">
-                                <span className="text-xs font-medium text-slate-700">{c.user?.name || "Usuário"}</span>
-                                <span className="text-xs text-slate-400">
+                                <span className="text-xs font-medium text-[color:var(--foreground)]">{c.user?.name || "Usuário"}</span>
+                                <span className="text-xs text-[color:var(--muted-foreground)]">
                                   {new Date(c.createdAt).toLocaleString("pt-BR", {
                                     day: "2-digit",
                                     month: "2-digit",
@@ -874,7 +874,7 @@ export function CreateTaskModalFull({
                                     type="button"
                                     onClick={() => handleEditComment(c.id)}
                                     disabled={isDeleting || savingComment}
-                                    className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="p-1.5 rounded hover:bg-black/5 text-[color:var(--muted-foreground)] hover:text-[color:var(--primary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                     title="Editar comentário"
                                   >
                                     <Pencil className="h-4 w-4" />
@@ -883,7 +883,7 @@ export function CreateTaskModalFull({
                                     type="button"
                                     onClick={() => handleDeleteComment(c.id)}
                                     disabled={isDeleting || savingComment}
-                                    className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="p-1.5 rounded hover:bg-black/5 text-[color:var(--muted-foreground)] hover:text-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                     title="Excluir comentário"
                                   >
                                     <Trash2 className="h-4 w-4" />
@@ -903,7 +903,7 @@ export function CreateTaskModalFull({
                                     type="button"
                                     onClick={handleCancelEdit}
                                     disabled={savingComment}
-                                    className="px-3 py-1.5 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="px-3 py-1.5 rounded-xl text-sm font-medium text-[color:var(--foreground)] hover:bg-black/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                   >
                                     Cancelar
                                   </button>
@@ -911,7 +911,8 @@ export function CreateTaskModalFull({
                                     type="button"
                                     onClick={handleSaveEditComment}
                                     disabled={!hasTextContent(editingCommentContent) || savingComment}
-                                    className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="px-3 py-1.5 rounded-xl text-[color:var(--primary-foreground)] text-sm font-medium transition-opacity disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-95"
+                                    style={{ background: "var(--primary)" }}
                                   >
                                     {savingComment ? "Salvando..." : "Salvar"}
                                   </button>
@@ -919,7 +920,7 @@ export function CreateTaskModalFull({
                               </div>
                             ) : (
                               <div
-                                className="text-sm text-slate-700 prose prose-sm max-w-none [&_img]:max-w-full [&_img]:rounded-lg [&_img]:my-2 [&_ul]:list-disc [&_ul]:ml-4 [&_ol]:list-decimal [&_ol]:ml-4"
+                                className="text-sm text-[color:var(--foreground)] prose prose-sm max-w-none [&_img]:max-w-full [&_img]:rounded-lg [&_img]:my-2 [&_ul]:list-disc [&_ul]:ml-4 [&_ol]:list-decimal [&_ol]:ml-4"
                                 dangerouslySetInnerHTML={{ __html: c.content }}
                               />
                             )}
@@ -928,7 +929,7 @@ export function CreateTaskModalFull({
                       })}
                     </div>
                   ) : (
-                    <div className="mb-6 text-sm text-slate-500 py-4 text-center border border-slate-200 rounded-lg bg-slate-50">
+                    <div className="mb-6 text-sm text-[color:var(--muted-foreground)] py-4 text-center border border-[color:var(--border)] rounded-2xl bg-[color:var(--background)]/25">
                       Não há comentários cadastrados para a tarefa.
                     </div>
                   )}
@@ -948,7 +949,8 @@ export function CreateTaskModalFull({
                         type="button"
                         onClick={handleSaveComment}
                         disabled={!hasTextContent(comment) || savingComment}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-600 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-[color:var(--primary-foreground)] shadow-sm disabled:opacity-60 disabled:cursor-not-allowed transition-opacity hover:opacity-95"
+                        style={{ background: "var(--primary)" }}
                       >
                         <Send className="h-4 w-4" />
                         {savingComment ? "Enviando..." : "Enviar comentário"}
@@ -961,7 +963,7 @@ export function CreateTaskModalFull({
 
             {activeTab === "horas" && (
               <div className="text-center py-12">
-                <p className="text-slate-500">
+                <p className="text-[color:var(--muted-foreground)]">
                   Horas serão exibidas aqui após a criação da tarefa.
                 </p>
               </div>
@@ -969,7 +971,7 @@ export function CreateTaskModalFull({
 
             {activeTab === "historico" && (
               <div className="text-center py-12">
-                <p className="text-slate-500">
+                <p className="text-[color:var(--muted-foreground)]">
                   Histórico será exibido aqui após a criação da tarefa.
                 </p>
               </div>
@@ -977,7 +979,7 @@ export function CreateTaskModalFull({
 
             {activeTab === "anexos" && (
               <div className="text-center py-12">
-                <p className="text-slate-500">
+                <p className="text-[color:var(--muted-foreground)]">
                   Anexos serão exibidos aqui após a criação da tarefa.
                 </p>
               </div>
@@ -988,22 +990,23 @@ export function CreateTaskModalFull({
         </div>
 
         {/* Footer */}
-        <div className="border-t border-slate-100 px-4 sm:px-6 py-4 flex justify-between items-center gap-3 bg-white rounded-b-3xl">
-          <div className="flex-1 text-xs text-slate-400">
+        <div className="border-t border-[color:var(--border)] px-4 sm:px-6 py-4 flex justify-between items-center gap-3 bg-[color:var(--surface)] rounded-b-3xl">
+          <div className="flex-1 text-xs text-[color:var(--muted-foreground)]">
             Preencha os campos obrigatórios para criar a tarefa.
           </div>
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 sm:px-5 py-2 rounded-lg border border-slate-300 bg-slate-50 text-slate-600 text-sm font-medium hover:bg-slate-100"
+              className="px-4 sm:px-5 py-2 rounded-xl border border-[color:var(--border)] bg-transparent text-[color:var(--foreground)] text-sm font-medium hover:bg-black/5"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={saving || !title.trim()}
-              className="px-4 sm:px-6 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 sm:px-6 py-2 rounded-xl text-[color:var(--primary-foreground)] text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-opacity hover:opacity-95"
+              style={{ background: "var(--primary)" }}
             >
               {saving ? "Salvando..." : "Salvar"}
             </button>

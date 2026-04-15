@@ -13,6 +13,7 @@ import { isTopicTicket } from "@/lib/ticketCodeDisplay";
 import { resolveTicketResponsibleMembers } from "@/lib/ticketMemberNames";
 
 type UserOption = { id: string; name: string; email?: string };
+type LightTicket = { id: string; code: string; title: string; type: string };
 
 type EditTaskModalFullProps = {
   ticket: PackageTicket;
@@ -46,26 +47,15 @@ function getIniciais(name: string): string {
 
 // Cor do pill de status = cor da coluna do Kanban (Backlog=cinza, Em execução=azul, Finalizadas=verde)
 function getStatusPillClass(status: string): string {
-  if (!status) return "bg-slate-100 text-slate-700 border-slate-200";
-  if (["EXECUCAO", "TESTE"].includes(status)) return "bg-blue-50 text-blue-700 border-blue-200";
-  if (status === "ENCERRADO") return "bg-emerald-50 text-emerald-700 border-emerald-200";
-  return "bg-slate-100 text-slate-700 border-slate-200"; // ABERTO, EM_ANALISE, APROVADO = Backlog
+  // Neutro e consistente com o tema; a cor fica na bolinha (dot).
+  if (!status) return "bg-[color:var(--background)]/25 text-[color:var(--muted-foreground)] border-[color:var(--border)]";
+  return "bg-[color:var(--background)]/25 text-[color:var(--foreground)] border-[color:var(--border)]";
 }
 
 // Cor do pill de prioridade = mesma paleta (Urgente=vermelho, Alta=laranja, Média=âmbar, Baixa=azul)
 function getPrioridadePillClass(prioridade: string): string {
-  if (!prioridade) return "bg-slate-100 text-slate-600 border-slate-200";
-  const map: Record<string, string> = {
-    Urgente: "bg-red-50 text-red-700 border-red-200",
-    URGENTE: "bg-red-50 text-red-700 border-red-200",
-    Alta: "bg-orange-50 text-orange-700 border-orange-200",
-    ALTA: "bg-orange-50 text-orange-700 border-orange-200",
-    Média: "bg-amber-50 text-amber-700 border-amber-200",
-    MEDIA: "bg-amber-50 text-amber-700 border-amber-200",
-    Baixa: "bg-blue-50 text-blue-700 border-blue-200",
-    BAIXA: "bg-blue-50 text-blue-700 border-blue-200",
-  };
-  return map[prioridade] ?? "bg-slate-100 text-slate-600 border-slate-200";
+  if (!prioridade) return "bg-[color:var(--background)]/25 text-[color:var(--muted-foreground)] border-[color:var(--border)]";
+  return "bg-[color:var(--background)]/25 text-[color:var(--foreground)] border-[color:var(--border)]";
 }
 
 // Cor da bolinha de prioridade (para o indicador ao lado do select)
@@ -269,7 +259,7 @@ export function EditTaskModalFull({
   const finalizePayloadRef = useRef<{ motivo: string } | null>(null);
   const [finalizacaoMotivoView, setFinalizacaoMotivoView] = useState<string | null>(ticket.finalizacaoMotivo ?? null);
 
-  const [budget, setBudget] = useState<any>((ticket as any).budget ?? null);
+  const [budget, setBudget] = useState<PackageTicket["budget"] | null>(ticket.budget ?? null);
   const [budgetHoras, setBudgetHoras] = useState("");
   const [budgetObservacao, setBudgetObservacao] = useState("");
   const [budgetSaving, setBudgetSaving] = useState(false);
@@ -307,7 +297,7 @@ export function EditTaskModalFull({
         setBudgetError(data.error || "Erro ao enviar orçamento.");
         return;
       }
-      setBudget((data as any).budget ?? null);
+      setBudget(((data as PackageTicket).budget ?? null) as PackageTicket["budget"] | null);
       onSaved();
     } catch {
       setBudgetError("Erro de conexão.");
@@ -326,7 +316,7 @@ export function EditTaskModalFull({
         setBudgetError(data.error || "Erro ao aprovar orçamento.");
         return;
       }
-      setBudget((data as any).budget ?? null);
+      setBudget(((data as PackageTicket).budget ?? null) as PackageTicket["budget"] | null);
       setStatus("EXECUCAO");
       onSaved();
     } catch {
@@ -353,7 +343,7 @@ export function EditTaskModalFull({
         setBudgetError(data.error || "Erro ao reprovar orçamento.");
         return;
       }
-      setBudget((data as any).budget ?? null);
+      setBudget(((data as PackageTicket).budget ?? null) as PackageTicket["budget"] | null);
       setStatus("ENCERRADO");
       onSaved();
     } catch {
@@ -373,7 +363,7 @@ export function EditTaskModalFull({
       .then(async (r) => (r.ok ? r.json().catch(() => null) : null))
       .then((data) => {
         if (cancelled || !data || typeof data !== "object") return;
-        const b = (data as any).budget ?? null;
+        const b = ((data as PackageTicket).budget ?? null) as PackageTicket["budget"] | null;
         setBudget(b);
       })
       .catch(() => {})
@@ -428,10 +418,11 @@ export function EditTaskModalFull({
       // Buscar tópicos do projeto através da API de tickets
       apiFetch(`/api/tickets?projectId=${projectId}&light=true`)
         .then((r) => (r.ok ? r.json() : []))
-        .then((tickets) => {
-          const topicos = tickets
-            .filter((t: any) => t.type === "SUBPROJETO")
-            .map((t: any) => ({ id: t.id, code: t.code, title: t.title }));
+        .then((tickets: unknown) => {
+          const list: LightTicket[] = Array.isArray(tickets) ? (tickets as LightTicket[]) : [];
+          const topicos = list
+            .filter((t) => t && t.type === "SUBPROJETO")
+            .map((t) => ({ id: t.id, code: t.code, title: t.title }));
           setTopics(topicos);
         })
         .catch(() => {
@@ -563,7 +554,7 @@ export function EditTaskModalFull({
         if (isAmsOrTm && typeof t.finalizacaoMotivo === "string") {
           setFinalizacaoMotivoView(t.finalizacaoMotivo);
         }
-        setBudget((t as any).budget ?? null);
+        setBudget(((t as PackageTicket).budget ?? null) as PackageTicket["budget"] | null);
       })
       .catch(() => {});
     return () => {
@@ -586,8 +577,7 @@ export function EditTaskModalFull({
       })
       .then((data) => {
         if (cancelled || !data || typeof data !== "object") return;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const t = data as any;
+        const t = data as Partial<PackageTicket> & Record<string, unknown>;
 
         // Evita sobrescrever edições em andamento para perfis editáveis:
         // só aplica se o formulário ainda estiver igual ao snapshot inicial.
@@ -601,7 +591,7 @@ export function EditTaskModalFull({
         setSelectedTopicId(t.parentTicketId ?? "");
         setPrioridade(t.criticidade ?? "");
         setStatus(t.status ?? "ABERTO");
-        setBudget(t.budget ?? null);
+        setBudget((t.budget ?? null) as PackageTicket["budget"] | null);
         if (t.dataFimPrevista) {
           const iso = new Date(t.dataFimPrevista).toISOString();
           setDataEntrega(iso.slice(0, 10));
@@ -678,7 +668,7 @@ export function EditTaskModalFull({
     });
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));
-      throw new Error((data as any)?.error || "Falha ao enviar imagem");
+      throw new Error((data as { error?: string } | null)?.error || "Falha ao enviar imagem");
     }
     const attachment = await response.json().catch(() => null);
     const fileUrl = attachment?.fileUrl as string | undefined;
@@ -876,7 +866,10 @@ export function EditTaskModalFull({
       .then((entries) => {
         console.log("Apontamentos carregados:", entries.length, entries);
         setTimeEntries(entries);
-        const total = entries.reduce((sum: number, e: any) => sum + (e.totalHoras || 0), 0);
+        const total = (entries as Array<{ totalHoras?: number | null }>).reduce(
+          (sum, e) => sum + (e.totalHoras || 0),
+          0,
+        );
         setHorasApontadas(total);
       })
       .catch((err) => {
@@ -1193,7 +1186,7 @@ export function EditTaskModalFull({
     setError("");
 
     try {
-      const body: any = {
+      const body: Record<string, unknown> = {
         date: timeEntryDate,
         horaInicio: timeEntryHoraInicio,
         horaFim: timeEntryHoraFim,
@@ -1349,7 +1342,7 @@ export function EditTaskModalFull({
 
     setSaving(true);
     try {
-      const body: any = {
+      const body: Record<string, unknown> = {
         title: title.trim(),
         description: description.trim() || undefined,
         criticidade: prioridade || undefined,
@@ -1410,13 +1403,13 @@ export function EditTaskModalFull({
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError((data as any)?.error || "Erro ao atualizar tarefa");
+        setError((data as { error?: string } | null)?.error || "Erro ao atualizar tarefa");
         return;
       }
 
       finalizePayloadRef.current = null;
-      if ((data as any)?.finalizacaoMotivo != null) {
-        setFinalizacaoMotivoView(String((data as any).finalizacaoMotivo));
+      if ((data as { finalizacaoMotivo?: unknown } | null)?.finalizacaoMotivo != null) {
+        setFinalizacaoMotivoView(String((data as { finalizacaoMotivo?: unknown }).finalizacaoMotivo));
       } else if (status !== "ENCERRADO") {
         setFinalizacaoMotivoView(null);
       }
@@ -1435,9 +1428,10 @@ export function EditTaskModalFull({
   }
 
   const inputClass =
-    "w-full px-4 py-2.5 rounded-lg border border-slate-200 bg-white text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-slate-300";
-  const readOnlyNoFocusClass = "focus:ring-0 focus:border-slate-200 focus:outline-none hover:border-slate-200 cursor-default";
-  const labelClass = "block text-sm font-semibold text-slate-700 mb-2";
+    "w-full px-4 py-2.5 rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--foreground)] placeholder:text-[color:var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/35 focus:border-[color:var(--primary)] transition hover:opacity-[0.98]";
+  const readOnlyNoFocusClass =
+    "focus:ring-0 focus:border-[color:var(--border)] focus:outline-none hover:opacity-100 cursor-default";
+  const labelClass = "block text-sm font-semibold text-[color:var(--muted-foreground)] mb-2";
 
   const tabs: { id: Tab; label: string }[] = isClienteProfile
     ? [
@@ -1456,53 +1450,53 @@ export function EditTaskModalFull({
 
   return (
     <div
-      className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 px-4 py-6 animate-in fade-in duration-200"
+      className="fixed inset-0 bg-black/55 backdrop-blur-sm flex items-center justify-center z-50 px-4 py-6 animate-in fade-in duration-200"
       onClick={onClose}
     >
       <form
         onSubmit={handleSubmit}
         ref={formRef}
-        className="bg-white rounded-2xl border border-slate-200 w-full max-w-5xl shadow-2xl h-[90vh] flex flex-col animate-in zoom-in-95 duration-200"
+        className="bg-[color:var(--surface)] rounded-3xl border border-[color:var(--border)] w-full max-w-5xl shadow-[0_24px_80px_rgba(0,0,0,0.45)] h-[90vh] flex flex-col animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header + Tabs fixos */}
-        <div className="border-b border-slate-200 bg-gradient-to-b from-white to-slate-50/50 rounded-t-2xl">
+        <div className="border-b border-[color:var(--border)] bg-[color:var(--surface)] rounded-t-3xl">
           <div className="flex items-start justify-between px-6 pt-6 pb-4 gap-4">
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-2 text-xs text-slate-500">
+              <div className="flex items-center gap-2 mb-2 text-xs text-[color:var(--muted-foreground)]">
                 {!isTopicTicket(ticket.type) && (
-                  <span className="font-mono font-semibold text-slate-600">#{ticket.code}</span>
+                  <span className="font-mono font-semibold text-[color:var(--foreground)]">#{ticket.code}</span>
                 )}
                 {projectName && (
                   <>
-                    <span className="text-slate-300">•</span>
-                    <span className="text-slate-500">{projectName}</span>
+                    <span className="opacity-60">•</span>
+                    <span className="opacity-90">{projectName}</span>
                   </>
                 )}
               </div>
-              <h2 className="text-xl md:text-2xl font-bold text-slate-900 truncate mb-3">
+              <h2 className="text-xl md:text-2xl font-bold text-[color:var(--foreground)] truncate mb-3">
                 {title || ticket.title}
               </h2>
               <div className="flex flex-wrap items-center gap-2">
-                <span className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-semibold border ${getStatusPillClass(status)}`}>
-                  <span className={`h-2 w-2 rounded-full ${status === "EXECUCAO" || status === "TESTE" ? "bg-blue-500" : status === "ENCERRADO" ? "bg-emerald-500" : "bg-slate-400"}`}></span>
+                <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold border ${getStatusPillClass(status)}`}>
+                  <span className={`h-2 w-2 rounded-full ${status === "EXECUCAO" || status === "TESTE" ? "bg-blue-500" : status === "ENCERRADO" ? "bg-emerald-500" : "bg-slate-400"}`} />
                   {status === "ABERTO" ? "Backlog" : status === "EXECUCAO" ? "Em execução" : status === "ENCERRADO" ? "Finalizada" : status}
                 </span>
                 {String(budget?.status ?? "").toUpperCase() === "AGUARDANDO_APROVACAO" && (
-                  <span className="inline-flex items-center rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-800">
+                  <span className="inline-flex items-center rounded-full border border-[color:var(--border)] bg-[color:var(--background)]/25 px-3 py-1 text-xs font-semibold text-[color:var(--foreground)]">
                     Aguardando aprovação
                   </span>
                 )}
                 {status === "ENCERRADO" &&
                   (tipoProjeto === "AMS" || tipoProjeto === "TIME_MATERIAL") &&
                   finalizacaoMotivoView && (
-                    <span className="inline-flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
+                    <span className="inline-flex items-center rounded-full border border-[color:var(--border)] bg-[color:var(--background)]/25 px-3 py-1 text-xs font-semibold text-[color:var(--foreground)]">
                       {finalizacaoMotivoView}
                     </span>
                   )}
                 {prioridade && (
-                  <span className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-semibold border ${getPrioridadePillClass(prioridade)}`}>
-                    <span className={`h-2 w-2 rounded-full ${getPrioridadeDotClass(prioridade)}`}></span>
+                  <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold border ${getPrioridadePillClass(prioridade)}`}>
+                    <span className={`h-2 w-2 rounded-full ${getPrioridadeDotClass(prioridade)}`} />
                     {prioridade}
                   </span>
                 )}
@@ -1512,14 +1506,14 @@ export function EditTaskModalFull({
               <button
                 type="button"
                 onClick={onClose}
-                className="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors duration-200"
+                className="p-2 rounded-xl text-[color:var(--muted-foreground)] hover:bg-black/5 transition-colors duration-200"
                 aria-label="Fechar"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
           </div>
-          <div className="flex items-center border-t border-slate-200 px-6 overflow-x-auto bg-white">
+          <div className="flex items-center border-t border-[color:var(--border)] px-3 sm:px-6 overflow-x-auto bg-[color:var(--background)]/18">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
@@ -1527,13 +1521,13 @@ export function EditTaskModalFull({
                 onClick={() => setActiveTab(tab.id)}
                 className={`relative px-4 py-3 text-sm font-medium whitespace-nowrap transition-all duration-200 ${
                   activeTab === tab.id
-                    ? "text-blue-600"
-                    : "text-slate-500 hover:text-slate-700"
+                    ? "text-[color:var(--primary)]"
+                    : "text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]"
                 }`}
               >
                 {tab.label}
                 {activeTab === tab.id && (
-                  <span className="absolute inset-x-0 bottom-0 h-0.5 bg-blue-600 rounded-t-full" />
+                  <span className="absolute inset-x-0 bottom-0 h-0.5 bg-[color:var(--primary)] rounded-t-full" />
                 )}
               </button>
             ))}
@@ -1541,13 +1535,13 @@ export function EditTaskModalFull({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-hidden bg-gradient-to-b from-slate-50 to-white">
+        <div className="flex-1 overflow-hidden bg-[color:var(--background)]">
           <div className="h-full overflow-y-auto px-6 pb-6 pt-6">
             {activeTab === "descricao" && (
               <div className="space-y-6">
                 <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,2fr)_minmax(0,2fr)] gap-6">
                   {/* Coluna Esquerda */}
-                  <div className="space-y-5 bg-white rounded-xl border border-slate-200 px-5 py-5 shadow-sm hover:shadow-md transition-shadow duration-200">
+                  <div className="space-y-5 bg-[color:var(--surface)] rounded-2xl border border-[color:var(--border)] px-5 py-5 shadow-sm hover:shadow-md transition-shadow duration-200">
                     <div>
                       <label className={labelClass}>
                         Título <span className="text-red-500">*</span>
@@ -1583,7 +1577,7 @@ export function EditTaskModalFull({
                               </option>
                             ))}
                           </select>
-                          <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-400 text-xs">
+                          <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[color:var(--muted-foreground)] text-xs">
                             ▾
                           </span>
                         </div>
@@ -1632,7 +1626,7 @@ export function EditTaskModalFull({
                   </div>
 
                   {/* Coluna Direita */}
-                  <div className="space-y-5 bg-white rounded-xl border border-slate-200 px-5 py-5 shadow-sm hover:shadow-md transition-shadow duration-200">
+                  <div className="space-y-5 bg-[color:var(--surface)] rounded-2xl border border-[color:var(--border)] px-5 py-5 shadow-sm hover:shadow-md transition-shadow duration-200">
                     {!isClienteProfile && (
                       <div>
                         <label className={labelClass}>Membros</label>
@@ -1640,21 +1634,22 @@ export function EditTaskModalFull({
                           {displayedResponsibleMembers.map((u) => (
                             <div
                               key={u.id}
-                              className="flex items-center gap-1.5 rounded-full bg-slate-100 pl-1 pr-2 py-1 border border-slate-200"
+                              className="flex items-center gap-1.5 rounded-full bg-[color:var(--background)]/25 pl-1 pr-2 py-1 border border-[color:var(--border)]"
                             >
                               <span
-                                className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white text-xs font-semibold"
+                                className="flex h-8 w-8 items-center justify-center rounded-full text-[color:var(--primary-foreground)] text-xs font-semibold"
+                                style={{ background: "var(--primary)" }}
                                 title={u.name}
                               >
                                 {getIniciais(u.name)}
                               </span>
-                              <span className="text-sm text-slate-700 max-w-[100px] truncate">
+                              <span className="text-sm text-[color:var(--foreground)] max-w-[100px] truncate">
                                 {u.name}
                               </span>
                               {!isReadOnly && <button
                                 type="button"
                                 onClick={() => removeResponsible(u.id)}
-                                className="ml-0.5 text-slate-400 hover:text-red-600 p-0.5"
+                                className="ml-0.5 text-[color:var(--muted-foreground)] hover:text-red-600 p-0.5"
                                 aria-label="Remover"
                               >
                                 ×
@@ -1665,16 +1660,16 @@ export function EditTaskModalFull({
                             {!isReadOnly && <button
                               type="button"
                               onClick={() => setShowUserPicker(!showUserPicker)}
-                              className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg border-2 border-dashed border-slate-300 bg-white text-slate-600 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 text-sm font-semibold transition-all duration-200"
+                              className="inline-flex items-center gap-1.5 h-9 px-4 rounded-xl border-2 border-dashed border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--foreground)] hover:opacity-90 text-sm font-semibold transition-all duration-200"
                               title="Adicionar membro"
                             >
                               <Plus className="h-4 w-4" />
                               Adicionar
                             </button>}
                             {!isReadOnly && showUserPicker && (
-                              <div className="absolute left-0 top-full mt-1 z-10 w-56 rounded-lg border border-slate-200 bg-white shadow-lg py-1 max-h-48 overflow-y-auto">
+                              <div className="absolute left-0 top-full mt-1 z-10 w-56 rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] shadow-lg py-1 max-h-48 overflow-y-auto">
                                 {availableToAdd.length === 0 ? (
-                                  <p className="px-3 py-2 text-xs text-slate-500">
+                                  <p className="px-3 py-2 text-xs text-[color:var(--muted-foreground)]">
                                     Todos já adicionados
                                   </p>
                                 ) : (
@@ -1683,7 +1678,7 @@ export function EditTaskModalFull({
                                       key={u.id}
                                       type="button"
                                       onClick={() => addResponsible(u.id)}
-                                      className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                                      className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm text-[color:var(--foreground)] hover:bg-black/5"
                                     >
                                       <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-200 text-xs font-medium text-slate-600">
                                         {getIniciais(u.name)}
@@ -1748,8 +1743,8 @@ export function EditTaskModalFull({
                         {status === "ENCERRADO" &&
                           ticket.finalizacaoMotivo &&
                           (tipoProjeto === "AMS" || tipoProjeto === "TIME_MATERIAL") && (
-                            <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-                              <p className="font-semibold text-slate-800">
+                            <div className="mt-2 rounded-xl border border-[color:var(--border)] bg-[color:var(--background)]/25 px-3 py-2 text-sm text-[color:var(--foreground)]">
+                              <p className="font-semibold">
                                 Motivo: <span className="font-medium">{ticket.finalizacaoMotivo ?? "—"}</span>
                               </p>
                             </div>
@@ -1761,7 +1756,7 @@ export function EditTaskModalFull({
                         <button
                           type="button"
                           onClick={() => setShowPrioridadeOpen(!showPrioridadeOpen)}
-                          className={`w-full flex items-center gap-2 px-4 py-2.5 rounded-lg border bg-white text-left text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 ${showPrioridadeOpen ? "border-blue-500 ring-2 ring-blue-500 shadow-sm" : "border-slate-200 hover:border-slate-300"}`}
+                          className={`w-full flex items-center gap-2 px-4 py-2.5 rounded-xl border bg-[color:var(--surface)] text-left text-sm text-[color:var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/35 focus:border-[color:var(--primary)] transition-all duration-200 ${showPrioridadeOpen ? "shadow-sm" : ""}`}
                           disabled={isReadOnly}
                         >
                           {prioridade ? (
@@ -1770,19 +1765,19 @@ export function EditTaskModalFull({
                               <span>{PRIORIDADES.find((p) => p.value === prioridade)?.label ?? prioridade}</span>
                             </>
                           ) : (
-                            <span className="text-slate-400">Selecione...</span>
+                            <span className="text-[color:var(--muted-foreground)]">Selecione...</span>
                           )}
-                          <span className="ml-auto text-slate-400 pointer-events-none">▼</span>
+                          <span className="ml-auto text-[color:var(--muted-foreground)] pointer-events-none">▼</span>
                         </button>
                         {!isReadOnly && showPrioridadeOpen && (
-                          <div className="absolute left-0 right-0 top-full mt-2 z-20 rounded-lg border border-slate-200 bg-white shadow-xl py-1 max-h-56 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
+                          <div className="absolute left-0 right-0 top-full mt-2 z-20 rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] shadow-xl py-1 max-h-56 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
                             <button
                               type="button"
                               onClick={() => {
                                 setPrioridade("");
                                 setShowPrioridadeOpen(false);
                               }}
-                              className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-500 hover:bg-slate-50"
+                              className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm text-[color:var(--muted-foreground)] hover:bg-black/5"
                             >
                               Selecione...
                             </button>
@@ -1794,7 +1789,7 @@ export function EditTaskModalFull({
                                   setPrioridade(p.value);
                                   setShowPrioridadeOpen(false);
                                 }}
-                                className={`w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm ${prioridade === p.value ? "bg-blue-50 text-blue-800" : "text-slate-700 hover:bg-slate-50"}`}
+                                className={`w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm ${prioridade === p.value ? "bg-[color:var(--background)]/35 text-[color:var(--foreground)]" : "text-[color:var(--foreground)] hover:bg-black/5"}`}
                               >
                                 <span className={`h-2.5 w-2.5 rounded-full flex-shrink-0 ${getPrioridadeDotClass(p.value)}`} aria-hidden />
                                 {p.label}
@@ -1819,23 +1814,23 @@ export function EditTaskModalFull({
                         className={inputClass}
                         disabled={isReadOnly}
                       />
-                      <div className="mt-3 h-2 bg-slate-200 rounded-full overflow-hidden shadow-inner">
+                      <div className="mt-3 h-2 bg-black/10 rounded-full overflow-hidden shadow-inner">
                         <div
-                          className="h-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-500 ease-out shadow-sm"
-                          style={{ width: `${progresso}%` }}
+                          className="h-full transition-all duration-500 ease-out shadow-sm"
+                          style={{ width: `${progresso}%`, background: "var(--primary)" }}
                         />
                       </div>
-                      <p className="mt-1.5 text-xs text-slate-500 text-right">{progresso}% concluído</p>
+                      <p className="mt-1.5 text-xs text-[color:var(--muted-foreground)] text-right">{progresso}% concluído</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Campo Descrição - Largura completa */}
-                <div className="bg-white rounded-xl border border-slate-200 px-5 py-5 shadow-sm hover:shadow-md transition-shadow duration-200">
+                <div className="bg-[color:var(--surface)] rounded-2xl border border-[color:var(--border)] px-5 py-5 shadow-sm hover:shadow-md transition-shadow duration-200">
                   <label className={labelClass}>
                     Descrição{" "}
                     {description.length > 0 && (
-                      <span className="text-xs text-slate-400 font-normal">
+                      <span className="text-xs text-[color:var(--muted-foreground)] font-normal">
                         ({description.length}/1000)
                       </span>
                     )}
@@ -1856,8 +1851,8 @@ export function EditTaskModalFull({
                 </div>
 
                 {/* Seção de Comentários */}
-                <div className="bg-white rounded-xl border border-slate-200 px-5 py-5 shadow-sm hover:shadow-md transition-shadow duration-200">
-                  <h3 className="text-base font-bold text-slate-800 mb-5 flex items-center gap-2">
+                <div className="bg-[color:var(--surface)] rounded-2xl border border-[color:var(--border)] px-5 py-5 shadow-sm hover:shadow-md transition-shadow duration-200">
+                  <h3 className="text-base font-bold text-[color:var(--foreground)] mb-5 flex items-center gap-2">
                     <span className="h-1 w-1 rounded-full bg-blue-500"></span>
                     Comentários
                   </h3>
@@ -1874,11 +1869,11 @@ export function EditTaskModalFull({
                         const vis = String(c.visibility || "PUBLIC").toUpperCase();
 
                         return (
-                          <div key={c.id} className="bg-slate-50 border border-slate-200 rounded-lg p-4 hover:border-slate-300 transition-colors duration-200">
+                          <div key={c.id} className="bg-[color:var(--background)]/25 border border-[color:var(--border)] rounded-2xl p-4 hover:bg-black/5 transition-colors duration-200">
                             <div className="flex items-start justify-between mb-2">
                               <div className="flex items-center gap-2">
-                                <span className="text-xs font-medium text-slate-700">{c.user?.name || "Usuário"}</span>
-                                <span className="text-xs text-slate-400">
+                                <span className="text-xs font-medium text-[color:var(--foreground)]">{c.user?.name || "Usuário"}</span>
+                                <span className="text-xs text-[color:var(--muted-foreground)]">
                                   {new Date(c.createdAt).toLocaleString("pt-BR", {
                                     day: "2-digit",
                                     month: "2-digit",
@@ -1899,7 +1894,7 @@ export function EditTaskModalFull({
                                     type="button"
                                     onClick={() => handleEditComment(c.id)}
                                     disabled={isDeleting || savingComment}
-                                    className="p-2 rounded-lg hover:bg-blue-50 text-slate-500 hover:text-blue-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="p-2 rounded-xl hover:bg-black/5 text-[color:var(--muted-foreground)] hover:text-[color:var(--primary)] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                                     title="Editar comentário"
                                   >
                                     <Pencil className="h-4 w-4" />
@@ -1908,7 +1903,7 @@ export function EditTaskModalFull({
                                     type="button"
                                     onClick={() => handleDeleteComment(c.id)}
                                     disabled={isDeleting || savingComment}
-                                    className="p-2 rounded-lg hover:bg-red-50 text-slate-500 hover:text-red-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="p-2 rounded-xl hover:bg-black/5 text-[color:var(--muted-foreground)] hover:text-red-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                                     title="Excluir comentário"
                                   >
                                     <Trash2 className="h-4 w-4" />
@@ -1928,7 +1923,7 @@ export function EditTaskModalFull({
                                     type="button"
                                     onClick={handleCancelEdit}
                                     disabled={savingComment}
-                                    className="px-4 py-2 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="px-4 py-2 rounded-xl text-sm font-semibold text-[color:var(--foreground)] hover:bg-black/5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                                   >
                                     Cancelar
                                   </button>
@@ -1936,7 +1931,8 @@ export function EditTaskModalFull({
                                     type="button"
                                     onClick={handleSaveEditComment}
                                     disabled={!hasTextContent(editingCommentContent) || savingComment}
-                                    className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="px-4 py-2 rounded-xl text-[color:var(--primary-foreground)] text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-95"
+                                    style={{ background: "var(--primary)" }}
                                   >
                                     {savingComment ? "Salvando..." : "Salvar"}
                                   </button>
@@ -1944,7 +1940,7 @@ export function EditTaskModalFull({
                               </div>
                             ) : (
                               <div
-                                className="text-sm text-slate-700 prose prose-sm max-w-none [&_img]:max-w-full [&_img]:rounded-lg [&_img]:my-2 [&_ul]:list-disc [&_ul]:ml-4 [&_ol]:list-decimal [&_ol]:ml-4"
+                                className="text-sm text-[color:var(--foreground)] prose prose-sm max-w-none [&_img]:max-w-full [&_img]:rounded-lg [&_img]:my-2 [&_ul]:list-disc [&_ul]:ml-4 [&_ol]:list-decimal [&_ol]:ml-4"
                                 dangerouslySetInnerHTML={{ __html: c.content }}
                               />
                             )}
@@ -1953,14 +1949,14 @@ export function EditTaskModalFull({
                       })}
                     </div>
                   ) : (
-                    <div className="mb-6 text-sm text-slate-500 py-8 text-center border-2 border-dashed border-slate-200 rounded-lg bg-slate-50/50">
-                      <p className="text-slate-400">Nenhum comentário ainda.</p>
-                      <p className="text-xs text-slate-400 mt-1">Seja o primeiro a comentar!</p>
+                    <div className="mb-6 text-sm text-[color:var(--muted-foreground)] py-8 text-center border-2 border-dashed border-[color:var(--border)] rounded-2xl bg-[color:var(--background)]/25">
+                      <p className="opacity-90">Nenhum comentário ainda.</p>
+                      <p className="text-xs opacity-75 mt-1">Seja o primeiro a comentar!</p>
                     </div>
                   )}
                   
                   {/* Editor de novo comentário */}
-                  <div ref={newCommentSectionRef} className="mt-6 pt-6 border-t border-slate-200">
+                  <div ref={newCommentSectionRef} className="mt-6 pt-6 border-t border-[color:var(--border)]">
                     <label className={labelClass}>Novo comentário</label>
                     {!isClienteProfile && (
                       <div className="mb-3 flex items-center gap-2 text-xs">
@@ -1969,9 +1965,10 @@ export function EditTaskModalFull({
                           onClick={() => setCommentVisibility("PUBLIC")}
                           className={`px-3 py-1 rounded-full border transition ${
                             commentVisibility === "PUBLIC"
-                              ? "bg-blue-600 text-white border-blue-600"
-                              : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                              ? "text-[color:var(--primary-foreground)] border-transparent"
+                              : "bg-[color:var(--surface)] text-[color:var(--foreground)] border-[color:var(--border)] hover:bg-black/5"
                           }`}
+                          style={commentVisibility === "PUBLIC" ? { background: "var(--primary)" } : undefined}
                         >
                           Público
                         </button>
@@ -1980,13 +1977,14 @@ export function EditTaskModalFull({
                           onClick={() => setCommentVisibility("INTERNAL")}
                           className={`px-3 py-1 rounded-full border transition ${
                             commentVisibility === "INTERNAL"
-                              ? "bg-purple-600 text-white border-purple-600"
-                              : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                              ? "text-white border-transparent"
+                              : "bg-[color:var(--surface)] text-[color:var(--foreground)] border-[color:var(--border)] hover:bg-black/5"
                           }`}
+                          style={commentVisibility === "INTERNAL" ? { background: "#7c3aed" } : undefined}
                         >
                           Interno
                         </button>
-                        <span className="text-slate-500">
+                        <span className="text-[color:var(--muted-foreground)]">
                           {commentVisibility === "INTERNAL"
                             ? "Somente equipe interna (não aparece para cliente)."
                             : "Visível para o cliente."}
@@ -2004,7 +2002,8 @@ export function EditTaskModalFull({
                         type="button"
                         onClick={handleSaveComment}
                         disabled={!hasTextContent(comment) || savingComment}
-                        className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md"
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[color:var(--primary-foreground)] text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md hover:opacity-95"
+                        style={{ background: "var(--primary)" }}
                       >
                         <Send className="h-4 w-4" />
                         {savingComment ? "Enviando..." : "Enviar comentário"}
@@ -2018,16 +2017,16 @@ export function EditTaskModalFull({
             {activeTab === "apontamentos" && !isClienteProfile && (
               <div className="space-y-6">
                 {!canLogTime && (
-                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-amber-800 text-sm">
+                  <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--background)]/25 px-5 py-4 text-[color:var(--foreground)] text-sm">
                     O status do projeto não permite apontamento de horas.
                   </div>
                 )}
                 {/* Formulário de apontamento */}
                 {canManageTimeEntries && <div
                   ref={timeEntryFormRef}
-                  className="bg-white rounded-xl border border-slate-200 px-5 py-5 shadow-sm hover:shadow-md transition-shadow duration-200"
+                  className="bg-[color:var(--surface)] rounded-2xl border border-[color:var(--border)] px-5 py-5 shadow-sm hover:shadow-md transition-shadow duration-200"
                 >
-                  <h3 className="text-base font-bold text-slate-800 mb-5 flex items-center gap-2">
+                  <h3 className="text-base font-bold text-[color:var(--foreground)] mb-5 flex items-center gap-2">
                     <span className="h-1 w-1 rounded-full bg-blue-500"></span>
                     {editingTimeEntry ? "Editar apontamento" : "Novo apontamento"}
                   </h3>
@@ -2050,7 +2049,7 @@ export function EditTaskModalFull({
                       <label className={labelClass}>Horas trabalhadas</label>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="text-xs text-slate-500 mb-1 block">Início</label>
+                          <label className="text-xs text-[color:var(--muted-foreground)] mb-1 block">Início</label>
                           <input
                             type="text"
                             value={timeEntryHoraInicio}
@@ -2065,7 +2064,7 @@ export function EditTaskModalFull({
                           />
                         </div>
                         <div>
-                          <label className="text-xs text-slate-500 mb-1 block">Fim</label>
+                          <label className="text-xs text-[color:var(--muted-foreground)] mb-1 block">Fim</label>
                           <input
                             type="text"
                             value={timeEntryHoraFim}
@@ -2087,7 +2086,7 @@ export function EditTaskModalFull({
                       <label className={labelClass}>Intervalo</label>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="text-xs text-slate-500 mb-1 block">Início</label>
+                          <label className="text-xs text-[color:var(--muted-foreground)] mb-1 block">Início</label>
                           <input
                             type="text"
                             value={timeEntryIntervaloInicio}
@@ -2101,7 +2100,7 @@ export function EditTaskModalFull({
                           />
                         </div>
                         <div>
-                          <label className="text-xs text-slate-500 mb-1 block">Fim</label>
+                          <label className="text-xs text-[color:var(--muted-foreground)] mb-1 block">Fim</label>
                           <input
                             type="text"
                             value={timeEntryIntervaloFim}
@@ -2123,7 +2122,7 @@ export function EditTaskModalFull({
                       <input
                         type="text"
                         value={calcTotalHoras()}
-                        className={inputClass + " bg-slate-50 cursor-not-allowed"}
+                        className={inputClass + " bg-[color:var(--background)]/25 cursor-not-allowed"}
                         readOnly
                         disabled
                       />
@@ -2134,7 +2133,7 @@ export function EditTaskModalFull({
                       <label className={labelClass}>
                         Comentário <span className="text-red-500">*</span>
                         {timeEntryDescription.length > 0 && (
-                          <span className="text-xs text-slate-400 font-normal ml-1">
+                          <span className="text-xs text-[color:var(--muted-foreground)] font-normal ml-1">
                             ({timeEntryDescription.length}/500)
                           </span>
                         )}
@@ -2155,13 +2154,13 @@ export function EditTaskModalFull({
                     </div>
 
                     {/* Botões */}
-                    <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                    <div className="flex justify-end gap-3 pt-4 border-t border-[color:var(--border)]">
                       {editingTimeEntry && (
                         <button
                           type="button"
                           onClick={handleCancelEditTimeEntry}
                           disabled={savingTimeEntry}
-                          className="px-5 py-2.5 rounded-lg border border-slate-300 bg-white text-slate-700 text-sm font-semibold hover:bg-slate-50 hover:border-slate-400 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="px-5 py-2.5 rounded-xl border border-[color:var(--border)] bg-transparent text-[color:var(--foreground)] text-sm font-semibold hover:bg-black/5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           Cancelar
                         </button>
@@ -2170,7 +2169,8 @@ export function EditTaskModalFull({
                         type="button"
                         onClick={handleSaveTimeEntry}
                         disabled={savingTimeEntry || !timeEntryHoraInicio || !timeEntryHoraFim}
-                        className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md"
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[color:var(--primary-foreground)] text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md hover:opacity-95"
+                        style={{ background: "var(--primary)" }}
                       >
                         {editingTimeEntry ? (
                           <>
@@ -2189,8 +2189,8 @@ export function EditTaskModalFull({
                 </div>}
 
                 {/* Tabela de apontamentos */}
-                <div className="bg-white rounded-xl border border-slate-200 px-5 py-5 shadow-sm hover:shadow-md transition-shadow duration-200">
-                  <h3 className="text-base font-bold text-slate-800 mb-5 flex items-center gap-2">
+                <div className="bg-[color:var(--surface)] rounded-2xl border border-[color:var(--border)] px-5 py-5 shadow-sm hover:shadow-md transition-shadow duration-200">
+                  <h3 className="text-base font-bold text-[color:var(--foreground)] mb-5 flex items-center gap-2">
                     <span className="h-1 w-1 rounded-full bg-blue-500"></span>
                     Apontamentos registrados
                   </h3>
@@ -2200,46 +2200,46 @@ export function EditTaskModalFull({
                       <table className="w-full">
                         <thead>
                           <tr className="border-b-2 border-slate-200 bg-slate-50">
-                            <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Usuário</th>
-                            <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Horas trabalhadas</th>
-                            <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Intervalo</th>
-                            <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Horas totais</th>
-                            <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Comentário</th>
+                            <th className="px-4 py-3 text-left text-xs font-bold text-[color:var(--muted-foreground)] uppercase tracking-wider">Usuário</th>
+                            <th className="px-4 py-3 text-left text-xs font-bold text-[color:var(--muted-foreground)] uppercase tracking-wider">Horas trabalhadas</th>
+                            <th className="px-4 py-3 text-left text-xs font-bold text-[color:var(--muted-foreground)] uppercase tracking-wider">Intervalo</th>
+                            <th className="px-4 py-3 text-left text-xs font-bold text-[color:var(--muted-foreground)] uppercase tracking-wider">Horas totais</th>
+                            <th className="px-4 py-3 text-left text-xs font-bold text-[color:var(--muted-foreground)] uppercase tracking-wider">Comentário</th>
                             {canManageTimeEntries && (
-                              <th className="px-4 py-3 text-right text-xs font-bold text-slate-700 uppercase tracking-wider">Ações</th>
+                              <th className="px-4 py-3 text-right text-xs font-bold text-[color:var(--muted-foreground)] uppercase tracking-wider">Ações</th>
                             )}
                           </tr>
                         </thead>
                         <tbody>
                           {timeEntries.map((entry) => (
-                            <tr key={entry.id} className="border-b border-slate-100 hover:bg-blue-50/50 transition-colors duration-150">
+                            <tr key={entry.id} className="border-b border-[color:var(--border)]/60 hover:bg-black/5 transition-colors duration-150">
                               <td className="px-4 py-3">
                                 <div className="flex items-center gap-2">
-                                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white text-xs font-semibold">
+                                  <span className="flex h-8 w-8 items-center justify-center rounded-full text-[color:var(--primary-foreground)] text-xs font-semibold" style={{ background: "var(--primary)" }}>
                                     {entry.user?.name ? getIniciais(entry.user.name) : "U"}
                                   </span>
                                   <div>
-                                    <p className="text-sm font-medium text-slate-800">
+                                    <p className="text-sm font-medium text-[color:var(--foreground)]">
                                       {entry.user?.name || "Usuário"}
                                     </p>
-                                    <p className="text-xs text-slate-500">
+                                    <p className="text-xs text-[color:var(--muted-foreground)]">
                                       {formatDateOnly(entry.date)}
                                     </p>
                                   </div>
                                 </div>
                               </td>
-                              <td className="px-4 py-3 text-sm text-slate-700">
+                              <td className="px-4 py-3 text-sm text-[color:var(--foreground)]">
                                 {entry.horaInicio} às {entry.horaFim}
                               </td>
-                              <td className="px-4 py-3 text-sm text-slate-700">
+                              <td className="px-4 py-3 text-sm text-[color:var(--foreground)]">
                                 {entry.intervaloInicio && entry.intervaloFim
                                   ? `${entry.intervaloInicio} às ${entry.intervaloFim}`
                                   : "—"}
                               </td>
-                              <td className="px-4 py-3 text-sm font-mono font-semibold text-blue-600">
+                              <td className="px-4 py-3 text-sm font-mono font-semibold text-[color:var(--primary)]">
                                 {fmtHoras(entry.totalHoras)}
                               </td>
-                              <td className="px-4 py-3 text-sm text-slate-700 max-w-xs">
+                              <td className="px-4 py-3 text-sm text-[color:var(--foreground)] max-w-xs">
                                 <p className="truncate" title={entry.description || ""}>
                                   {entry.description || "—"}
                                 </p>
@@ -2367,9 +2367,9 @@ export function EditTaskModalFull({
                       </table>
                     </div>
                   ) : (
-                    <div className="text-center py-12 border-2 border-dashed border-slate-200 rounded-lg bg-slate-50/50">
-                      <p className="text-slate-400 mb-1">Nenhum apontamento registrado ainda.</p>
-                      <p className="text-xs text-slate-400">Esta aba é somente para visualização.</p>
+                    <div className="text-center py-12 border-2 border-dashed border-[color:var(--border)] rounded-2xl bg-[color:var(--background)]/25">
+                      <p className="text-[color:var(--muted-foreground)] mb-1">Nenhum apontamento registrado ainda.</p>
+                      <p className="text-xs text-[color:var(--muted-foreground)]">Esta aba é somente para visualização.</p>
                     </div>
                   )}
                 </div>
@@ -2380,39 +2380,39 @@ export function EditTaskModalFull({
               <div className="space-y-4">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="h-2 w-2 rounded-full bg-blue-500"></div>
-                  <h3 className="text-lg font-semibold text-slate-800">Histórico de Alterações</h3>
+                  <h3 className="text-lg font-semibold text-[color:var(--foreground)]">Histórico de Alterações</h3>
                 </div>
                 
                 {loadingHistory ? (
-                  <div className="text-center py-12 text-sm text-slate-500">
+                  <div className="text-center py-12 text-sm text-[color:var(--muted-foreground)]">
                     Carregando histórico...
                   </div>
                 ) : history.length === 0 ? (
-                  <div className="text-center py-12 border-2 border-dashed border-slate-200 rounded-lg bg-slate-50/50">
-                    <p className="text-slate-400 mb-1">Nenhum registro de histórico encontrado.</p>
-                    <p className="text-xs text-slate-400">As alterações na tarefa serão registradas aqui automaticamente.</p>
+                  <div className="text-center py-12 border-2 border-dashed border-[color:var(--border)] rounded-2xl bg-[color:var(--background)]/25">
+                    <p className="text-[color:var(--muted-foreground)] mb-1">Nenhum registro de histórico encontrado.</p>
+                    <p className="text-xs text-[color:var(--muted-foreground)]">As alterações na tarefa serão registradas aqui automaticamente.</p>
                   </div>
                 ) : (
-                  <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                  <div className="bg-[color:var(--surface)] rounded-2xl border border-[color:var(--border)] shadow-sm overflow-hidden">
                     <div className="overflow-x-auto">
                       <table className="w-full">
-                        <thead className="border-b-2 border-slate-200 bg-slate-50">
+                        <thead className="border-b border-[color:var(--border)] bg-[color:var(--background)]/25">
                           <tr>
-                            <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-700">
+                            <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-[color:var(--muted-foreground)]">
                               Data
                             </th>
-                            <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-700">
+                            <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-[color:var(--muted-foreground)]">
                               Usuário
                             </th>
-                            <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-700">
+                            <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-[color:var(--muted-foreground)]">
                               Ação
                             </th>
-                            <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-700">
+                            <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-[color:var(--muted-foreground)]">
                               Detalhes
                             </th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100">
+                        <tbody className="divide-y divide-[color:var(--border)]/60">
                           {history.map((entry) => {
                             const getActionLabel = (action: string) => {
                               const labels: Record<string, string> = {
@@ -2436,20 +2436,12 @@ export function EditTaskModalFull({
                               return labels[action] || action;
                             };
 
-                            const getActionColor = (action: string) => {
-                              if (action === "CREATE") return "bg-emerald-50 text-emerald-700 border-emerald-200";
-                              if (action === "STATUS_CHANGE") return "bg-blue-50 text-blue-700 border-blue-200";
-                              if (action === "PRIORITY_CHANGE") return "bg-amber-50 text-amber-700 border-amber-200";
-                              if (action === "ASSIGNED" || action === "RESPONSIBLES_CHANGE") return "bg-purple-50 text-purple-700 border-purple-200";
-                              if (action.startsWith("COMMENT_")) return "bg-indigo-50 text-indigo-700 border-indigo-200";
-                              if (action.startsWith("TIME_ENTRY_")) return "bg-cyan-50 text-cyan-700 border-cyan-200";
-                              if (action.startsWith("ATTACHMENT_")) return "bg-violet-50 text-violet-700 border-violet-200";
-                              return "bg-slate-50 text-slate-700 border-slate-200";
-                            };
+                            const getActionColor = () =>
+                              "bg-[color:var(--background)]/25 text-[color:var(--foreground)] border-[color:var(--border)]";
 
                             return (
-                              <tr key={entry.id} className="hover:bg-blue-50/50 transition-colors duration-150">
-                                <td className="px-4 py-3 text-sm text-slate-700">
+                              <tr key={entry.id} className="hover:bg-black/5 transition-colors duration-150">
+                                <td className="px-4 py-3 text-sm text-[color:var(--foreground)]">
                                   <div className="flex flex-col">
                                     <span className="font-medium">
                                       {new Date(entry.createdAt).toLocaleDateString("pt-BR", {
@@ -2458,7 +2450,7 @@ export function EditTaskModalFull({
                                         year: "numeric",
                                       })}
                                     </span>
-                                    <span className="text-xs text-slate-500">
+                                    <span className="text-xs text-[color:var(--muted-foreground)]">
                                       {new Date(entry.createdAt).toLocaleTimeString("pt-BR", {
                                         hour: "2-digit",
                                         minute: "2-digit",
@@ -2466,33 +2458,33 @@ export function EditTaskModalFull({
                                     </span>
                                   </div>
                                 </td>
-                                <td className="px-4 py-3 text-sm text-slate-700">
+                                <td className="px-4 py-3 text-sm text-[color:var(--foreground)]">
                                   <div className="flex items-center gap-2">
-                                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-xs font-semibold shadow-sm">
+                                    <div className="h-8 w-8 rounded-full flex items-center justify-center text-[color:var(--primary-foreground)] text-xs font-semibold shadow-sm" style={{ background: "var(--primary)" }}>
                                       {getIniciais(entry.user.name)}
                                     </div>
                                     <div className="flex flex-col">
-                                      <span className="font-medium text-slate-800">{entry.user.name}</span>
+                                      <span className="font-medium text-[color:var(--foreground)]">{entry.user.name}</span>
                                       {entry.user.email && (
-                                        <span className="text-xs text-slate-500">{entry.user.email}</span>
+                                        <span className="text-xs text-[color:var(--muted-foreground)]">{entry.user.email}</span>
                                       )}
                                     </div>
                                   </div>
                                 </td>
                                 <td className="px-4 py-3">
-                                  <span className={`inline-flex items-center px-3 py-1 rounded-md text-xs font-semibold border ${getActionColor(entry.action)}`}>
+                                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${getActionColor(entry.action)}`}>
                                     {getActionLabel(entry.action)}
                                   </span>
                                 </td>
-                                <td className="px-4 py-3 text-sm text-slate-700">
+                                <td className="px-4 py-3 text-sm text-[color:var(--foreground)]">
                                   {entry.details ? (
                                     <div className="max-w-md">
-                                      <p className="text-slate-800">{entry.details}</p>
+                                      <p className="text-[color:var(--foreground)]">{entry.details}</p>
                                       {entry.field && entry.oldValue !== null && entry.newValue !== null && (
-                                        <div className="mt-2 text-xs text-slate-500 space-y-1">
+                                        <div className="mt-2 text-xs text-[color:var(--muted-foreground)] space-y-1">
                                           <div className="flex items-start gap-2">
                                             <span className="font-medium">Campo:</span>
-                                            <span className="text-slate-600">{entry.field}</span>
+                                            <span className="opacity-90">{entry.field}</span>
                                           </div>
                                           <div className="flex items-start gap-2">
                                             <span className="font-medium">De:</span>
@@ -2506,7 +2498,7 @@ export function EditTaskModalFull({
                                       )}
                                     </div>
                                   ) : (
-                                    <span className="text-slate-400">—</span>
+                                    <span className="text-[color:var(--muted-foreground)]">—</span>
                                   )}
                                 </td>
                               </tr>
@@ -2522,60 +2514,60 @@ export function EditTaskModalFull({
 
             {activeTab === "orcamento" && ticket.type !== "SUBPROJETO" && (
               <div className="space-y-6">
-                <div className="bg-white rounded-xl border border-slate-200 px-5 py-5 shadow-sm">
+                <div className="bg-[color:var(--surface)] rounded-2xl border border-[color:var(--border)] px-5 py-5 shadow-sm">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <h3 className="text-lg font-semibold text-slate-800">Orçamento</h3>
-                      <p className="text-xs text-slate-500 mt-0.5">
+                      <h3 className="text-lg font-semibold text-[color:var(--foreground)]">Orçamento</h3>
+                      <p className="text-xs text-[color:var(--muted-foreground)] mt-0.5">
                         Horas + observação, com controle de aprovação (usuário, data e hora).
                       </p>
                     </div>
                   </div>
 
                   {budgetLoading && (
-                    <div className="mt-3 text-sm text-slate-500">Carregando orçamento...</div>
+                    <div className="mt-3 text-sm text-[color:var(--muted-foreground)]">Carregando orçamento...</div>
                   )}
 
                   {budgetError && (
-                    <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                    <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
                       {budgetError}
                     </div>
                   )}
 
                   {budget && String(budget.status ?? "").toUpperCase() !== "NENHUM" ? (
                     <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                        <div className="text-xs text-slate-500">Horas</div>
-                        <div className="text-sm font-semibold text-slate-800">{Number(budget.horas ?? 0)}</div>
+                      <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--background)]/25 px-3 py-2">
+                        <div className="text-xs text-[color:var(--muted-foreground)]">Horas</div>
+                        <div className="text-sm font-semibold text-[color:var(--foreground)]">{Number(budget.horas ?? 0)}</div>
                       </div>
-                      <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 md:col-span-3">
-                        <div className="text-xs text-slate-500">Observação</div>
-                        <div className="text-sm text-slate-800 whitespace-pre-wrap">
+                      <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--background)]/25 px-3 py-2 md:col-span-3">
+                        <div className="text-xs text-[color:var(--muted-foreground)]">Observação</div>
+                        <div className="text-sm text-[color:var(--foreground)] whitespace-pre-wrap">
                           {String(budget.observacao ?? "")}
                         </div>
                       </div>
 
-                      <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 md:col-span-3">
+                      <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] px-3 py-2 md:col-span-3">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-xs text-slate-500">Status:</span>
+                          <span className="text-xs text-[color:var(--muted-foreground)]">Status:</span>
                           {String(budget.status ?? "").toUpperCase() === "AGUARDANDO_APROVACAO" && (
-                            <span className="text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-1 rounded">
+                            <span className="text-xs font-semibold text-[color:var(--foreground)] bg-[color:var(--background)]/25 border border-[color:var(--border)] px-2 py-1 rounded-full">
                               Aguardando aprovação
                             </span>
                           )}
                           {String(budget.status ?? "").toUpperCase() === "APROVADO" && (
-                            <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded">
+                            <span className="text-xs font-semibold text-[color:var(--foreground)] bg-[color:var(--background)]/25 border border-[color:var(--border)] px-2 py-1 rounded-full">
                               Aprovado
                             </span>
                           )}
                           {String(budget.status ?? "").toUpperCase() === "REPROVADO" && (
-                            <span className="text-xs font-semibold text-red-700 bg-red-50 border border-red-200 px-2 py-1 rounded">
+                            <span className="text-xs font-semibold text-red-700 bg-red-50 border border-red-200 px-2 py-1 rounded-full">
                               Reprovado
                             </span>
                           )}
                         </div>
 
-                        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-slate-600">
+                        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-[color:var(--muted-foreground)]">
                           <div>
                             <b>Enviado por:</b> {budget.sentBy?.name ?? "—"}
                             {budget.sentAt ? ` • ${new Date(budget.sentAt).toLocaleString("pt-BR")}` : ""}
@@ -2598,13 +2590,13 @@ export function EditTaskModalFull({
                           <div className="md:col-span-3">
                             <div className="flex flex-col md:flex-row md:items-end gap-3">
                               <div className="flex-1">
-                                <label className="block text-xs font-medium text-slate-600 mb-1">
+                                <label className="block text-xs font-medium text-[color:var(--muted-foreground)] mb-1">
                                   Motivo da reprovação (obrigatório para reprovar)
                                 </label>
                                 <input
                                   value={budgetRejectReason}
                                   onChange={(e) => setBudgetRejectReason(e.target.value)}
-                                  className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
+                                  className="w-full px-3 py-2 rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/35 focus:border-[color:var(--primary)]"
                                   placeholder="Descreva o motivo"
                                   disabled={budgetDecisionSaving}
                                 />
@@ -2614,7 +2606,7 @@ export function EditTaskModalFull({
                                   type="button"
                                   onClick={handleApproveBudget}
                                   disabled={budgetDecisionSaving}
-                                  className="inline-flex items-center justify-center rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 text-sm font-semibold disabled:opacity-50"
+                                  className="inline-flex items-center justify-center rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 text-sm font-semibold disabled:opacity-50"
                                 >
                                   Aprovar
                                 </button>
@@ -2622,7 +2614,7 @@ export function EditTaskModalFull({
                                   type="button"
                                   onClick={handleRejectBudget}
                                   disabled={budgetDecisionSaving}
-                                  className="inline-flex items-center justify-center rounded-lg bg-red-600 hover:bg-red-700 text-white px-4 py-2 text-sm font-semibold disabled:opacity-50"
+                                  className="inline-flex items-center justify-center rounded-xl bg-red-600 hover:bg-red-700 text-white px-4 py-2 text-sm font-semibold disabled:opacity-50"
                                 >
                                   Reprovar
                                 </button>
@@ -2636,21 +2628,21 @@ export function EditTaskModalFull({
                       currentUser?.role === "SUPER_ADMIN") ? (
                     <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
-                        <label className="block text-xs font-medium text-slate-600 mb-1">Horas *</label>
+                        <label className="block text-xs font-medium text-[color:var(--muted-foreground)] mb-1">Horas *</label>
                         <input
                           value={budgetHoras}
                           onChange={(e) => setBudgetHoras(e.target.value)}
-                          className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
+                          className="w-full px-3 py-2 rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/35 focus:border-[color:var(--primary)]"
                           placeholder="Ex: 10"
                           disabled={budgetSaving}
                         />
                       </div>
                       <div className="md:col-span-3">
-                        <label className="block text-xs font-medium text-slate-600 mb-1">Observação *</label>
+                        <label className="block text-xs font-medium text-[color:var(--muted-foreground)] mb-1">Observação *</label>
                         <textarea
                           value={budgetObservacao}
                           onChange={(e) => setBudgetObservacao(e.target.value)}
-                          className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 min-h-[110px]"
+                          className="w-full px-3 py-2 rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/35 focus:border-[color:var(--primary)] min-h-[110px]"
                           placeholder="Observação do orçamento"
                           disabled={budgetSaving}
                         />
@@ -2660,14 +2652,15 @@ export function EditTaskModalFull({
                           type="button"
                           onClick={handleSendBudget}
                           disabled={budgetSaving}
-                          className="inline-flex items-center justify-center rounded-lg bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 text-sm font-semibold disabled:opacity-50"
+                          className="inline-flex items-center justify-center rounded-xl text-[color:var(--primary-foreground)] px-4 py-2 text-sm font-semibold disabled:opacity-50 hover:opacity-95"
+                          style={{ background: "var(--primary)" }}
                         >
                           {budgetSaving ? "Enviando..." : "Enviar orçamento"}
                         </button>
                       </div>
                     </div>
                   ) : (
-                    <div className="mt-4 text-sm text-slate-600">Nenhum orçamento enviado.</div>
+                    <div className="mt-4 text-sm text-[color:var(--muted-foreground)]">Nenhum orçamento enviado.</div>
                   )}
                 </div>
               </div>
@@ -2677,15 +2670,15 @@ export function EditTaskModalFull({
               <div className="space-y-4">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="h-2 w-2 rounded-full bg-blue-500"></div>
-                  <h3 className="text-lg font-semibold text-slate-800">Anexos</h3>
+                  <h3 className="text-lg font-semibold text-[color:var(--foreground)]">Anexos</h3>
                 </div>
 
                 {/* Área de Upload com Drag & Drop */}
                 <div
                   className={`relative border-2 border-dashed rounded-xl p-8 transition-all duration-200 ${
                     dragActive
-                      ? "border-blue-500 bg-blue-50"
-                      : "border-slate-300 bg-slate-50/50 hover:border-blue-400 hover:bg-blue-50/50"
+                      ? "border-[color:var(--primary)] bg-[color:var(--background)]/35"
+                      : "border-[color:var(--border)] bg-[color:var(--background)]/25 hover:opacity-95"
                   }`}
                   onDragEnter={handleDrag}
                   onDragLeave={handleDrag}
@@ -2705,22 +2698,23 @@ export function EditTaskModalFull({
                     disabled={uploadingAttachment}
                   />
                   <div className="flex flex-col items-center justify-center text-center">
-                    <div className="mb-4 p-4 rounded-full bg-blue-100">
-                      <Upload className="h-8 w-8 text-blue-600" />
+                    <div className="mb-4 p-4 rounded-full" style={{ background: "color-mix(in oklab, var(--primary) 18%, transparent)" }}>
+                      <Upload className="h-8 w-8" style={{ color: "var(--primary)" }} />
                     </div>
-                    <p className="text-sm font-semibold text-slate-700 mb-1">
+                    <p className="text-sm font-semibold text-[color:var(--foreground)] mb-1">
                       {uploadingAttachment ? "Enviando arquivo..." : "Arraste um arquivo aqui ou clique para selecionar"}
                     </p>
-                    <p className="text-xs text-slate-500 mb-4">
+                    <p className="text-xs text-[color:var(--muted-foreground)] mb-4">
                       Suporta imagens, documentos e outros arquivos (máximo 10MB)
                     </p>
                     <label
                       htmlFor="file-upload"
                       className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${
                         uploadingAttachment
-                          ? "bg-slate-200 text-slate-500 cursor-not-allowed"
-                          : "bg-blue-600 text-white hover:bg-blue-700 shadow-sm hover:shadow-md cursor-pointer"
+                          ? "bg-black/10 text-[color:var(--muted-foreground)] cursor-not-allowed"
+                          : "text-[color:var(--primary-foreground)] shadow-sm hover:shadow-md cursor-pointer hover:opacity-95"
                       }`}
+                      style={!uploadingAttachment ? { background: "var(--primary)" } : undefined}
                     >
                       <Upload className="h-4 w-4" />
                       Escolher arquivo
@@ -2730,13 +2724,13 @@ export function EditTaskModalFull({
 
                 {/* Lista de Anexos */}
                 {loadingAttachments ? (
-                  <div className="text-center py-8 text-sm text-slate-500">
+                  <div className="text-center py-8 text-sm text-[color:var(--muted-foreground)]">
                     Carregando anexos...
                   </div>
                 ) : attachments.length === 0 ? (
-                  <div className="text-center py-12 border-2 border-dashed border-slate-200 rounded-lg bg-slate-50/50">
-                    <p className="text-slate-400 mb-1">Nenhum anexo adicionado ainda.</p>
-                    <p className="text-xs text-slate-400">Use a área acima para adicionar arquivos.</p>
+                  <div className="text-center py-12 border-2 border-dashed border-[color:var(--border)] rounded-2xl bg-[color:var(--background)]/25">
+                    <p className="text-[color:var(--muted-foreground)] mb-1">Nenhum anexo adicionado ainda.</p>
+                    <p className="text-xs text-[color:var(--muted-foreground)]">Use a área acima para adicionar arquivos.</p>
                   </div>
                 ) : (
                   <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -2883,7 +2877,8 @@ export function EditTaskModalFull({
               <button
                 type="submit"
                 disabled={saving || !title.trim()}
-                className="px-6 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md"
+                className="px-6 py-2.5 rounded-xl text-[color:var(--primary-foreground)] text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md hover:opacity-95"
+                style={{ background: "var(--primary)" }}
               >
                 {saving ? "Salvando..." : "Salvar alterações"}
               </button>
