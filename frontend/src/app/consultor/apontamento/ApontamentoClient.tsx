@@ -567,9 +567,9 @@ export function ApontamentoClient({ consultorVisualRefresh = false }: { consulto
               <div className="px-2 pb-2 flex justify-center">
                 <button
                   type="button"
-                  onClick={() => setModal({ date: new Date(d.getTime()), baseTotal: totalDay })}
+                  onClick={() => setModal({ date: parseYmdAsLocalDate(d.toISOString().slice(0, 10)), baseTotal: totalDay })}
                   className={addBtnClass}
-                  title={`Adicionar apontamento em ${d.toLocaleDateString("pt-BR")}`}
+                  title={`Adicionar apontamento em ${d.toLocaleDateString("pt-BR", { timeZone: "UTC" })}`}
                 >
                   <Plus className="h-4 w-4" strokeWidth={2.5} />
                   Adicionar
@@ -1151,7 +1151,9 @@ function ApontamentoModal({
           <h3 className="text-xl font-semibold text-gray-800 mb-1" style={{ fontFamily: "var(--font-dm-sans)" }}>
             {isEdit ? "Editar apontamento" : "Novo apontamento"}
           </h3>
-          <p className="text-gray-500 text-[15px] mb-6">{date.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}</p>
+          <p className="text-gray-500 text-[15px] mb-6">
+            {date.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" })}
+          </p>
           {!isEdit && requestToFix?.status === "REJECTED" && (
             <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
               <p className="font-semibold">Apontamento reprovado</p>
