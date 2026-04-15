@@ -87,6 +87,12 @@ export default function ConfiguracoesAtividadesPage() {
     void persist(activity.id, { projectIds: next });
   }
 
+  function toggleAllProjects(activity: ActivityRow) {
+    const allIds = activeProjects.map((p) => p.id);
+    const allSelected = allIds.length > 0 && allIds.every((id) => activity.projectIds.includes(id));
+    void persist(activity.id, { projectIds: allSelected ? [] : allIds });
+  }
+
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-[color:var(--background)]">
       <header
@@ -159,12 +165,14 @@ export default function ConfiguracoesAtividadesPage() {
                         .map((id) => projectsById.get(id))
                         .filter(Boolean) as ProjectOption[];
                       const projectsLabel =
-                        linked.length === 0
+                        linked.length === 0 || linked.length === activeProjects.length
                           ? "Todos os projetos"
                           : linked
                               .map((p) => (p.client?.name ? `${p.client.name} · ${p.name}` : p.name))
                               .join(", ");
                       const busy = savingId === a.id;
+                      const allSelected =
+                        activeProjects.length > 0 && activeProjects.every((p) => a.projectIds.includes(p.id));
                       return (
                         <tr key={a.id} className="border-t" style={{ borderColor: "var(--border)" }}>
                           <td className="px-4 py-3 text-[color:var(--foreground)] font-medium">{a.name}</td>
@@ -182,15 +190,18 @@ export default function ConfiguracoesAtividadesPage() {
                                   <CheckCircle2 className="h-4 w-4 opacity-60 group-open:opacity-100" />
                                 </summary>
                                 <div className="mt-2 max-h-56 overflow-auto rounded-xl border p-2" style={{ borderColor: "var(--border)", background: "rgba(0,0,0,0.02)" }}>
-                                  <button
-                                    type="button"
-                                    disabled={busy}
-                                    onClick={() => void persist(a.id, { projectIds: [] })}
-                                    className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold hover:opacity-90"
-                                    style={{ color: "var(--primary)" }}
-                                  >
-                                    Todos os projetos (limpar vínculos)
-                                  </button>
+                                  <label className="flex items-center gap-2 px-3 py-2 rounded-lg hover:opacity-95 cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={allSelected}
+                                      disabled={busy}
+                                      onChange={() => toggleAllProjects(a)}
+                                      className="h-4 w-4"
+                                    />
+                                    <span className="text-xs font-semibold" style={{ color: "var(--primary)" }}>
+                                      Todos os projetos
+                                    </span>
+                                  </label>
                                   <div className="mt-1 border-t" style={{ borderColor: "var(--border)" }} />
                                   {activeProjects.map((p) => {
                                     const checked = a.projectIds.includes(p.id);
