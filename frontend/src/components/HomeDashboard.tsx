@@ -31,10 +31,28 @@ type TicketForHome = {
 
 const PRIORITY_ORDER: Record<string, number> = {
   URGENTE: 4,
+  CRITICA: 4,
   ALTA: 3,
   MEDIA: 2,
   BAIXA: 1,
 };
+
+function normalizePriority(value: unknown): string {
+  return String(value ?? "")
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase();
+}
+
+function getPriorityDotClass(priorityRaw: unknown): string {
+  const p = normalizePriority(priorityRaw);
+  if (p === "URGENTE" || p === "CRITICA") return "bg-red-500";
+  if (p === "ALTA") return "bg-orange-500";
+  if (p === "MEDIA") return "bg-amber-500";
+  if (p === "BAIXA") return "bg-[color:var(--primary)]";
+  return "bg-slate-300";
+}
 
 function formatHours(h: number): string {
   const hours = Math.floor(h);
@@ -165,8 +183,8 @@ export function HomeDashboard({ basePath }: HomeDashboardProps) {
 
   const tarefasPorPrioridade = useMemo(() => {
     return [...tickets].sort((a, b) => {
-      const pa = PRIORITY_ORDER[a.criticidade ?? ""] ?? 0;
-      const pb = PRIORITY_ORDER[b.criticidade ?? ""] ?? 0;
+      const pa = PRIORITY_ORDER[normalizePriority(a.criticidade)] ?? 0;
+      const pb = PRIORITY_ORDER[normalizePriority(b.criticidade)] ?? 0;
       if (pb !== pa) return pb - pa;
       return (a.code?.localeCompare?.(b.code, undefined, { numeric: true }) ?? 0);
     });
@@ -311,15 +329,7 @@ export function HomeDashboard({ basePath }: HomeDashboardProps) {
                   >
                     <span
                       className={`shrink-0 w-2 h-2 rounded-full ${
-                        t.criticidade === "URGENTE"
-                          ? "bg-red-700"
-                          : t.criticidade === "ALTA"
-                            ? "bg-red-500"
-                            : t.criticidade === "MEDIA"
-                              ? "bg-amber-500"
-                              : t.criticidade === "BAIXA"
-                                ? "bg-emerald-500"
-                                : "bg-slate-300"
+                        getPriorityDotClass(t.criticidade)
                       }`}
                       aria-hidden
                     />

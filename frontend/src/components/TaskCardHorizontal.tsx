@@ -23,6 +23,23 @@ function formatHorasDecimalToHm(value: number | null | undefined): string {
   return `${horas.toString().padStart(2, "0")}:${minutos.toString().padStart(2, "0")}h`;
 }
 
+function normalizePriority(value: unknown): string {
+  return String(value ?? "")
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase();
+}
+
+function getPriorityDotClass(priorityRaw: unknown): string {
+  const p = normalizePriority(priorityRaw);
+  if (p === "URGENTE" || p === "CRITICA") return "bg-red-500";
+  if (p === "ALTA") return "bg-orange-500";
+  if (p === "MEDIA") return "bg-amber-500";
+  if (p === "BAIXA") return "bg-[color:var(--primary)]";
+  return "bg-slate-400";
+}
+
 // Mapeamento de status da tarefa para coluna do Kanban
 const STATUS_TO_COLUMN: Record<string, string> = {
   ABERTO: "BACKLOG",
@@ -120,7 +137,7 @@ export function TaskCardHorizontal({ ticket, onClick, onDelete }: TaskCardHorizo
             <p className="inline-flex items-center gap-1.5 font-medium text-[color:var(--foreground)] text-sm">
               {ticket.criticidade != null && ticket.criticidade !== "" ? (
                 <>
-                  <span className={`h-2 w-2 rounded-full shrink-0 ${ticket.criticidade === "Urgente" || ticket.criticidade === "URGENTE" ? "bg-red-500" : ticket.criticidade === "Alta" || ticket.criticidade === "ALTA" ? "bg-orange-500" : ticket.criticidade === "Média" || ticket.criticidade === "MEDIA" ? "bg-amber-500" : ticket.criticidade === "Baixa" || ticket.criticidade === "BAIXA" ? "bg-blue-500" : "bg-slate-400"}`} aria-hidden />
+                  <span className={`h-2 w-2 rounded-full shrink-0 ${getPriorityDotClass(ticket.criticidade)}`} aria-hidden />
                   <span className="truncate">{ticket.criticidade}</span>
                 </>
               ) : (
