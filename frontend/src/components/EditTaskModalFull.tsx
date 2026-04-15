@@ -577,7 +577,11 @@ export function EditTaskModalFull({
       })
       .then((data) => {
         if (cancelled || !data || typeof data !== "object") return;
-        const t = data as Partial<PackageTicket> & Record<string, unknown>;
+        type TicketHydratePayload = Partial<PackageTicket> & {
+          project?: { tipoProjeto?: string | null } | null;
+          finalizacaoMotivo?: string | null;
+        };
+        const t = data as TicketHydratePayload;
 
         // Evita sobrescrever edições em andamento para perfis editáveis:
         // só aplica se o formulário ainda estiver igual ao snapshot inicial.
@@ -2472,7 +2476,7 @@ export function EditTaskModalFull({
                                   </div>
                                 </td>
                                 <td className="px-4 py-3">
-                                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${getActionColor(entry.action)}`}>
+                                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${getActionColor()}`}>
                                     {getActionLabel(entry.action)}
                                   </span>
                                 </td>

@@ -35,6 +35,10 @@ export type PackageTicket = {
     horas: number;
     observacao: string;
     rejectionReason?: string | null;
+    sentBy?: { id: string; name: string } | null;
+    sentAt?: string | null;
+    decidedBy?: { id: string; name: string } | null;
+    decidedAt?: string | null;
   } | null;
   _count?: { timeEntries: number };
   totalHorasApontadas?: number;
