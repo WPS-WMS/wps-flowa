@@ -29,7 +29,8 @@ clientContactsRouter.get("/client/:clientId", async (req: Request, res) => {
 
 clientContactsRouter.post("/", async (req, res) => {
   const user = (req as Request & { user: { id: string; role: string; tenantId: string } }).user;
-  if (user.role !== "ADMIN" && user.role !== "GESTOR_PROJETOS") {
+  // "ADMIN" antigo virou SUPER_ADMIN/ADMIN_PORTAL.
+  if (!["SUPER_ADMIN", "ADMIN_PORTAL", "GESTOR_PROJETOS"].includes(String(user.role))) {
     res.status(403).json({ error: "Apenas administradores e gestores podem criar contatos." });
     return;
   }
@@ -70,7 +71,8 @@ clientContactsRouter.post("/", async (req, res) => {
 
 clientContactsRouter.patch("/:id", async (req, res) => {
   const user = (req as Request & { user: { id: string; role: string; tenantId: string } }).user;
-  if (user.role !== "ADMIN" && user.role !== "GESTOR_PROJETOS") {
+  // "ADMIN" antigo virou SUPER_ADMIN/ADMIN_PORTAL.
+  if (!["SUPER_ADMIN", "ADMIN_PORTAL", "GESTOR_PROJETOS"].includes(String(user.role))) {
     res.status(403).json({ error: "Apenas administradores e gestores podem editar contatos." });
     return;
   }
@@ -113,7 +115,8 @@ clientContactsRouter.patch("/:id", async (req, res) => {
 
 clientContactsRouter.delete("/:id", async (req, res) => {
   const user = (req as Request & { user: { id: string; role: string; tenantId: string } }).user;
-  if (user.role !== "ADMIN" && user.role !== "GESTOR_PROJETOS") {
+  // "ADMIN" antigo virou SUPER_ADMIN/ADMIN_PORTAL.
+  if (!["SUPER_ADMIN", "ADMIN_PORTAL", "GESTOR_PROJETOS"].includes(String(user.role))) {
     res.status(403).json({ error: "Apenas administradores e gestores podem excluir contatos." });
     return;
   }

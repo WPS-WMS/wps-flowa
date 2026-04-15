@@ -131,7 +131,8 @@ reportsRouter.get("/hours", async (req, res) => {
 reportsRouter.get("/utilization", async (req, res) => {
   try {
     const user = req.user;
-    if (user.role !== "ADMIN" && user.role !== "GESTOR_PROJETOS") {
+    // "ADMIN" antigo virou SUPER_ADMIN/ADMIN_PORTAL.
+    if (!["SUPER_ADMIN", "ADMIN_PORTAL", "GESTOR_PROJETOS"].includes(String(user.role))) {
       return res.status(403).json({ error: "Não autorizado" });
     }
     const { start, end } = req.query;

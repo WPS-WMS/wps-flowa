@@ -252,8 +252,8 @@ commentsRouter.patch("/:id", async (req, res) => {
       return;
     }
 
-    // Apenas o autor ou admin pode editar
-    if (comment.userId !== user.id && user.role !== "ADMIN") {
+    // Apenas o autor ou SUPER_ADMIN pode editar
+    if (comment.userId !== user.id && user.role !== "SUPER_ADMIN") {
       console.error("Usuário sem permissão para editar comentário:", user.id, "comment userId:", comment.userId);
       res.status(403).json({ error: "Você não tem permissão para editar este comentário" });
       return;
@@ -333,8 +333,8 @@ commentsRouter.delete("/:id", async (req, res) => {
       return;
     }
 
-    // Apenas o autor ou admin pode deletar
-    if (comment.userId !== user.id && user.role !== "ADMIN") {
+    // Apenas o autor ou SUPER_ADMIN pode deletar
+    if (comment.userId !== user.id && user.role !== "SUPER_ADMIN") {
       console.error("Usuário sem permissão para deletar comentário:", user.id, "comment userId:", comment.userId);
       res.status(403).json({ error: "Você não tem permissão para deletar este comentário" });
       return;

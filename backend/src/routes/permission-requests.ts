@@ -78,7 +78,8 @@ permissionRequestsRouter.get("/", requireFeature("apontamentos"), async (req, re
     where.userId = user.id;
   } else {
     // Admin e Gestor de Projetos veem todas; demais veem apenas as próprias
-    if (user.role !== "ADMIN" && user.role !== "GESTOR_PROJETOS") {
+    // "ADMIN" antigo virou SUPER_ADMIN/ADMIN_PORTAL.
+    if (!["SUPER_ADMIN", "ADMIN_PORTAL", "GESTOR_PROJETOS"].includes(String(user.role))) {
       where.userId = user.id;
     }
   }

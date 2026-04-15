@@ -502,7 +502,7 @@ usersRouter.patch("/:id", async (req, res) => {
         const otherActiveAdmins = await prisma.user.count({
           where: {
             tenantId: authUser.tenantId,
-            role: "ADMIN",
+            role: "SUPER_ADMIN",
             ativo: true,
             id: { not: userId },
           },
