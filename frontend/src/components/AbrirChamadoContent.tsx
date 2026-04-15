@@ -464,25 +464,31 @@ export function AbrirChamadoContent({ afterCreateHref }: AbrirChamadoContentProp
       : "Criar chamado";
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col bg-slate-50">
-      <header className="flex-shrink-0 bg-gradient-to-br from-blue-700 to-blue-900 text-white">
+    <div className="flex-1 min-h-0 flex flex-col bg-[color:var(--background)]">
+      <header
+        className="flex-shrink-0 text-[color:var(--primary-foreground)]"
+        style={{
+          background:
+            "radial-gradient(900px 420px at 78% 30%, rgba(92,0,225,0.38), transparent 55%), radial-gradient(700px 380px at 30% 60%, rgba(87,66,118,0.28), transparent 60%), linear-gradient(135deg, rgba(7,5,12,0.98), rgba(18,12,28,0.90))",
+        }}
+      >
         <div className="max-w-5xl mx-auto px-6 py-8">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Abrir chamado</h1>
-              <p className="text-blue-100 mt-1 text-sm md:text-base">
+              <p className="mt-1 text-sm md:text-base text-[color:var(--primary-foreground)]/75">
                 Descreva sua necessidade e anexe arquivos para ajudar no atendimento.
               </p>
               <div className="mt-5 flex flex-wrap gap-2">
-                <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs text-blue-50">
+                <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs text-[color:var(--primary-foreground)]/90">
                   <Building2 className="h-4 w-4" />
                   {isCliente ? (clientName || "Empresa") : (selectedProject?.client?.name ?? "Empresa")}
                 </span>
-                <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs text-blue-50">
+                <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs text-[color:var(--primary-foreground)]/90">
                   <FolderKanban className="h-4 w-4" />
                   {selectedProjectName || "Projeto"}
                 </span>
-                <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs text-blue-50">
+                <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs text-[color:var(--primary-foreground)]/90">
                   <Paperclip className="h-4 w-4" />
                   {attachments.length} anexo(s)
                 </span>
@@ -495,31 +501,49 @@ export function AbrirChamadoContent({ afterCreateHref }: AbrirChamadoContentProp
       <main className="flex-1 min-h-0 overflow-auto px-4 md:px-6 py-6 lg:py-8">
         <div className="max-w-5xl mx-auto grid gap-6 lg:grid-cols-3">
           <aside className="space-y-4">
-            <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm">
-              <div className="flex items-center gap-2 text-slate-900 font-medium">
-                <Info className="h-5 w-5 text-blue-600" />
+            <div className="rounded-2xl bg-[color:var(--surface)] border border-[color:var(--border)] p-5 shadow-sm">
+              <div className="flex items-center gap-2 text-[color:var(--foreground)] font-medium">
+                <Info className="h-5 w-5" style={{ color: "var(--primary)" }} />
                 Como acelerar seu atendimento
               </div>
-              <ul className="mt-3 space-y-2 text-sm text-slate-600">
+              <ul className="mt-3 space-y-2 text-sm text-[color:var(--muted-foreground)]">
                 <li className="flex gap-2">
-                  <span className="mt-0.5 h-5 w-5 shrink-0 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold grid place-items-center">1</span>
-                  Selecione o <span className="font-medium text-slate-800">projeto</span> correto.
+                  <span
+                    className="mt-0.5 h-5 w-5 shrink-0 rounded-full text-xs font-semibold grid place-items-center"
+                    style={{ background: "rgba(92,0,225,0.12)", color: "var(--primary)" }}
+                  >
+                    1
+                  </span>
+                  Selecione o <span className="font-medium text-[color:var(--foreground)]">projeto</span> correto.
                 </li>
                 <li className="flex gap-2">
-                  <span className="mt-0.5 h-5 w-5 shrink-0 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold grid place-items-center">2</span>
+                  <span
+                    className="mt-0.5 h-5 w-5 shrink-0 rounded-full text-xs font-semibold grid place-items-center"
+                    style={{ background: "rgba(92,0,225,0.12)", color: "var(--primary)" }}
+                  >
+                    2
+                  </span>
                   Descreva o contexto e o resultado esperado.
                 </li>
                 <li className="flex gap-2">
-                  <span className="mt-0.5 h-5 w-5 shrink-0 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold grid place-items-center">3</span>
+                  <span
+                    className="mt-0.5 h-5 w-5 shrink-0 rounded-full text-xs font-semibold grid place-items-center"
+                    style={{ background: "rgba(92,0,225,0.12)", color: "var(--primary)" }}
+                  >
+                    3
+                  </span>
                   Anexe prints/PDFs (até {MAX_FILES} arquivos, 10MB cada).
                 </li>
               </ul>
             </div>
             {createdTicketId && (
-              <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-5">
+              <div
+                className="rounded-2xl border p-5"
+                style={{ borderColor: "rgba(16,185,129,0.35)", background: "rgba(16,185,129,0.10)" }}
+              >
                 <div className="flex items-start gap-2">
-                  <CheckCircle2 className="h-5 w-5 text-emerald-700 mt-0.5" />
-                  <div className="text-sm text-emerald-900">
+                  <CheckCircle2 className="h-5 w-5 mt-0.5" style={{ color: "rgb(16 185 129)" }} />
+                  <div className="text-sm text-[color:var(--foreground)]">
                     Chamado criado. Se algum anexo falhar, você pode clicar em <span className="font-semibold">Salvar</span> novamente para reenviar.
                   </div>
                 </div>
@@ -528,29 +552,33 @@ export function AbrirChamadoContent({ afterCreateHref }: AbrirChamadoContentProp
           </aside>
 
           <section className="lg:col-span-2">
-            <form onSubmit={handleSubmit} className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+            <form
+              onSubmit={handleSubmit}
+              className="rounded-2xl bg-[color:var(--surface)] border border-[color:var(--border)] shadow-sm overflow-hidden"
+            >
               <div className="p-6 md:p-8 space-y-6">
                 {error && (
-                  <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+                  <div className="rounded-xl border p-4" style={{ borderColor: "rgba(239,68,68,0.35)", background: "rgba(239,68,68,0.10)" }}>
                     <div className="flex items-start gap-2">
-                      <AlertCircle className="h-5 w-5 text-red-700 mt-0.5" />
-                      <p className="text-sm text-red-800">{error}</p>
+                      <AlertCircle className="h-5 w-5 mt-0.5" style={{ color: "rgb(239 68 68)" }} />
+                      <p className="text-sm text-[color:var(--foreground)]">{error}</p>
                     </div>
                   </div>
                 )}
 
                 <div className="space-y-4">
-                  <h2 className="text-sm font-semibold text-slate-900 uppercase tracking-wide">Seleção</h2>
+                  <h2 className="text-sm font-semibold text-[color:var(--foreground)] uppercase tracking-wide">Seleção</h2>
 
                   <div className="grid gap-4 md:grid-cols-2">
                     {isCliente && (
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Empresa</label>
+                        <label className="block text-sm font-medium text-[color:var(--muted-foreground)] mb-1.5">Empresa</label>
                         <select
                           value={clientId}
                           onChange={() => {}}
                           disabled
-                          className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm bg-slate-50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-300 opacity-80 cursor-not-allowed"
+                          className="w-full rounded-xl border px-4 py-3 text-sm bg-[color:var(--surface-2)] text-[color:var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/35 opacity-80 cursor-not-allowed"
+                          style={{ borderColor: "var(--border)" }}
                         >
                           <option value={clientId}>{clientName || "Empresa"}</option>
                         </select>
@@ -558,13 +586,14 @@ export function AbrirChamadoContent({ afterCreateHref }: AbrirChamadoContentProp
                     )}
 
                     <div className={isCliente ? "" : "md:col-span-2"}>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Projeto</label>
+                      <label className="block text-sm font-medium text-[color:var(--muted-foreground)] mb-1.5">Projeto</label>
                       <select
                         value={projectId}
                         onChange={(e) => setProjectId(e.target.value)}
-                        className={`w-full rounded-xl border px-4 py-3 text-sm bg-slate-50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-300 ${
-                          submitAttempted && !projectId ? "border-rose-400" : "border-slate-200"
+                        className={`w-full rounded-xl border px-4 py-3 text-sm bg-[color:var(--surface-2)] text-[color:var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/35 ${
+                          submitAttempted && !projectId ? "border-rose-400" : ""
                         }`}
+                        style={{ borderColor: submitAttempted && !projectId ? "rgba(244,63,94,0.55)" : "var(--border)" }}
                         required
                         disabled={filteredProjects.length === 0}
                       >
@@ -583,17 +612,18 @@ export function AbrirChamadoContent({ afterCreateHref }: AbrirChamadoContentProp
                 </div>
 
                 <div className="space-y-4">
-                  <h2 className="text-sm font-semibold text-slate-900 uppercase tracking-wide">Detalhes</h2>
+                  <h2 className="text-sm font-semibold text-[color:var(--foreground)] uppercase tracking-wide">Detalhes</h2>
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Nome <span className="text-rose-600">*</span></label>
+                      <label className="block text-sm font-medium text-[color:var(--muted-foreground)] mb-1.5">Nome <span className="text-rose-600">*</span></label>
                       <input
                         value={ticketName}
                         onChange={(e) => setTicketName(e.target.value.slice(0, 120))}
                         placeholder="Ex.: Erro ao emitir nota fiscal"
-                        className={`w-full rounded-xl border px-4 py-3 text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-300 ${
-                          submitAttempted && !ticketName.trim() ? "border-rose-400" : "border-slate-200"
+                        className={`w-full rounded-xl border px-4 py-3 text-sm bg-[color:var(--surface)] text-[color:var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/35 ${
+                          submitAttempted && !ticketName.trim() ? "border-rose-400" : ""
                         }`}
+                        style={{ borderColor: submitAttempted && !ticketName.trim() ? "rgba(244,63,94,0.55)" : "var(--border)" }}
                         required
                       />
                       {submitAttempted && !ticketName.trim() && (
@@ -601,13 +631,14 @@ export function AbrirChamadoContent({ afterCreateHref }: AbrirChamadoContentProp
                       )}
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Tipo</label>
+                      <label className="block text-sm font-medium text-[color:var(--muted-foreground)] mb-1.5">Tipo</label>
                       <select
                         value={tipo}
                         onChange={(e) => setTipo(e.target.value)}
-                        className={`w-full rounded-xl border px-4 py-3 text-sm bg-slate-50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-300 ${
-                          submitAttempted && !tipo ? "border-rose-400" : "border-slate-200"
+                        className={`w-full rounded-xl border px-4 py-3 text-sm bg-[color:var(--surface-2)] text-[color:var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/35 ${
+                          submitAttempted && !tipo ? "border-rose-400" : ""
                         }`}
+                        style={{ borderColor: submitAttempted && !tipo ? "rgba(244,63,94,0.55)" : "var(--border)" }}
                         required
                       >
                         <option value="">Selecione</option>
@@ -631,11 +662,17 @@ export function AbrirChamadoContent({ afterCreateHref }: AbrirChamadoContentProp
                       <select
                         value={prioridade}
                         onChange={(e) => setPrioridade(e.target.value)}
-                        className={`w-full rounded-xl border px-4 py-3 text-sm bg-slate-50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-300 ${
+                        className={`w-full rounded-xl border px-4 py-3 text-sm bg-[color:var(--surface-2)] text-[color:var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/35 ${
                           submitAttempted && prioridadeObrigatoriaAms && !prioridade.trim()
                             ? "border-rose-400"
-                            : "border-slate-200"
+                            : ""
                         }`}
+                        style={{
+                          borderColor:
+                            submitAttempted && prioridadeObrigatoriaAms && !prioridade.trim()
+                              ? "rgba(244,63,94,0.55)"
+                              : "var(--border)",
+                        }}
                       >
                         <option value="">Selecione</option>
                         {PRIORIDADES.map((p) => (
@@ -657,12 +694,13 @@ export function AbrirChamadoContent({ afterCreateHref }: AbrirChamadoContentProp
                       )}
                     </div>
                     <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Tópico (opcional)</label>
+                      <label className="block text-sm font-medium text-[color:var(--muted-foreground)] mb-1.5">Tópico (opcional)</label>
                       <select
                         value={topicId}
                         onChange={(e) => setTopicId(e.target.value)}
                         disabled={!projectId || topicsForSelect.length === 0}
-                        className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm bg-slate-50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:opacity-70"
+                        className="w-full rounded-xl border px-4 py-3 text-sm bg-[color:var(--surface-2)] text-[color:var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/35 disabled:opacity-70"
+                        style={{ borderColor: "var(--border)" }}
                       >
                         <option value="">
                           {!projectId
@@ -682,17 +720,18 @@ export function AbrirChamadoContent({ afterCreateHref }: AbrirChamadoContentProp
 
                   <div>
                     <div className="flex items-center justify-between gap-2">
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Descrição</label>
-                      <span className="text-xs text-slate-500">{description.length}/2000</span>
+                      <label className="block text-sm font-medium text-[color:var(--muted-foreground)] mb-1.5">Descrição</label>
+                      <span className="text-xs text-[color:var(--muted-foreground)]">{description.length}/2000</span>
                     </div>
                     <textarea
                       value={description}
                       onChange={(e) => setDescription(e.target.value.slice(0, 2000))}
                       rows={6}
                       placeholder="Explique o que aconteceu, o que você esperava e (se possível) passos para reproduzir."
-                      className={`w-full rounded-xl border px-4 py-3 text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-300 ${
-                        submitAttempted && !description.trim() ? "border-rose-400" : "border-slate-200"
+                      className={`w-full rounded-xl border px-4 py-3 text-sm bg-[color:var(--surface)] text-[color:var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/35 ${
+                        submitAttempted && !description.trim() ? "border-rose-400" : ""
                       }`}
+                      style={{ borderColor: submitAttempted && !description.trim() ? "rgba(244,63,94,0.55)" : "var(--border)" }}
                       required
                     />
                     {submitAttempted && !description.trim() && (
@@ -702,7 +741,7 @@ export function AbrirChamadoContent({ afterCreateHref }: AbrirChamadoContentProp
                 </div>
 
                 <div className="space-y-3">
-                  <h2 className="text-sm font-semibold text-slate-900 uppercase tracking-wide">Anexos</h2>
+                  <h2 className="text-sm font-semibold text-[color:var(--foreground)] uppercase tracking-wide">Anexos</h2>
 
                   <div
                     onDragOver={(e) => {
@@ -716,17 +755,17 @@ export function AbrirChamadoContent({ afterCreateHref }: AbrirChamadoContentProp
                       void handleAddFiles(e.dataTransfer.files);
                     }}
                     className={`rounded-2xl border-2 border-dashed p-4 transition ${
-                      dragging ? "border-blue-400 bg-blue-50" : "border-slate-200 bg-slate-50"
+                      dragging ? "border-[color:var(--primary)] bg-[color:var(--surface)]/60" : "border-[color:var(--border)] bg-[color:var(--surface-2)]"
                     }`}
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                       <div className="flex items-start gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-700">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[color:var(--surface)] border border-[color:var(--border)] text-[color:var(--foreground)]">
                           <Paperclip className="h-5 w-5" />
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-slate-900">Arraste e solte aqui</p>
-                          <p className="text-xs text-slate-600">
+                          <p className="text-sm font-medium text-[color:var(--foreground)]">Arraste e solte aqui</p>
+                          <p className="text-xs text-[color:var(--muted-foreground)]">
                             Imagens ou PDF • até {MAX_FILES} arquivos • 10MB cada
                           </p>
                         </div>
@@ -743,7 +782,12 @@ export function AbrirChamadoContent({ afterCreateHref }: AbrirChamadoContentProp
                         <button
                           type="button"
                           onClick={() => fileInputRef.current?.click()}
-                          className="inline-flex items-center gap-2 rounded-xl bg-white border border-slate-200 px-4 py-2 text-sm text-slate-800 hover:border-blue-300 hover:bg-blue-50"
+                          className="inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition hover:opacity-95"
+                          style={{
+                            borderColor: "rgba(92,0,225,0.35)",
+                            background: "rgba(0,0,0,0.02)",
+                            color: "var(--foreground)",
+                          }}
                         >
                           <Paperclip className="h-4 w-4" />
                           Selecionar arquivos
@@ -756,22 +800,22 @@ export function AbrirChamadoContent({ afterCreateHref }: AbrirChamadoContentProp
                         {attachments.map((a) => {
                           const isImage = a.fileType.startsWith("image/");
                           return (
-                            <div key={a.id} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
-                              <div className="h-12 w-12 shrink-0 rounded-lg border border-slate-200 bg-slate-50 overflow-hidden grid place-items-center">
+                            <div key={a.id} className="flex items-center gap-3 rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] p-3">
+                              <div className="h-12 w-12 shrink-0 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-2)] overflow-hidden grid place-items-center">
                                 {isImage ? (
                                   // eslint-disable-next-line @next/next/no-img-element
                                   <img src={a.fileData} alt={a.fileName} className="h-full w-full object-cover" />
                                 ) : a.fileType === "application/pdf" ? (
-                                  <FileText className="h-6 w-6 text-slate-600" />
+                                  <FileText className="h-6 w-6 text-[color:var(--muted-foreground)]" />
                                 ) : (
-                                  <ImageIcon className="h-6 w-6 text-slate-600" />
+                                  <ImageIcon className="h-6 w-6 text-[color:var(--muted-foreground)]" />
                                 )}
                               </div>
                               <div className="min-w-0 flex-1">
-                                <div className="text-sm text-slate-900 truncate" title={a.fileName}>
+                                <div className="text-sm text-[color:var(--foreground)] truncate" title={a.fileName}>
                                   {a.fileName}
                                 </div>
-                                <div className="text-xs text-slate-500">
+                                <div className="text-xs text-[color:var(--muted-foreground)]">
                                   {(a.fileSize / (1024 * 1024)).toFixed(1)} MB{a.uploaded ? " • enviado" : ""}
                                 </div>
                               </div>
@@ -779,12 +823,16 @@ export function AbrirChamadoContent({ afterCreateHref }: AbrirChamadoContentProp
                                 <button
                                   type="button"
                                   onClick={() => setAttachments((prev) => prev.filter((p) => p.id !== a.id))}
-                                  className="rounded-lg px-3 py-1 text-sm text-red-600 hover:bg-red-50"
+                                  className="rounded-lg px-3 py-1 text-sm font-semibold transition hover:opacity-90"
+                                  style={{ color: "rgb(239 68 68)", background: "transparent" }}
                                 >
                                   Remover
                                 </button>
                               ) : (
-                                <span className="text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-1">
+                                <span
+                                  className="text-xs font-semibold rounded-full px-2 py-1 border"
+                                  style={{ color: "rgb(16 185 129)", borderColor: "rgba(16,185,129,0.35)", background: "rgba(16,185,129,0.10)" }}
+                                >
                                   ok
                                 </span>
                               )}
@@ -797,12 +845,13 @@ export function AbrirChamadoContent({ afterCreateHref }: AbrirChamadoContentProp
                 </div>
               </div>
 
-              <div className="border-t border-slate-200 bg-slate-50 px-6 md:px-8 py-4">
+              <div className="border-t px-6 md:px-8 py-4 bg-[color:var(--surface)]/70 backdrop-blur" style={{ borderColor: "var(--border)" }}>
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <button
                     type="button"
                     onClick={() => router.back()}
-                    className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
+                    className="inline-flex items-center justify-center rounded-xl border px-4 py-2 text-sm font-semibold transition hover:opacity-90"
+                    style={{ borderColor: "var(--border)", background: "transparent", color: "var(--foreground)" }}
                     disabled={saving}
                   >
                     Cancelar
@@ -810,19 +859,20 @@ export function AbrirChamadoContent({ afterCreateHref }: AbrirChamadoContentProp
                   <button
                     type="submit"
                     disabled={!canSubmit || !canUseForm}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-[color:var(--primary-foreground)] hover:opacity-95 disabled:opacity-50 transition"
+                    style={{ background: "var(--primary)" }}
                   >
                     {saving && <Loader2 className="h-4 w-4 animate-spin" />}
                     {primaryLabel}
                   </button>
                 </div>
                 {!canUseForm && (
-                  <p className="mt-2 text-xs text-amber-700">
+                  <p className="mt-2 text-xs" style={{ color: "rgb(245 158 11)" }}>
                     Sem acesso para abrir chamado neste perfil.
                   </p>
                 )}
                 {createdTicketId && pendingUploads > 0 && (
-                  <p className="mt-2 text-xs text-slate-600">
+                  <p className="mt-2 text-xs text-[color:var(--muted-foreground)]">
                     Dica: o chamado já foi criado. Ao salvar novamente, enviaremos apenas os anexos pendentes.
                   </p>
                 )}
