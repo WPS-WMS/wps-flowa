@@ -154,7 +154,7 @@ export default function LoginPage() {
           </div>
           <h1 className="mx-auto w-fit text-[color:var(--foreground)]">
             <span className="inline-flex items-baseline whitespace-nowrap">
-              <span className="font-quantify text-3xl font-semibold leading-none tracking-tight">WPS</span>
+              <span className="font-quantify text-3xl font-normal leading-none tracking-tight">WPS</span>
               <span className="ml-[0.08em] inline-flex items-baseline leading-none">
                 <img
                   src={ONE_LOGO_SVG_SRC}
