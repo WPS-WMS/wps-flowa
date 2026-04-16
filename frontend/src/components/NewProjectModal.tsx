@@ -144,6 +144,7 @@ export function NewProjectModal({ onClose, onSaved, mode = "create", projectId }
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, boolean>>({});
   const [showUserPicker, setShowUserPicker] = useState(false);
+  const userPickerRef = useRef<HTMLDivElement>(null);
   const [loadingProject, setLoadingProject] = useState(false);
   const [anexoRemoved, setAnexoRemoved] = useState(false);
   const attachmentUrl = anexoUrl ? `${API_BASE_URL}${anexoUrl}` : "";
@@ -156,6 +157,23 @@ export function NewProjectModal({ onClose, onSaved, mode = "create", projectId }
       .then((r) => (r.ok ? r.json() : []))
       .then(setUsers);
   }, []);
+
+  useEffect(() => {
+    if (!showUserPicker) return;
+    const handler = (e: MouseEvent | TouchEvent) => {
+      const el = userPickerRef.current;
+      if (!el) return;
+      const target = e.target as Node | null;
+      if (target && el.contains(target)) return;
+      setShowUserPicker(false);
+    };
+    document.addEventListener("mousedown", handler, true);
+    document.addEventListener("touchstart", handler, true);
+    return () => {
+      document.removeEventListener("mousedown", handler, true);
+      document.removeEventListener("touchstart", handler, true);
+    };
+  }, [showUserPicker]);
 
   useEffect(() => {
     if (!isEdit || !projectId) return;
@@ -674,7 +692,7 @@ export function NewProjectModal({ onClose, onSaved, mode = "create", projectId }
                       </div>
                     </div>
                   ))}
-                  <div className="relative">
+                  <div className="relative" ref={userPickerRef}>
                     <button
                       type="button"
                       onClick={() => setShowUserPicker(!showUserPicker)}

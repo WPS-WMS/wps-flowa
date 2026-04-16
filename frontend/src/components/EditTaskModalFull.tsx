@@ -274,6 +274,7 @@ export function EditTaskModalFull({
   const [estimativaError, setEstimativaError] = useState(false);
   const [dataEntregaError, setDataEntregaError] = useState(false);
   const [showUserPicker, setShowUserPicker] = useState(false);
+  const userPickerRef = useRef<HTMLDivElement>(null);
   const [showPrioridadeOpen, setShowPrioridadeOpen] = useState(false);
 
   async function handleSendBudget() {
@@ -661,6 +662,23 @@ export function EditTaskModalFull({
   function removeResponsible(userId: string) {
     setResponsibleIds((ids) => ids.filter((id) => id !== userId));
   }
+
+  useEffect(() => {
+    if (!showUserPicker) return;
+    const handler = (e: MouseEvent | TouchEvent) => {
+      const el = userPickerRef.current;
+      if (!el) return;
+      const target = e.target as Node | null;
+      if (target && el.contains(target)) return;
+      setShowUserPicker(false);
+    };
+    document.addEventListener("mousedown", handler, true);
+    document.addEventListener("touchstart", handler, true);
+    return () => {
+      document.removeEventListener("mousedown", handler, true);
+      document.removeEventListener("touchstart", handler, true);
+    };
+  }, [showUserPicker]);
 
   async function handleImageUpload(file: File): Promise<string> {
     if (!ticket?.id) throw new Error("ticketId ausente");
@@ -1782,7 +1800,7 @@ export function EditTaskModalFull({
                               </div>
                             </div>
                           ))}
-                          <div className="relative">
+                          <div className="relative" ref={userPickerRef}>
                             {!isReadOnly && (
                               <button
                                 type="button"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { X, Maximize2, Send, Pencil, Trash2, Plus, Users } from "lucide-react";
 import { API_BASE_URL, apiFetch } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -171,6 +171,7 @@ export function CreateTaskModalFull({
     return [...base, ...customs];
   }, [customStatusOptions]);
   const [showUserPicker, setShowUserPicker] = useState(false);
+  const userPickerRef = useRef<HTMLDivElement>(null);
   const [showPrioridadeOpen, setShowPrioridadeOpen] = useState(false);
 
   useEffect(() => {
@@ -227,6 +228,23 @@ export function CreateTaskModalFull({
   function removeResponsible(userId: string) {
     setResponsibleIds((ids) => ids.filter((id) => id !== userId));
   }
+
+  useEffect(() => {
+    if (!showUserPicker) return;
+    const handler = (e: MouseEvent | TouchEvent) => {
+      const el = userPickerRef.current;
+      if (!el) return;
+      const target = e.target as Node | null;
+      if (target && el.contains(target)) return;
+      setShowUserPicker(false);
+    };
+    document.addEventListener("mousedown", handler, true);
+    document.addEventListener("touchstart", handler, true);
+    return () => {
+      document.removeEventListener("mousedown", handler, true);
+      document.removeEventListener("touchstart", handler, true);
+    };
+  }, [showUserPicker]);
 
   async function handleImageUpload(file: File): Promise<string> {
     if (!currentTicketId) {
@@ -791,7 +809,7 @@ export function CreateTaskModalFull({
                             </div>
                           </div>
                         ))}
-                        <div className="relative">
+                        <div className="relative" ref={userPickerRef}>
                           <button
                             type="button"
                             onClick={() => setShowUserPicker(!showUserPicker)}
