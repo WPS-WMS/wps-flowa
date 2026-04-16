@@ -156,18 +156,16 @@ export function renderEmailLayout(args: {
   // Importante: CSS inline para compatibilidade (Outlook, etc.).
   return `
 <!doctype html>
-<html lang="pt-BR" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<html lang="pt-BR">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="x-apple-disable-message-reformatting" />
-    <!--[if gte mso 9]>
-    <xml>
-      <o:OfficeDocumentSettings>
-        <o:AllowPNG/>
-        <o:PixelsPerInch>96</o:PixelsPerInch>
-      </o:OfficeDocumentSettings>
-    </xml>
+    <!-- Outlook (desktop) é inconsistente com gradients/background-image. Forçamos fundo sólido nele. -->
+    <!--[if mso]>
+    <style type="text/css">
+      body, table, td { background-color: ${outerBgColor} !important; background-image: none !important; }
+    </style>
     <![endif]-->
     <title>${escapeHtml(args.subject)}</title>
   </head>
@@ -176,33 +174,8 @@ export function renderEmailLayout(args: {
 
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:0;padding:0;background:${outerBgColor};background-image:${outerBgImage}">
       <tr>
-        <td align="center" valign="top" style="padding:0;margin:0;background:${outerBgColor};background-image:${outerBgImage}">
-          <!-- Wrapper externo (onde você quer o degradê).
-               Outlook ignora background-image em DIV, então o wrapper deve ser TD/TABLE com VML. -->
-          <table
-            role="presentation"
-            width="100%"
-            cellpadding="0"
-            cellspacing="0"
-            border="0"
-            background="${escapeHtml(brand.emailBgUrl)}"
-            style="border-collapse:collapse;margin:0;padding:0;background:${outerBgColor};background-image:url('${escapeHtml(brand.emailBgUrl)}');background-repeat:no-repeat;background-position:center top;background-size:cover"
-          >
-            <tr>
-              <td
-                align="center"
-                valign="top"
-                background="${escapeHtml(brand.emailBgUrl)}"
-                bgcolor="${outerBgColor}"
-                style="padding:28px 16px;background:${outerBgColor};background-image:url('${escapeHtml(brand.emailBgUrl)}');background-repeat:no-repeat;background-position:center top;background-size:cover"
-              >
-                <!--[if gte mso 9]>
-                <v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false"
-                  style="width:100%;mso-width-percent:1000;height:1200px;">
-                  <v:fill type="frame" src="${escapeHtml(brand.emailBgUrl)}" color="${outerBgColor}" />
-                  <v:textbox inset="0,0,0,0">
-                <![endif]-->
-                <table role="presentation" width="640" cellpadding="0" cellspacing="0" style="max-width:640px;width:100%;border-collapse:collapse">
+        <td align="center" valign="top" style="padding:28px 16px;background:${outerBgColor};background-image:${outerBgImage}">
+          <table role="presentation" width="640" cellpadding="0" cellspacing="0" style="max-width:640px;width:100%;border-collapse:collapse">
             <tr>
               <td style="padding:0 0 14px 0">
                 <a href="${escapeHtml(brand.brandUrl)}" style="text-decoration:none;display:inline-block">
@@ -236,13 +209,6 @@ export function renderEmailLayout(args: {
                     ${escapeHtml(brand.brandUrl.replace(/^https?:\/\//, ""))}
                   </a>
                 </div>
-              </td>
-            </tr>
-                </table>
-                <!--[if gte mso 9]>
-                  </v:textbox>
-                </v:rect>
-                <![endif]-->
               </td>
             </tr>
           </table>
