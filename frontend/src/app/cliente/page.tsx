@@ -21,6 +21,7 @@ type TicketForClient = {
   title: string;
   status: string;
   criticidade?: string | null;
+  finalizacaoMotivo?: string | null;
   dataFimPrevista?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
@@ -594,6 +595,18 @@ export default function ClienteHomePage() {
                         Aguardando aprovação
                       </span>
                     )}
+                    {String(t.status ?? "").toUpperCase() === "ENCERRADO" &&
+                      (String((t as any)?.budget?.status ?? "").toUpperCase() === "REPROVADO" ||
+                        String((t as any)?.finalizacaoMotivo ?? "")
+                          .toLowerCase()
+                          .includes("orçamento reprovado") ||
+                        String((t as any)?.finalizacaoMotivo ?? "")
+                          .toLowerCase()
+                          .includes("orcamento reprovado")) && (
+                      <span className="text-xs font-semibold text-red-700 bg-red-50 px-2 py-1 rounded border border-red-200">
+                        Orçamento reprovado
+                      </span>
+                    )}
                     {(() => {
                       const badge = getTicketDisplayBadge(t, clockNow);
                       return <span className={badge.className}>{badge.label}</span>;
@@ -639,6 +652,18 @@ export default function ClienteHomePage() {
                     {String((t as any)?.budget?.status ?? "").toUpperCase() === "AGUARDANDO_APROVACAO" && (
                       <span className="text-xs font-medium text-indigo-700 bg-indigo-50 px-2 py-1 rounded border border-indigo-100">
                         Aguardando aprovação
+                      </span>
+                    )}
+                    {String(t.status ?? "").toUpperCase() === "ENCERRADO" &&
+                      (String((t as any)?.budget?.status ?? "").toUpperCase() === "REPROVADO" ||
+                        String((t as any)?.finalizacaoMotivo ?? "")
+                          .toLowerCase()
+                          .includes("orçamento reprovado") ||
+                        String((t as any)?.finalizacaoMotivo ?? "")
+                          .toLowerCase()
+                          .includes("orcamento reprovado")) && (
+                      <span className="text-xs font-semibold text-red-700 bg-red-50 px-2 py-1 rounded border border-red-200">
+                        Orçamento reprovado
                       </span>
                     )}
                     {(() => {
