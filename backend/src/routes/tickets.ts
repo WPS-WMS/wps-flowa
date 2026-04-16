@@ -146,6 +146,59 @@ function escapeHtmlBasic(input: string): string {
     .replace(/"/g, "&quot;");
 }
 
+function truncateForEmail(value: string, max = 120): string {
+  const v = String(value ?? "");
+  if (v.length <= max) return v;
+  return `${v.slice(0, Math.max(0, max - 1))}…`;
+}
+
+function formatFieldLabel(field: string | null | undefined): string {
+  const f = String(field ?? "").trim();
+  if (!f) return "Alteração";
+  const map: Record<string, string> = {
+    title: "Título",
+    description: "Descrição",
+    criticidade: "Prioridade",
+    assignedToId: "Atribuição",
+    responsibles: "Responsáveis",
+    parentTicketId: "Tópico",
+    dataFimPrevista: "Data de entrega",
+    dataInicio: "Data de início",
+    estimativaHoras: "Horas estimadas",
+    progresso: "Progresso",
+    status: "Status",
+    type: "Tipo",
+  };
+  return map[f] ?? f;
+}
+
+function renderTicketUpdateEmailHtml(
+  entries: Array<{ action: string; field: string | null; oldValue: string | null; newValue: string | null; details?: string }>,
+): string {
+  const rows = entries
+    .map((e) => {
+      const label = formatFieldLabel(e.field);
+      const details = e.details ? escapeHtmlBasic(truncateForEmail(e.details, 220)) : "";
+      const oldV = e.oldValue != null && String(e.oldValue).trim() !== "" ? escapeHtmlBasic(truncateForEmail(String(e.oldValue))) : "";
+      const newV = e.newValue != null && String(e.newValue).trim() !== "" ? escapeHtmlBasic(truncateForEmail(String(e.newValue))) : "";
+
+      // Preferimos "de → para" quando os dois existem; senão cai para detalhes.
+      if (oldV && newV) {
+        return `<li><b>${escapeHtmlBasic(label)}:</b> ${oldV} → ${newV}</li>`;
+      }
+      if (newV) {
+        return `<li><b>${escapeHtmlBasic(label)}:</b> ${newV}</li>`;
+      }
+      if (details) {
+        return `<li><b>${escapeHtmlBasic(label)}:</b> ${details}</li>`;
+      }
+      return `<li><b>${escapeHtmlBasic(label)}:</b> atualizado</li>`;
+    })
+    .join("");
+
+  return `<p>O chamado foi <b>alterado</b>. Veja o que mudou:</p><ul>${rows}</ul>`;
+}
+
 // O status do projeto é controlado manualmente (não sincronizar automaticamente por tarefas/tópicos).
 
 ticketsRouter.get("/", async (req, res) => {
@@ -1558,7 +1611,7 @@ ticketsRouter.patch("/:id", async (req, res) => {
       ticketId,
       subject: `Chamado ${updated.code} foi atualizado`,
       title: `Chamado ${updated.code} foi atualizado`,
-      messageHtml: `<p>O chamado foi <b>alterado</b> (campos/atribuições atualizados).</p>`,
+      messageHtml: renderTicketUpdateEmailHtml(nonStatusHistory),
       trigger: "MODIFICACAO",
       includeProjectResponsibles: true,
     }).catch(() => {});
