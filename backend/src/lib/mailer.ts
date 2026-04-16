@@ -174,17 +174,41 @@ async function sendMailViaMicrosoftGraph({ to, subject, html }: SendMailArgs) {
     saveToSentItems: false,
   };
 
-  const resp = await fetch(url, {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${token}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-  if (!resp.ok) {
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  const maxAttempts = 5;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+    if (resp.ok) return { ok: true as const };
+
     const text = await resp.text().catch(() => "");
-    throw new Error(`Falha ao enviar via Graph (${resp.status}): ${text || resp.statusText}`);
+    const retryAfter = Number(resp.headers.get("retry-after") ?? "");
+    const is429 = resp.status === 429;
+    const is5xx = resp.status >= 500;
+    const canRetry = (is429 || is5xx) && attempt < maxAttempts;
+
+    if (!canRetry) {
+      throw new Error(`Falha ao enviar via Graph (${resp.status}): ${text || resp.statusText}`);
+    }
+
+    const base = 800 * Math.pow(2, attempt - 1); // 0.8s, 1.6s, 3.2s, 6.4s...
+    const jitter = Math.round(Math.random() * 250);
+    const waitMs = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : base + jitter;
+    console.warn("[MAIL] Graph throttled/erro temporário; retry", {
+      to,
+      subject,
+      status: resp.status,
+      attempt,
+      waitMs,
+      hasRetryAfterHeader: Boolean(resp.headers.get("retry-after")),
+    });
+    await sleep(waitMs);
   }
 
   return { ok: true as const };
@@ -214,8 +238,18 @@ export async function sendMail({ to, subject, html }: SendMailArgs) {
   const smtpOk = isSmtpConfigured();
 
   if (graphOk) {
+    // Graph aplica limites de concorrência por mailbox.
+    // Serializamos os envios para evitar 429 (MailboxConcurrency) quando há múltiplos destinatários.
+    // (Sem isso, notifyTicketMembers dispara vários sendMail em paralelo com Promise.allSettled.)
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises
+    (globalThis as any).__wpsGraphMailQueue ??= Promise.resolve();
+    const key = "__wpsGraphMailQueue";
+    const prev: Promise<unknown> = (globalThis as any)[key];
+    const next = prev.then(() => sendMailViaMicrosoftGraph({ to, subject, html }));
+    // Mantém a fila viva mesmo se este envio falhar (não “quebra” os próximos).
+    (globalThis as any)[key] = next.catch(() => undefined);
     try {
-      return await sendMailViaMicrosoftGraph({ to, subject, html });
+      return await next;
     } catch (err) {
       const e = err as any;
       console.error("[MAIL] sendMail falhou", {
