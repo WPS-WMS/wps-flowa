@@ -709,6 +709,15 @@ export function EditTaskModalFull({
         const s = String(raw).trim();
         if (!s) return s;
         if (s.startsWith("data:")) return s;
+
+        // Converte qualquer URL absoluta com pathname contendo /uploads/ -> "/uploads/..."
+        try {
+          const u = new URL(s);
+          if (u.pathname.includes("/uploads/")) return `${u.pathname}${u.search}${u.hash}`;
+        } catch {
+          // ignore
+        }
+
         // Converte "https://api.../uploads/..." -> "/uploads/..."
         if (s.startsWith(`${base}/uploads/`)) return s.slice(base.length);
         return s;
@@ -733,7 +742,7 @@ export function EditTaskModalFull({
 
   function normalizeCommentHtmlForAssets(html: string): string {
     try {
-      const base = String(API_BASE_URL || "").trim();
+      const base = String(API_BASE_URL || "").trim().replace(/\/+$/, "");
       if (!base) return html;
 
       const doc = new DOMParser().parseFromString(String(html || ""), "text/html");
@@ -744,10 +753,16 @@ export function EditTaskModalFull({
         if (!s) return s;
         if (s.startsWith("data:")) return s;
 
-        // Comentários antigos podem ter salvo a API como localhost/127 e quebram em staging/produção.
-        if (s.startsWith("http://127.0.0.1:4000") || s.startsWith("http://localhost:4000")) {
-          return `${base}${s.replace(/^http:\/\/(127\.0\.0\.1|localhost):4000/, "")}`;
+        // Se for URL absoluta e o pathname contiver /uploads/, força o host atual
+        try {
+          const u = new URL(s);
+          if (u.pathname.includes("/uploads/")) return `${base}${u.pathname}${u.search}${u.hash}`;
+        } catch {
+          // ignore
         }
+
+        // Normaliza "uploads/..." (sem slash)
+        if (s.startsWith("uploads/")) return `${base}/${s}`;
 
         // URL relativa deve apontar para o backend (uploads)
         if (s.startsWith("/uploads/")) return `${base}${s}`;

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { X, Maximize2, Send, Pencil, Trash2, Plus, Users } from "lucide-react";
-import { apiFetch } from "@/lib/api";
+import { API_BASE_URL, apiFetch } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { RichTextEditor } from "./RichTextEditor";
 import { Avatar } from "@/components/Avatar";
@@ -229,16 +229,126 @@ export function CreateTaskModalFull({
   }
 
   async function handleImageUpload(file: File): Promise<string> {
-    // Por enquanto, retorna uma URL de data URL
-    // Em produção, você deve fazer upload para um servidor
-    return new Promise((resolve, reject) => {
+    if (!currentTicketId) {
+      throw new Error("Crie a tarefa primeiro antes de anexar imagens no comentário.");
+    }
+
+    const base64Data = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload = (e) => {
-        resolve(e.target?.result as string);
-      };
+      reader.onload = (e) => resolve(String(e.target?.result || ""));
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
+
+    const response = await apiFetch("/api/ticket-attachments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ticketId: currentTicketId,
+        fileName: file.name || `print-${Date.now()}.png`,
+        fileData: base64Data,
+        fileType: file.type,
+        fileSize: file.size,
+      }),
+    });
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error((data as { error?: string } | null)?.error || "Falha ao enviar imagem");
+    }
+
+    const attachment = await response.json().catch(() => null);
+    const fileUrl = attachment?.fileUrl as string | undefined;
+    if (!fileUrl) throw new Error("Resposta sem fileUrl");
+    const absolute = fileUrl.startsWith("http") ? fileUrl : `${API_BASE_URL}${fileUrl}`;
+    return absolute;
+  }
+
+  function stripApiBaseFromCommentHtml(html: string): string {
+    try {
+      const base = String(API_BASE_URL || "").trim().replace(/\/+$/, "");
+      if (!base) return html;
+      const doc = new DOMParser().parseFromString(String(html || ""), "text/html");
+
+      const strip = (raw: string | null): string | null => {
+        if (!raw) return raw;
+        const s = String(raw).trim();
+        if (!s) return s;
+        if (s.startsWith("data:")) return s;
+
+        // Converte qualquer URL absoluta com pathname /uploads/... -> "/uploads/..."
+        try {
+          const u = new URL(s);
+          if (u.pathname.startsWith("/uploads/")) return `${u.pathname}${u.search}${u.hash}`;
+        } catch {
+          // ignore
+        }
+
+        // Converte "https://api.../uploads/..." -> "/uploads/..."
+        if (s.startsWith(`${base}/uploads/`)) return s.slice(base.length);
+
+        return s;
+      };
+
+      doc.querySelectorAll("img").forEach((img) => {
+        const src = img.getAttribute("src");
+        const fixed = strip(src);
+        if (fixed && fixed !== src) img.setAttribute("src", fixed);
+      });
+      doc.querySelectorAll("a").forEach((a) => {
+        const href = a.getAttribute("href");
+        const fixed = strip(href);
+        if (fixed && fixed !== href) a.setAttribute("href", fixed);
+      });
+
+      return doc.body.innerHTML;
+    } catch {
+      return html;
+    }
+  }
+
+  function normalizeCommentHtmlForAssets(html: string): string {
+    try {
+      const base = String(API_BASE_URL || "").trim().replace(/\/+$/, "");
+      if (!base) return html;
+
+      const doc = new DOMParser().parseFromString(String(html || ""), "text/html");
+
+      const normalizeUrl = (raw: string | null): string | null => {
+        if (!raw) return raw;
+        const s = String(raw).trim();
+        if (!s) return s;
+        if (s.startsWith("data:")) return s;
+
+        // Se for URL absoluta e o pathname for /uploads/..., força o host atual
+        try {
+          const u = new URL(s);
+          if (u.pathname.startsWith("/uploads/")) return `${base}${u.pathname}${u.search}${u.hash}`;
+        } catch {
+          // ignore
+        }
+
+        // URL relativa deve apontar para o backend (uploads)
+        if (s.startsWith("/uploads/")) return `${base}${s}`;
+
+        return s;
+      };
+
+      doc.querySelectorAll("img").forEach((img) => {
+        const src = img.getAttribute("src");
+        const fixed = normalizeUrl(src);
+        if (fixed && fixed !== src) img.setAttribute("src", fixed);
+      });
+      doc.querySelectorAll("a").forEach((a) => {
+        const href = a.getAttribute("href");
+        const fixed = normalizeUrl(href);
+        if (fixed && fixed !== href) a.setAttribute("href", fixed);
+      });
+
+      return doc.body.innerHTML;
+    } catch {
+      return html;
+    }
   }
 
   // Função auxiliar para verificar se o HTML tem conteúdo de texto real
@@ -268,7 +378,7 @@ export function CreateTaskModalFull({
         method: "POST",
         body: JSON.stringify({
           ticketId: currentTicketId,
-          content: comment,
+          content: stripApiBaseFromCommentHtml(comment),
         }),
       });
       
@@ -309,7 +419,7 @@ export function CreateTaskModalFull({
       const res = await apiFetch(`/api/comments/${editingCommentId}`, {
         method: "PATCH",
         body: JSON.stringify({
-          content: editingCommentContent,
+          content: stripApiBaseFromCommentHtml(editingCommentContent),
         }),
       });
 
@@ -945,7 +1055,7 @@ export function CreateTaskModalFull({
                             ) : (
                               <div
                                 className="text-sm text-[color:var(--foreground)] prose prose-sm max-w-none [&_img]:max-w-full [&_img]:rounded-lg [&_img]:my-2 [&_ul]:list-disc [&_ul]:ml-4 [&_ol]:list-decimal [&_ol]:ml-4"
-                                dangerouslySetInnerHTML={{ __html: c.content }}
+                                dangerouslySetInnerHTML={{ __html: normalizeCommentHtmlForAssets(c.content) }}
                               />
                             )}
                           </div>
