@@ -882,6 +882,7 @@ ticketsRouter.post("/:id/budget", async (req, res) => {
       <p><b>Horas:</b> ${h}<br/><b>Observação:</b> ${obs}</p>`,
     trigger: "ORCAMENTO",
     includeClientUsers: true,
+    includeProjectResponsibles: true,
   }).catch(() => {});
 
   const budgetFull = await prisma.ticketBudget.findUnique({
@@ -1029,6 +1030,7 @@ ticketsRouter.post("/:id/budget/approve", async (req, res) => {
     messageHtml: `<p>O orçamento foi <b>aprovado</b>. O chamado foi movido para <b>Em execução</b>.</p>`,
     trigger: "RESPOSTA_ORCAMENTO",
     includeClientUsers: true,
+    includeProjectResponsibles: true,
   }).catch(() => {});
 
   const budgetFull = await prisma.ticketBudget.findUnique({
@@ -1136,6 +1138,7 @@ ticketsRouter.post("/:id/budget/reject", async (req, res) => {
       <p><b>Motivo:</b> ${reason}</p>`,
     trigger: "RESPOSTA_ORCAMENTO",
     includeClientUsers: true,
+    includeProjectResponsibles: true,
   }).catch(() => {});
 
   const budgetFull = await prisma.ticketBudget.findUnique({
