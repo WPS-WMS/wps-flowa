@@ -71,6 +71,12 @@ export function renderEmailLayout(args: {
 }): string {
   const brand = getBrandConfig();
   const preheader = args.preheader ? escapeHtml(args.preheader) : "";
+  // Fundo externo (atrás do card): degradê preto + roxo, com fallback para clientes com suporte limitado.
+  const outerBgColor = "#0b1020";
+  const outerBgImage =
+    "radial-gradient(900px 420px at 78% 30%, rgba(92,0,225,0.35), transparent 55%)," +
+    "radial-gradient(700px 380px at 30% 60%, rgba(87,66,118,0.28), transparent 60%)," +
+    "linear-gradient(135deg, rgba(7,5,12,0.98), rgba(18,12,28,0.92))";
 
   const summary = (args.summaryRows ?? []).length
     ? `
@@ -134,12 +140,12 @@ export function renderEmailLayout(args: {
     <meta name="x-apple-disable-message-reformatting" />
     <title>${escapeHtml(args.subject)}</title>
   </head>
-  <body style="margin:0;padding:0;background:#0b1020">
+  <body style="margin:0;padding:0;background:${outerBgColor};background-image:${outerBgImage}">
     ${preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent">${preheader}</div>` : ""}
 
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:0;padding:0">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:0;padding:0;background:${outerBgColor};background-image:${outerBgImage}">
       <tr>
-        <td align="center" style="padding:28px 16px">
+        <td align="center" style="padding:28px 16px;background:${outerBgColor};background-image:${outerBgImage}">
           <table role="presentation" width="640" cellpadding="0" cellspacing="0" style="max-width:640px;width:100%;border-collapse:collapse">
             <tr>
               <td style="padding:0 0 14px 0">
