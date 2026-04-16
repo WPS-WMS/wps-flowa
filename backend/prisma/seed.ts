@@ -34,7 +34,10 @@ async function main() {
 
   const gestor = await prisma.user.upsert({
     where: { email_tenantId: { email: "gestor@wpsconsult.com.br", tenantId: tenant.id } },
-    update: {},
+    update: {
+      // Data de aniversário de exemplo (mês/dia) para o portal colaborativo em QA
+      birthDate: new Date("1988-04-15T12:00:00.000Z"),
+    },
     create: {
       email: "gestor@wpsconsult.com.br",
       name: "Gestor de Projetos",
@@ -43,12 +46,15 @@ async function main() {
       tenantId: tenant.id,
       cargo: "Gestor de Projetos",
       cargaHorariaSemanal: 40,
+      birthDate: new Date("1988-04-15T12:00:00.000Z"),
     },
   });
 
   const consultor = await prisma.user.upsert({
     where: { email_tenantId: { email: "andre.nunes@wpsconsult.com.br", tenantId: tenant.id } },
-    update: {},
+    update: {
+      birthDate: new Date("1992-04-22T12:00:00.000Z"),
+    },
     create: {
       email: "andre.nunes@wpsconsult.com.br",
       name: "André Nunes",
@@ -61,6 +67,7 @@ async function main() {
       permitirFimDeSemana: false,
       permitirOutroPeriodo: false,
       diasPermitidos: '["seg","ter","qua","qui","sex"]',
+      birthDate: new Date("1992-04-22T12:00:00.000Z"),
     },
   });
 
@@ -196,6 +203,26 @@ async function main() {
         projectId: projetoAms.id,
         assignedToId: gestor.id,
       },
+    });
+  }
+
+  // Portal colaborativo: seções padrão por tenant (slugs usados pelo front)
+  const portalSections = [
+    { slug: "noticias", title: "Notícias", order: 0 },
+    { slug: "colaborador-do-mes", title: "Colaborador do mês", order: 1 },
+    { slug: "premios", title: "Prêmios mensais", order: 2 },
+    { slug: "manuais", title: "Manuais e documentos", order: 3 },
+  ];
+  for (const ps of portalSections) {
+    await prisma.portalSection.upsert({
+      where: { tenantId_slug: { tenantId: tenant.id, slug: ps.slug } },
+      create: {
+        tenantId: tenant.id,
+        slug: ps.slug,
+        title: ps.title,
+        order: ps.order,
+      },
+      update: { title: ps.title, order: ps.order },
     });
   }
 
