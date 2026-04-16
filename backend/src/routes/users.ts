@@ -20,10 +20,28 @@ usersRouter.get("/for-project-select", requireFeature("projeto.novo"), async (re
   const authUser = req.user;
   const users = await prisma.user.findMany({
     where: { tenantId: authUser.tenantId },
-    select: { id: true, name: true, email: true, avatarUrl: true, updatedAt: true },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      avatarUrl: true,
+      updatedAt: true,
+      clientAccess: { select: { clientId: true } },
+    },
     orderBy: { name: "asc" },
   });
-  res.json(users);
+  res.json(
+    users.map((u) => ({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      role: u.role,
+      avatarUrl: u.avatarUrl,
+      updatedAt: u.updatedAt,
+      clientIds: u.clientAccess?.map((c) => c.clientId) ?? [],
+    })),
+  );
 });
 
 // Atualizar dados do próprio usuário (ex.: nome)

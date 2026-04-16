@@ -16,8 +16,10 @@ export type UserOption = {
   id: string;
   name: string;
   email?: string;
+  role?: string;
   avatarUrl?: string | null;
   updatedAt?: string;
+  clientIds?: string[];
 };
 export type ClientOption = { id: string; name: string };
 
@@ -226,8 +228,30 @@ export function NewProjectModal({ onClose, onSaved, mode = "create", projectId }
       .finally(() => setLoadingProject(false));
   }, [isEdit, projectId]);
 
+  useEffect(() => {
+    if (!clientId || users.length === 0) return;
+    // Se trocar o cliente, remove membros do tipo CLIENTE que não pertencem ao novo cliente
+    setResponsibleIds((ids) =>
+      ids.filter((id) => {
+        const u = users.find((x) => x.id === id);
+        if (!u) return false;
+        const role = String(u.role ?? "").toUpperCase();
+        if (role !== "CLIENTE") return true;
+        const clientIds = u.clientIds ?? [];
+        return clientIds.includes(clientId);
+      }),
+    );
+  }, [clientId, users]);
+
   const selectedUsers = users.filter((u) => responsibleIds.includes(u.id));
-  const availableToAdd = users.filter((u) => !responsibleIds.includes(u.id));
+  const availableToAdd = users.filter((u) => {
+    if (responsibleIds.includes(u.id)) return false;
+    const role = String(u.role ?? "").toUpperCase();
+    if (role !== "CLIENTE") return true;
+    // Para usuários CLIENTE, só permitir os vinculados ao cliente selecionado
+    if (!clientId) return false;
+    return (u.clientIds ?? []).includes(clientId);
+  });
 
   function addResponsible(userId: string) {
     if (!responsibleIds.includes(userId)) {
@@ -669,9 +693,13 @@ export function NewProjectModal({ onClose, onSaved, mode = "create", projectId }
                         className="absolute left-0 top-full mt-2 z-30 w-72 rounded-xl border shadow-xl py-2 max-h-64 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200 bg-[color:var(--surface)]"
                         style={{ borderColor: "var(--border)" }}
                       >
-                        {availableToAdd.length === 0 ? (
+                        {!clientId ? (
                           <p className="px-4 py-3 text-xs text-[color:var(--muted-foreground)] text-center">
-                            Todos os usuários já foram adicionados
+                            Selecione um cliente para listar os membros.
+                          </p>
+                        ) : availableToAdd.length === 0 ? (
+                          <p className="px-4 py-3 text-xs text-[color:var(--muted-foreground)] text-center">
+                            Nenhum usuário disponível para este cliente.
                           </p>
                         ) : (
                           availableToAdd.map((u) => (

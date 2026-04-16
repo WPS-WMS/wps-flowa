@@ -264,10 +264,17 @@ ticketsRouter.get("/", async (req, res) => {
         { responsibles: { some: { userId: user.id } } },
       ],
     }),
-    // Cliente: vê tickets dos projetos do seu cliente; createdBy=me para "chamados que abri"
+    // Cliente: vê tickets dos projetos da sua empresa. Além disso, sempre enxerga tickets que ele próprio criou
+    // (isso cobre cenários de dado legado onde o vínculo client.users pode estar ausente/atrasado).
     ...(user.role === "CLIENTE" && {
-      project: { client: { users: { some: { userId: user.id } } } },
-      ...(createdBy === "me" && { createdById: user.id }),
+      ...(createdBy === "me"
+        ? { createdById: user.id }
+        : {
+            OR: [
+              { createdById: user.id },
+              { project: { client: { users: { some: { userId: user.id } } } } },
+            ],
+          }),
     }),
   };
 
@@ -930,7 +937,9 @@ ticketsRouter.get("/:id/budget", async (req, res) => {
       }
     }
     if (!canSeeAll && user.role === "CLIENTE") {
-      const hasAccess = (ticket.project?.client?.users ?? []).some((u) => u.userId === user.id);
+      const hasAccess =
+        (ticket.project?.client?.users ?? []).some((u) => u.userId === user.id) ||
+        ticket.createdById === user.id;
       if (!hasAccess) {
         res.status(403).json({ error: "Sem permissão para visualizar este item" });
         return;
@@ -1184,7 +1193,7 @@ ticketsRouter.get("/:id", async (req, res) => {
   }
   if (!canSeeAll && user.role === "CLIENTE") {
     const clientUsers = ticket.project?.client?.users ?? [];
-    const hasAccess = clientUsers.some((u) => u.userId === user.id);
+    const hasAccess = clientUsers.some((u) => u.userId === user.id) || ticket.createdById === user.id;
     if (!hasAccess) {
       res.status(403).json({ error: "Sem permissão para visualizar este item" });
       return;
