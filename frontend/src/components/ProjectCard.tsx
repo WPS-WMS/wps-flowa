@@ -763,6 +763,7 @@ export function ProjectCard({
                                       <TaskCardHorizontal
                                         key={task.id}
                                         ticket={task}
+                                        projectId={expandedProject.id}
                                         projectName={expandedProject.name}
                                         onClick={(task) => {
                                           setEditingTask(task);
@@ -940,6 +941,7 @@ export function ProjectCard({
                   ) : (
                     <TaskListView
                       tickets={expandedProject.tickets.filter((t) => t.parentTicketId === selectedPackage.id && t.type !== "SUBTAREFA")}
+                      projectId={expandedProject.id}
                       onTicketClick={(ticket) => {
                         setEditingTask(ticket);
                       }}

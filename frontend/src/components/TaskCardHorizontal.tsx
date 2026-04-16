@@ -7,9 +7,11 @@ import { ConfirmModal } from "./ConfirmModal";
 import { isTopicTicket } from "@/lib/ticketCodeDisplay";
 import { collectTicketMemberNames, formatMemberNamesChip } from "@/lib/ticketMemberNames";
 import { useAuth } from "@/contexts/AuthContext";
+import { getTicketStatusDisplay } from "@/lib/ticketStatusDisplay";
 
 type TaskCardHorizontalProps = {
   ticket: PackageTicket;
+  projectId: string;
   projectName?: string;
   onClick?: (ticket: PackageTicket) => void;
   onDelete?: (ticket: PackageTicket) => void;
@@ -40,54 +42,22 @@ function getPriorityDotClass(priorityRaw: unknown): string {
   return "bg-slate-400";
 }
 
-// Mapeamento de status da tarefa para coluna do Kanban
-const STATUS_TO_COLUMN: Record<string, string> = {
-  ABERTO: "BACKLOG",
-  EM_ANALISE: "BACKLOG",
-  APROVADO: "BACKLOG",
-  EXECUCAO: "EM_EXECUCAO",
-  TESTE: "EM_EXECUCAO",
-  ENCERRADO: "FINALIZADAS",
-};
-
-function getKanbanStatus(
-  ticketStatus: string,
-  dataFimPrevista?: string | null,
-): { column: string; label: string; color: string } {
-  // Atrasado: dataFimPrevista passada (comparação só por data) e não encerrado
-  if (dataFimPrevista && ticketStatus !== "ENCERRADO") {
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const fimStr = String(dataFimPrevista).slice(0, 10);
-    if (fimStr < todayStr) {
-      return { column: "EM_EXECUCAO", label: "Atrasado", color: "bg-rose-500" };
-    }
-  }
-
-  const column = STATUS_TO_COLUMN[ticketStatus] || "BACKLOG";
-
-  switch (column) {
-    case "BACKLOG":
-      return { column: "BACKLOG", label: "Backlog", color: "bg-slate-500" };
-    case "EM_EXECUCAO":
-      return { column: "EM_EXECUCAO", label: "Em execução", color: "bg-blue-500" };
-    case "FINALIZADAS":
-      return { column: "FINALIZADAS", label: "Finalizada", color: "bg-emerald-500" };
-    default:
-      return { column: "BACKLOG", label: "Backlog", color: "bg-slate-400" };
-  }
-}
-
-export function TaskCardHorizontal({ ticket, onClick, onDelete }: TaskCardHorizontalProps) {
+export function TaskCardHorizontal({ ticket, projectId, onClick, onDelete }: TaskCardHorizontalProps) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const { user } = useAuth();
   const hideMembers = user?.role === "CLIENTE";
-  const kanbanStatus = getKanbanStatus(ticket.status, ticket.dataFimPrevista);
+  const statusDisplay = getTicketStatusDisplay({
+    status: ticket.status,
+    projectId,
+    dataFimPrevista: ticket.dataFimPrevista,
+    allowOverdue: true,
+  });
   const memberChip = formatMemberNamesChip(collectTicketMemberNames(ticket));
 
   return (
     <div className="w-full">
       <div className="flex rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] shadow-sm overflow-hidden hover:shadow-md transition-all">
-        <div className={`w-2 flex-shrink-0 ${kanbanStatus.color}`} aria-hidden />
+        <div className={`w-2 flex-shrink-0 ${statusDisplay.color}`} aria-hidden />
         <button
           type="button"
           onClick={() => onClick?.(ticket)}
@@ -103,7 +73,7 @@ export function TaskCardHorizontal({ ticket, onClick, onDelete }: TaskCardHorizo
               </span>
             </div>
             <div className="mt-1">
-              <p className="text-[color:var(--foreground)] font-medium text-sm truncate">{kanbanStatus.label}</p>
+              <p className="text-[color:var(--foreground)] font-medium text-sm truncate">{statusDisplay.label}</p>
             </div>
             {(ticket.finalizacaoMotivo || ticket.finalizacaoObservacao) && (
               <div className="mt-2 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2 py-1.5 text-[11px] leading-snug text-emerald-200 max-w-full">

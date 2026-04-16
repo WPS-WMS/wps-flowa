@@ -7,40 +7,16 @@ import { ConfirmModal } from "./ConfirmModal";
 import { isTopicTicket } from "@/lib/ticketCodeDisplay";
 import { collectTicketMemberNames } from "@/lib/ticketMemberNames";
 import { useAuth } from "@/contexts/AuthContext";
+import { getTicketStatusDisplay } from "@/lib/ticketStatusDisplay";
 
 type TaskListViewProps = {
   tickets: PackageTicket[];
+  projectId: string;
   onTicketClick?: (ticket: PackageTicket) => void;
   onTicketDelete?: (ticket: PackageTicket) => void;
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  ABERTO: "Aberto",
-  EM_ANALISE: "Em Análise",
-  APROVADO: "Aprovado",
-  EXECUCAO: "Em Execução",
-  TESTE: "Teste",
-  ENCERRADO: "Encerrado",
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  ABERTO: "bg-slate-400",
-  EM_ANALISE: "bg-amber-500",
-  APROVADO: "bg-cyan-500",
-  EXECUCAO: "bg-blue-500",
-  TESTE: "bg-purple-500",
-  ENCERRADO: "bg-emerald-500",
-};
-
-function getStatusColor(status: string): string {
-  return STATUS_COLORS[status] || "bg-slate-400";
-}
-
-function getStatusLabel(status: string): string {
-  return STATUS_LABELS[status] || status;
-}
-
-export function TaskListView({ tickets, onTicketClick, onTicketDelete }: TaskListViewProps) {
+export function TaskListView({ tickets, projectId, onTicketClick, onTicketDelete }: TaskListViewProps) {
   const [deleteTarget, setDeleteTarget] = useState<PackageTicket | null>(null);
   const { user } = useAuth();
   const hideMembers = user?.role === "CLIENTE";
@@ -72,11 +48,16 @@ export function TaskListView({ tickets, onTicketClick, onTicketDelete }: TaskLis
                   {!isTopicTicket(ticket.type) && (
                     <span className="text-xs font-mono font-semibold text-[color:var(--muted-foreground)]">#{ticket.code}</span>
                   )}
+                  {(() => {
+                    const st = getTicketStatusDisplay({ status: ticket.status, projectId });
+                    return (
                   <span
-                    className={`px-2 py-0.5 rounded text-xs font-medium text-white ${getStatusColor(ticket.status)}`}
+                        className={`px-2 py-0.5 rounded text-xs font-medium text-white ${st.color}`}
                   >
-                    {getStatusLabel(ticket.status)}
+                        {st.label}
                   </span>
+                    );
+                  })()}
                 </div>
                 <h4 className="text-sm font-medium text-[color:var(--foreground)] mb-1 line-clamp-1" title={ticket.title}>
                   {ticket.title}

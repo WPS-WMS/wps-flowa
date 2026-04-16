@@ -196,6 +196,7 @@ export default function TopicoKanbanConsultorPage({ params }: PageProps) {
           ) : (
             <TaskListView
               tickets={tickets.filter((t) => t.parentTicketId === ticketId)}
+              projectId={projectId}
               onTicketClick={(ticket) => {
                 console.log("Tarefa clicada:", ticket);
               }}

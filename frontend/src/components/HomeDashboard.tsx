@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { EditTaskModalFull } from "./EditTaskModalFull";
 import type { PackageTicket } from "./PackageCard";
+import { getTicketStatusDisplay } from "@/lib/ticketStatusDisplay";
 
 export type HomeDashboardBasePath = "/consultor" | "/admin" | "/gestor";
 
@@ -67,23 +68,15 @@ function getWeekOfMonth(d: Date): number {
   return Math.ceil(dayOfMonth / 7);
 }
 
-function getStatusBadge(statusRaw: unknown): { label: string; className: string } | null {
-  const s = String(statusRaw ?? "").toUpperCase();
-  if (s === "ENCERRADO") return { label: "Finalizado", className: "text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded" };
-  if (s === "ABERTO") return { label: "Backlog", className: "text-xs font-medium text-[color:var(--muted-foreground)] bg-[color:var(--surface)] px-2 py-1 rounded border border-[color:var(--border)]" };
-  if (s === "EM_ANDAMENTO") return { label: "Em execução", className: "text-xs font-medium text-amber-600 bg-amber-50 px-2 py-1 rounded" };
-  // fallback para outros status não mapeados
-  return { label: "Em execução", className: "text-xs font-medium text-amber-600 bg-amber-50 px-2 py-1 rounded" };
-}
-
-function getStatusSortBucket(statusRaw: unknown): number {
-  const s = String(statusRaw ?? "").trim().toUpperCase();
-  // Finalizadas sempre por último
-  if (s === "ENCERRADO") return 2;
-  // Backlog/Em aberto no meio
-  if (s === "ABERTO") return 1;
-  // Em execução e demais status no topo
-  return 0;
+function getStatusBadge(statusRaw: unknown, projectId: string | undefined, dataFimPrevista?: string | null): { label: string; className: string; dotClass: string } {
+  const st = getTicketStatusDisplay({ status: statusRaw, projectId, dataFimPrevista, allowOverdue: true });
+  const className =
+    st.sortBucket === 2
+      ? "text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-1 rounded border border-emerald-200"
+      : st.sortBucket === 1
+        ? "text-xs font-medium text-[color:var(--muted-foreground)] bg-[color:var(--surface)] px-2 py-1 rounded border border-[color:var(--border)]"
+        : "text-xs font-medium text-amber-700 bg-amber-50 px-2 py-1 rounded border border-amber-200";
+  return { label: st.label, className, dotClass: st.color };
 }
 
 type HomeDashboardProps = {
@@ -195,8 +188,8 @@ export function HomeDashboard({ basePath }: HomeDashboardProps) {
 
   const tarefasOrdenadas = useMemo(() => {
     return [...tickets].sort((a, b) => {
-      const sa = getStatusSortBucket(a.status);
-      const sb = getStatusSortBucket(b.status);
+      const sa = getTicketStatusDisplay({ status: a.status, projectId: a.project?.id, dataFimPrevista: a.dataFimPrevista, allowOverdue: true }).sortBucket;
+      const sb = getTicketStatusDisplay({ status: b.status, projectId: b.project?.id, dataFimPrevista: b.dataFimPrevista, allowOverdue: true }).sortBucket;
       if (sa !== sb) return sa - sb;
 
       const pa = PRIORITY_ORDER[normalizePriority(a.criticidade)] ?? 0;
@@ -358,8 +351,13 @@ export function HomeDashboard({ basePath }: HomeDashboardProps) {
                     </span>
                     <span className="flex items-center gap-2">
                       {(() => {
-                        const badge = getStatusBadge(t.status);
-                        return badge ? <span className={badge.className}>{badge.label}</span> : null;
+                        const badge = getStatusBadge(t.status, t.project?.id, t.dataFimPrevista);
+                        return (
+                          <span className={`inline-flex items-center gap-1.5 ${badge.className}`}>
+                            <span className={`h-2 w-2 rounded-full ${badge.dotClass}`} aria-hidden />
+                            {badge.label}
+                          </span>
+                        );
                       })()}
                       {(() => {
                         const isEncerrado = String(t.status ?? "").toUpperCase() === "ENCERRADO";
