@@ -26,6 +26,8 @@ type TicketForHome = {
   assignedTo?: { id: string; name: string } | null;
   responsibles?: { user: { id: string; name: string } }[];
   type: string;
+  finalizacaoMotivo?: string | null;
+  budget?: { status?: string | null } | null;
   [key: string]: unknown; // API retorna mais campos (description, createdAt, etc.) usados pelo modal
 };
 
@@ -337,10 +339,26 @@ export function HomeDashboard({ basePath }: HomeDashboardProps) {
                     <span className="flex-1 text-[color:var(--foreground)] truncate">
                       {t.project?.client?.name} - {t.project?.name} - {t.title}
                     </span>
-                    {(() => {
-                      const badge = getStatusBadge(t.status);
-                      return badge ? <span className={badge.className}>{badge.label}</span> : null;
-                    })()}
+                    <span className="flex items-center gap-2">
+                      {(() => {
+                        const badge = getStatusBadge(t.status);
+                        return badge ? <span className={badge.className}>{badge.label}</span> : null;
+                      })()}
+                      {(() => {
+                        const isEncerrado = String(t.status ?? "").toUpperCase() === "ENCERRADO";
+                        if (!isEncerrado) return null;
+                        const budgetStatus = String(t.budget?.status ?? "").toUpperCase();
+                        const motivo = String(t.finalizacaoMotivo ?? "").toLowerCase();
+                        const rejected =
+                          budgetStatus === "REPROVADO" || motivo.includes("orçamento reprovado") || motivo.includes("orcamento reprovado");
+                        if (!rejected) return null;
+                        return (
+                          <span className="text-xs font-semibold text-red-700 bg-red-50 px-2 py-1 rounded border border-red-200">
+                            Orçamento reprovado
+                          </span>
+                        );
+                      })()}
+                    </span>
                   </button>
                 ))
               )}

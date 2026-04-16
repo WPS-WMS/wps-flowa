@@ -22,6 +22,8 @@ export async function notifyTicketMembers(args: {
   /** Gatilho para respeitar Configurações → E-mails */
   trigger: EmailTrigger;
   includeProjectResponsibles?: boolean;
+  /** Incluir usuários do cliente (empresa) como destinatários */
+  includeClientUsers?: boolean;
   /**
    * Abertura de chamado pelo cliente: ainda não há consultor na tarefa.
    * Notifica só o criador (confirmação) e os membros do projeto (ProjectResponsible).
@@ -39,7 +41,12 @@ export async function notifyTicketMembers(args: {
           select: {
             name: true,
             tipoProjeto: true,
-            client: { select: { name: true } },
+            client: {
+              select: {
+                name: true,
+                users: { select: { user: { select: { email: true } } } },
+              },
+            },
             responsibles: { select: { user: { select: { email: true } } } },
           },
         },
@@ -75,6 +82,8 @@ export async function notifyTicketMembers(args: {
 
     const projectResponsiblesEmails =
       ticket.project?.responsibles?.map((r) => r.user.email) ?? [];
+    const clientUsersEmails =
+      ticket.project?.client?.users?.map((u) => u.user.email) ?? [];
 
     const to = args.openingByClient
       ? uniqEmails([ticket.createdBy?.email, ...projectResponsiblesEmails])
@@ -83,6 +92,7 @@ export async function notifyTicketMembers(args: {
           ticket.assignedTo?.email,
           ...ticket.responsibles.map((r) => r.user.email),
           ...(args.includeProjectResponsibles ? projectResponsiblesEmails : []),
+          ...(args.includeClientUsers ? clientUsersEmails : []),
         ]);
     if (to.length === 0) {
       console.warn(`[MAIL] Nenhum destinatário com e-mail válido no chamado ${ticket.code}.`);
