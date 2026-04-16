@@ -17,8 +17,9 @@ BEGIN
           CONSTRAINT "tenant_email_notification_rules_pkey" PRIMARY KEY ("id")
         )
       ';
-      EXECUTE 'CREATE UNIQUE INDEX "tenant_email_notification_rules_tenantId_projectType_trigger_key" ON "tenant_email_notification_rules"("tenantId", "projectType", "trigger")';
-      EXECUTE 'CREATE INDEX "tenant_email_notification_rules_tenantId_idx" ON "tenant_email_notification_rules"("tenantId")';
+      -- Nomes <= 63 caracteres (limite do Postgres para identificadores)
+      EXECUTE 'CREATE UNIQUE INDEX "ten_email_rules_tpt_trig_uq" ON "tenant_email_notification_rules"("tenantId", "projectType", "trigger")';
+      EXECUTE 'CREATE INDEX "ten_email_rules_tenant_idx" ON "tenant_email_notification_rules"("tenantId")';
       EXECUTE 'ALTER TABLE "tenant_email_notification_rules" ADD CONSTRAINT "tenant_email_notification_rules_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE CASCADE ON UPDATE CASCADE';
     END IF;
   END IF;

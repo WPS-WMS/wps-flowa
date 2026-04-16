@@ -53,8 +53,8 @@ model TenantEmailNotificationRule {
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  @@unique([tenantId, projectType, trigger])
-  @@index([tenantId])
+  @@unique([tenantId, projectType, trigger], map: "ten_email_rules_tpt_trig_uq")
+  @@index([tenantId], map: "ten_email_rules_tenant_idx")
   @@map("tenant_email_notification_rules")
 }
 
