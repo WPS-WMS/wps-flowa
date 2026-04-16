@@ -1359,11 +1359,13 @@ export function EditTaskModalFull({
 
     setSaving(true);
     try {
+      const statusOpt = statusOptions.find((o) => o.value === status) ?? null;
       const body: Record<string, unknown> = {
         title: title.trim(),
         description: description.trim() || undefined,
         criticidade: prioridade || undefined,
         status: status || ticket.status,
+        ...(statusOpt?.label && String(status ?? "").startsWith("CUSTOM_") ? { statusLabel: statusOpt.label } : {}),
         responsibleIds: responsibleIds.length > 0 ? responsibleIds : undefined,
       };
 
