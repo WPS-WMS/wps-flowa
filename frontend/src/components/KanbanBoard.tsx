@@ -389,10 +389,15 @@ export function KanbanBoard({
     setPendingStatusByTicket((prev) => ({ ...prev, [ticket.id]: newStatus }));
 
     try {
+      const customCol =
+        !DEFAULT_COLUMNS.some((dc) => dc.id === columnId) ? allColumns.find((c) => c.id === columnId) : null;
       const res = await apiFetch(`/api/tickets/${ticket.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({
+          status: newStatus,
+          ...(customCol?.label ? { statusLabel: customCol.label } : {}),
+        }),
       });
       if (!res.ok) {
         throw new Error("Falha ao atualizar status do ticket");

@@ -152,6 +152,24 @@ function truncateForEmail(value: string, max = 120): string {
   return `${v.slice(0, Math.max(0, max - 1))}…`;
 }
 
+function formatDatePtBrFromIsoMaybe(value: string): string | null {
+  const raw = String(value ?? "").trim();
+  if (!raw) return null;
+  // Aceita ISO completo ou date-only (YYYY-MM-DD)
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString("pt-BR");
+}
+
+function formatValueForEmail(field: string | null, value: string): string {
+  const f = String(field ?? "").trim();
+  if (f === "dataInicio" || f === "dataFimPrevista") {
+    const formatted = formatDatePtBrFromIsoMaybe(value);
+    if (formatted) return formatted;
+  }
+  return value;
+}
+
 function formatFieldLabel(field: string | null | undefined): string {
   const f = String(field ?? "").trim();
   if (!f) return "Alteração";
@@ -179,8 +197,14 @@ function renderTicketUpdateEmailHtml(
     .map((e) => {
       const label = formatFieldLabel(e.field);
       const details = e.details ? escapeHtmlBasic(truncateForEmail(e.details, 220)) : "";
-      const oldV = e.oldValue != null && String(e.oldValue).trim() !== "" ? escapeHtmlBasic(truncateForEmail(String(e.oldValue))) : "";
-      const newV = e.newValue != null && String(e.newValue).trim() !== "" ? escapeHtmlBasic(truncateForEmail(String(e.newValue))) : "";
+      const oldV =
+        e.oldValue != null && String(e.oldValue).trim() !== ""
+          ? escapeHtmlBasic(truncateForEmail(formatValueForEmail(e.field, String(e.oldValue))))
+          : "";
+      const newV =
+        e.newValue != null && String(e.newValue).trim() !== ""
+          ? escapeHtmlBasic(truncateForEmail(formatValueForEmail(e.field, String(e.newValue))))
+          : "";
 
       // Preferimos "de → para" quando os dois existem; senão cai para detalhes.
       if (oldV && newV) {
@@ -1168,6 +1192,7 @@ ticketsRouter.patch("/:id", async (req, res) => {
   const ticketId = req.params.id;
   const {
     status,
+    statusLabel,
     title,
     description,
     type,
@@ -1255,6 +1280,14 @@ ticketsRouter.patch("/:id", async (req, res) => {
   const updateData: any = {};
   if (status !== undefined && status !== ticket.status) {
     updateData.status = String(status);
+    const statusLabelSafe =
+      typeof statusLabel === "string" && statusLabel.trim()
+        ? statusLabel.trim().slice(0, 60)
+        : null;
+    const statusEmailDisplay =
+      statusLabelSafe && String(status).startsWith("CUSTOM_")
+        ? statusLabelSafe
+        : String(status);
     const willClose = String(status) === "ENCERRADO" && ticket.status !== "ENCERRADO";
     const requiresCloseReason =
       willClose && (ticket.project.tipoProjeto === "AMS" || ticket.project.tipoProjeto === "TIME_MATERIAL");
@@ -1290,7 +1323,7 @@ ticketsRouter.patch("/:id", async (req, res) => {
         field: "status",
         oldValue: ticket.status || null,
         newValue: String(status),
-        details: `Status alterado de "${ticket.status}" para "${status}"`,
+        details: `Status alterado de "${ticket.status}" para "${statusEmailDisplay}"`,
       });
     }
   }
@@ -1593,12 +1626,20 @@ ticketsRouter.patch("/:id", async (req, res) => {
   }
 
   if (updateData.status !== undefined && !becameEncerrado) {
+    const statusLabelSafe =
+      typeof statusLabel === "string" && statusLabel.trim()
+        ? statusLabel.trim().slice(0, 60)
+        : null;
+    const display =
+      statusLabelSafe && String(updated.status).startsWith("CUSTOM_")
+        ? statusLabelSafe
+        : String(updated.status);
     notifyTicketMembers({
       tenantId: user.tenantId,
       ticketId,
       subject: `Chamado ${updated.code} — status atualizado`,
       title: `Chamado ${updated.code} — status atualizado`,
-      messageHtml: `<p>O status do chamado foi alterado para <b>${escapeHtmlBasic(String(updated.status))}</b>.</p>`,
+      messageHtml: `<p>O status do chamado foi alterado para <b>${escapeHtmlBasic(display)}</b>.</p>`,
       trigger: "STATUS_CHANGE",
       includeProjectResponsibles: true,
     }).catch(() => {});
