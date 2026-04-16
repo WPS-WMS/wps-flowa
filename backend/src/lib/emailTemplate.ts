@@ -61,9 +61,18 @@ export function getBrandConfig(): {
   const deriveBgFrom = (url: string) => {
     const u = String(url ?? "").trim();
     if (!u) return "";
-    // Troca apenas o último segmento (arquivo), mantendo host/pasta.
-    // Ex.: https://host/assets/wpsone-email-wordmark.png -> .../wpsone-email-bg.png
-    return u.replace(/[^/]+$/, "wpsone-email-bg.png");
+    // Troca apenas o último segmento (arquivo), mantendo host/pasta e preservando query/hash.
+    // Ex.: https://host/assets/wpsone-email-wordmark.png?token=... -> .../wpsone-email-bg.png?token=...
+    try {
+      const parsed = new URL(u);
+      parsed.pathname = parsed.pathname.replace(/[^/]+$/, "wpsone-email-bg.png");
+      return parsed.toString();
+    } catch {
+      // Fallback: preserva query/hash quando não for URL absoluta.
+      const m = u.match(/^(.+\/)[^/?#]+(\?[^#]*)?(#.*)?$/);
+      if (!m) return u.replace(/[^/]+$/, "wpsone-email-bg.png");
+      return `${m[1]}wpsone-email-bg.png${m[2] ?? ""}${m[3] ?? ""}`;
+    }
   };
   const emailBgUrl =
     emailBgUrlRaw ||
