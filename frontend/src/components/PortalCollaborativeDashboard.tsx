@@ -22,6 +22,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { API_BASE_URL, apiFetch } from "@/lib/api";
 import { Avatar } from "@/components/Avatar";
 import { ConfirmModal } from "@/components/ConfirmModal";
+import { ThemeToggleInline } from "@/components/ThemeToggle";
 
 type PortalSection = {
   id: string;
@@ -870,8 +871,8 @@ export function PortalCollaborativeDashboard() {
                   </p>
                 </div>
               </div>
-              <div className="flex w-full flex-wrap items-center justify-center gap-3 sm:w-auto sm:justify-end">
-                <p className="text-xs text-slate-400">
+              <div className="flex w-full flex-col items-center gap-4 sm:w-auto sm:min-w-[280px] lg:items-end">
+                <p className="w-full text-center text-base font-semibold capitalize leading-snug tracking-wide text-white drop-shadow-sm sm:text-lg lg:text-right">
                   {now.toLocaleDateString("pt-BR", {
                     weekday: "long",
                     day: "2-digit",
@@ -879,19 +880,22 @@ export function PortalCollaborativeDashboard() {
                     year: "numeric",
                   })}
                 </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!user) return;
-                    if (user.role === "CLIENTE") router.push("/cliente");
-                    else if (user.role === "SUPER_ADMIN") router.push("/admin");
-                    else if (user.role === "GESTOR_PROJETOS") router.push("/gestor");
-                    else router.push("/consultor");
-                  }}
-                  className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-semibold text-white hover:bg-white/15 transition"
-                >
-                  Ir para WPS One
-                </button>
+                <div className="flex w-full flex-wrap items-center justify-center gap-2 sm:justify-end lg:w-auto">
+                  <ThemeToggleInline />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!user) return;
+                      if (user.role === "CLIENTE") router.push("/cliente");
+                      else if (user.role === "SUPER_ADMIN") router.push("/admin");
+                      else if (user.role === "GESTOR_PROJETOS") router.push("/gestor");
+                      else router.push("/consultor");
+                    }}
+                    className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-white/20"
+                  >
+                    Ir para WPS One
+                  </button>
+                </div>
               </div>
             </div>
           </header>

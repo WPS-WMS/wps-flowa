@@ -26,13 +26,22 @@ portalRouter.get("/sections", async (req, res) => {
 portalRouter.get("/sections/:id/items", async (req, res) => {
   const user = req.user;
   const sectionId = req.params.id;
+  const section = await prisma.portalSection.findFirst({
+    where: { id: sectionId, tenantId: user.tenantId },
+    select: { slug: true },
+  });
+  if (!section) {
+    res.status(404).json({ error: "Seção não encontrada" });
+    return;
+  }
+  // Notícias: primeiro anexado = primeira posição no carrossel (ordem cronológica de criação).
   const items = await prisma.portalItem.findMany({
     where: {
       tenantId: user.tenantId,
       sectionId,
       isActive: true,
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: { createdAt: section.slug === "noticias" ? "asc" : "desc" },
   });
   res.json(items);
 });
