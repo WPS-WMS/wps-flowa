@@ -427,8 +427,8 @@ export function PortalCollaborativeDashboard() {
                   </p>
                 </div>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="w-full text-right text-xs text-slate-400 sm:w-auto sm:text-left">
+              <div className="flex w-full flex-wrap items-center justify-center gap-3 sm:w-auto sm:justify-end">
+                <p className="text-xs text-slate-400">
                   {now.toLocaleDateString("pt-BR", {
                     weekday: "long",
                     day: "2-digit",
