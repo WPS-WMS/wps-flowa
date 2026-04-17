@@ -60,13 +60,80 @@ const SLUG = {
 } as const;
 
 /** Seções cujo gerenciamento no portal é apenas uma imagem (banner). */
-const PORTAL_IMAGE_SECTION_SLUGS = new Set<string>([SLUG.news, SLUG.employee, SLUG.awards]);
+const PORTAL_IMAGE_SECTION_SLUGS = new Set<string>([SLUG.news, SLUG.employee]);
 
 const PORTAL_IMAGE_DEFAULT_TITLE: Record<string, string> = {
   [SLUG.news]: "Banner de notícias",
   [SLUG.employee]: "WPSer do mês",
-  [SLUG.awards]: "Pontos de Inspiração",
 };
+
+type InspirationRank = 1 | 2 | 3;
+
+type InspirationSlotDraft = {
+  id: string | null;
+  name: string;
+  cargo: string;
+  points: string;
+  imageUrl: string;
+};
+
+function parseInspirationMeta(item: PortalItem): { rank: InspirationRank; points: number | null; cargo: string } | null {
+  if (String(item.type || "").toLowerCase() !== "inspiration") return null;
+  const meta = item.metadata;
+  if (!meta || typeof meta !== "object") return null;
+  const r = Number((meta as Record<string, unknown>).rank);
+  if (r !== 1 && r !== 2 && r !== 3) return null;
+  const rawPts = (meta as Record<string, unknown>).points;
+  const points =
+    rawPts === undefined || rawPts === null || rawPts === ""
+      ? null
+      : Number(rawPts);
+  const cargo = String((meta as Record<string, unknown>).cargo ?? "");
+  return {
+    rank: r as InspirationRank,
+    points: points != null && Number.isFinite(points) ? points : null,
+    cargo,
+  };
+}
+
+function inspirationItemByRank(items: PortalItem[]): Record<InspirationRank, PortalItem | null> {
+  const out: Record<InspirationRank, PortalItem | null> = { 1: null, 2: null, 3: null };
+  for (const it of items) {
+    const p = parseInspirationMeta(it);
+    if (p) out[p.rank] = it;
+  }
+  return out;
+}
+
+function emptyInspirationSlots(): Record<InspirationRank, InspirationSlotDraft> {
+  const blank = (): InspirationSlotDraft => ({
+    id: null,
+    name: "",
+    cargo: "",
+    points: "",
+    imageUrl: "",
+  });
+  return { 1: blank(), 2: blank(), 3: blank() };
+}
+
+function slotsFromAwardItems(items: PortalItem[]): Record<InspirationRank, InspirationSlotDraft> {
+  const base = emptyInspirationSlots();
+  const by = inspirationItemByRank(items);
+  (["1", "2", "3"] as const).forEach((k) => {
+    const rank = Number(k) as InspirationRank;
+    const it = by[rank];
+    if (!it) return;
+    const meta = parseInspirationMeta(it);
+    base[rank] = {
+      id: it.id,
+      name: it.title || "",
+      cargo: meta?.cargo ?? "",
+      points: meta?.points != null ? String(meta.points) : "",
+      imageUrl: it.content?.trim() || "",
+    };
+  });
+  return base;
+}
 
 const WPS_ONE_ICON_SVG_SRC = "/WPS%20One%20%C3%ADcone.svg";
 
@@ -89,6 +156,30 @@ function isImageItem(item: PortalItem): boolean {
   if (t === "image") return true;
   const c = item.content.trim();
   return /^https?:\/\/.+\.(png|jpe?g|gif|webp)(\?|$)/i.test(c) || c.startsWith("/uploads/");
+}
+
+function isInspirationItem(item: PortalItem): boolean {
+  return parseInspirationMeta(item) != null;
+}
+
+function PodiumMedal({ rank }: { rank: InspirationRank }) {
+  const ring =
+    rank === 1
+      ? "from-amber-300 via-amber-400 to-amber-600"
+      : rank === 2
+        ? "from-slate-200 via-slate-300 to-slate-500"
+        : "from-amber-700 via-orange-800 to-amber-950";
+  return (
+    <div className="pointer-events-none absolute -right-0.5 -top-0.5 z-20 flex flex-col items-center">
+      <div
+        className={`flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br ${ring} shadow-lg ring-2 ring-white/40`}
+        aria-hidden
+      >
+        <span className="text-[11px] font-black tabular-nums text-white drop-shadow">{rank}</span>
+      </div>
+      <div className="-mt-1 h-2 w-4 rounded-b-sm bg-gradient-to-b from-red-600 to-red-800 shadow-sm" aria-hidden />
+    </div>
+  );
 }
 
 export function PortalCollaborativeDashboard() {
@@ -118,6 +209,9 @@ export function PortalCollaborativeDashboard() {
   const [itemError, setItemError] = useState<string | null>(null);
   const [confirmDeleteItem, setConfirmDeleteItem] = useState<PortalItem | null>(null);
   const portalImageFileInputRef = useRef<HTMLInputElement>(null);
+  const inspirationFileInputRef = useRef<HTMLInputElement>(null);
+  const [inspirationUploadRank, setInspirationUploadRank] = useState<InspirationRank | null>(null);
+  const [inspirationSlots, setInspirationSlots] = useState<Record<InspirationRank, InspirationSlotDraft>>(emptyInspirationSlots);
 
   const [evTitle, setEvTitle] = useState("");
   const [evDate, setEvDate] = useState("");
@@ -136,7 +230,7 @@ export function PortalCollaborativeDashboard() {
   const awardItems = itemsBySlug[SLUG.awards] ?? [];
   const manualItems = itemsBySlug[SLUG.manuals] ?? [];
 
-  /** Imagem atual exibida no modal de gerenciamento (Notícias / WPSer / Pontos de Inspiração). */
+  /** Imagem atual exibida no modal de gerenciamento (Notícias / WPSer). */
   const currentManageImageItem = useMemo(() => {
     if (!manageSlug || !PORTAL_IMAGE_SECTION_SLUGS.has(manageSlug)) return null;
     const imgs = (itemsBySlug[manageSlug] ?? []).filter(isImageItem);
@@ -209,6 +303,13 @@ export function PortalCollaborativeDashboard() {
     if (newsItems.length === 0) setNewsIndex(0);
     else setNewsIndex((i) => Math.min(i, newsItems.length - 1));
   }, [newsItems.length]);
+
+  useEffect(() => {
+    if (manageSlug !== SLUG.awards) return;
+    setInspirationSlots(slotsFromAwardItems(awardItems));
+  }, [manageSlug, awardItems]);
+
+  const inspirationByRank = useMemo(() => inspirationItemByRank(awardItems), [awardItems]);
 
   const newsCarousel = newsItems.filter(isImageItem);
   const activeNews = newsCarousel[newsIndex];
@@ -294,7 +395,7 @@ export function PortalCollaborativeDashboard() {
     }
   }
 
-  /** Anexa/substitui a imagem da seção (Notícias, WPSer, Pontos de Inspiração): sobrescreve a primeira imagem ou cria uma nova. */
+  /** Anexa/substitui a imagem da seção (Notícias, WPSer): sobrescreve a primeira imagem ou cria uma nova. */
   async function replaceOrCreatePortalSectionImage(file: File) {
     const slug = manageSlug;
     if (!slug || !PORTAL_IMAGE_SECTION_SLUGS.has(slug)) return;
@@ -347,6 +448,97 @@ export function PortalCollaborativeDashboard() {
       if (portalImageFileInputRef.current) portalImageFileInputRef.current.value = "";
     } catch (e: unknown) {
       setItemError(e instanceof Error ? e.message : "Erro ao enviar.");
+    } finally {
+      setSavingItem(false);
+    }
+  }
+
+  async function persistInspirationSlot(rank: InspirationRank, slot: InspirationSlotDraft, sectionId: string) {
+    const name = slot.name.trim();
+    const cargo = slot.cargo.trim();
+    const pointsStr = slot.points.trim();
+    const pointsNum = pointsStr === "" ? 0 : Math.max(0, Math.floor(Number(pointsStr) || 0));
+    const imageUrl = slot.imageUrl.trim();
+    const empty = !name && !imageUrl && !cargo && pointsStr === "";
+
+    if (empty) {
+      if (slot.id) {
+        const res = await apiFetch(`/api/portal/items/${slot.id}`, { method: "DELETE" });
+        if (!res.ok && res.status !== 204) {
+          const d = await res.json().catch(() => ({}));
+          throw new Error(d?.error || "Erro ao remover colaborador.");
+        }
+      }
+      return;
+    }
+
+    const title = name || `Colaborador — ${rank}º lugar`;
+    const metadata = { rank, points: pointsNum, cargo };
+    const body = { title, content: imageUrl, type: "inspiration", metadata };
+
+    if (slot.id) {
+      const res = await apiFetch(`/api/portal/items/${slot.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const errBody = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(errBody?.error || "Erro ao atualizar colaborador.");
+    } else {
+      const res = await apiFetch("/api/portal/items", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sectionId, ...body, isActive: true }),
+      });
+      const errBody = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(errBody?.error || "Erro ao salvar colaborador.");
+    }
+  }
+
+  async function saveInspirationFromModal() {
+    const sectionId = sectionIdBySlug[SLUG.awards];
+    if (!sectionId) {
+      setItemError("Seção Pontos de Inspiração não encontrada.");
+      return;
+    }
+    setSavingItem(true);
+    setItemError(null);
+    try {
+      const ranks: InspirationRank[] = [1, 2, 3];
+      for (const rank of ranks) {
+        await persistInspirationSlot(rank, inspirationSlots[rank], sectionId);
+      }
+      await refreshAll();
+    } catch (e: unknown) {
+      setItemError(e instanceof Error ? e.message : "Erro ao salvar.");
+    } finally {
+      setSavingItem(false);
+    }
+  }
+
+  async function handleInspirationPhotoPick(file: File) {
+    const rank = inspirationUploadRank;
+    setInspirationUploadRank(null);
+    if (!rank) return;
+    const sectionId = sectionIdBySlug[SLUG.awards];
+    if (!sectionId) {
+      setItemError("Seção não encontrada.");
+      return;
+    }
+    setSavingItem(true);
+    setItemError(null);
+    try {
+      const url = await uploadPortalImage(file);
+      let merged!: InspirationSlotDraft;
+      setInspirationSlots((prev) => {
+        merged = { ...prev[rank], imageUrl: url };
+        return { ...prev, [rank]: merged };
+      });
+      await persistInspirationSlot(rank, merged, sectionId);
+      await refreshAll();
+      if (inspirationFileInputRef.current) inspirationFileInputRef.current.value = "";
+    } catch (e: unknown) {
+      setItemError(e instanceof Error ? e.message : "Erro ao enviar foto.");
     } finally {
       setSavingItem(false);
     }
@@ -565,6 +757,82 @@ export function PortalCollaborativeDashboard() {
 
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="space-y-8">
+            {/* Pontos de Inspiração — pódio (1º, 2º, 3º) acima das notícias */}
+            <section className="overflow-hidden rounded-3xl border border-amber-500/20 bg-gradient-to-b from-amber-950/25 via-slate-900/60 to-slate-950/80 p-4 shadow-xl backdrop-blur sm:p-5">
+              <div className="mb-4 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Gift className="h-4 w-4 text-amber-300" />
+                  <h2 className="text-sm font-semibold uppercase tracking-wide text-amber-100/90">Pontos de Inspiração</h2>
+                </div>
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setManageSlug(SLUG.awards);
+                      setItemError(null);
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-3 py-1.5 text-[11px] font-semibold text-amber-200 hover:bg-amber-500/25"
+                  >
+                    <ImagePlus className="h-3.5 w-3.5" />
+                    Gerenciar
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-wrap items-start justify-center gap-8 sm:gap-10 md:gap-14 px-2 pb-2">
+                {([1, 2, 3] as const).map((rank) => {
+                  const item = inspirationByRank[rank];
+                  const meta = item ? parseInspirationMeta(item) : null;
+                  const name = (item?.title || "").trim() || `— ${rank}º lugar —`;
+                  const cargo = (meta?.cargo || "").trim();
+                  const points = meta?.points ?? null;
+                  const photo = item?.content?.trim() || "";
+                  const initials = name
+                    .split(/\s+/)
+                    .filter(Boolean)
+                    .slice(0, 2)
+                    .map((w) => w[0])
+                    .join("")
+                    .toUpperCase() || "?";
+                  return (
+                    <div key={rank} className="flex w-[140px] shrink-0 flex-col items-center sm:w-[160px]">
+                      <div className="relative mx-auto aspect-square w-[120px] max-w-full sm:w-[132px]">
+                        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/12 to-white/5 shadow-inner ring-2 ring-amber-400/25" />
+                        <div className="absolute inset-[3px] overflow-hidden rounded-full bg-slate-900 ring-1 ring-white/10">
+                          {photo ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={assetUrl(photo)} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center bg-slate-800 text-lg font-bold text-slate-500">
+                              {initials}
+                            </div>
+                          )}
+                        </div>
+                        <PodiumMedal rank={rank} />
+                        {points != null && (
+                          <div className="absolute bottom-1 left-1/2 z-10 -translate-x-1/2 rounded-full bg-sky-600 px-2 py-0.5 text-[10px] font-bold tabular-nums text-white shadow-md ring-2 ring-slate-950/80">
+                            {points}
+                          </div>
+                        )}
+                      </div>
+                      <p className="mt-3 text-center text-[11px] font-bold uppercase leading-tight tracking-wide text-sky-200 sm:text-xs">
+                        {name}
+                      </p>
+                      {cargo ? (
+                        <p className="mt-0.5 text-center text-[9px] font-medium uppercase leading-snug tracking-wide text-sky-300/85 sm:text-[10px]">
+                          {cargo}
+                        </p>
+                      ) : (
+                        <p className="mt-0.5 h-3 text-[9px] text-slate-600 sm:text-[10px]"> </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              {!canEdit && ![1, 2, 3].some((r) => inspirationByRank[r as InspirationRank]) && (
+                <p className="text-center text-[11px] text-slate-500">Em breve o pódio do mês será publicado aqui.</p>
+              )}
+            </section>
+
             {/* Notícias — carrossel de imagens */}
             <section className="overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-2xl shadow-black/40 backdrop-blur">
               <div className="flex items-center justify-between gap-2 border-b border-white/10 px-4 py-3 sm:px-5">
@@ -659,42 +927,6 @@ export function PortalCollaborativeDashboard() {
                 )}
               </div>
             </section>
-
-            {/* Pontos de Inspiração */}
-            <section className="overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-4 shadow-xl backdrop-blur sm:p-5">
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <Gift className="h-4 w-4 text-amber-300" />
-                    <h2 className="text-sm font-semibold text-slate-200">Pontos de Inspiração</h2>
-                  </div>
-                  {canEdit && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setManageSlug(SLUG.awards);
-                        setItemError(null);
-                      }}
-                      className="text-[11px] font-semibold text-amber-300 hover:underline"
-                    >
-                      Gerenciar
-                    </button>
-                  )}
-                </div>
-                <div className="overflow-hidden rounded-2xl border border-white/10 bg-slate-950/50">
-                  {awardItems[0] && isImageItem(awardItems[0]) ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={assetUrl(awardItems[0].content)}
-                      alt={awardItems[0].title}
-                      className="aspect-[4/3] w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex aspect-[4/3] flex-col items-center justify-center gap-2 text-center text-slate-500">
-                      <p className="text-xs px-4">Arte dos Pontos de Inspiração (imagem única ou banner).</p>
-                    </div>
-                  )}
-                </div>
-              </section>
 
           </div>
 
@@ -878,11 +1110,17 @@ export function PortalCollaborativeDashboard() {
               setManageSlug(null);
               setItemError(null);
               setConfirmDeleteItem(null);
+              setInspirationUploadRank(null);
               if (portalImageFileInputRef.current) portalImageFileInputRef.current.value = "";
+              if (inspirationFileInputRef.current) inspirationFileInputRef.current.value = "";
             }
           }}
         >
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-white/10 bg-slate-900 p-5 shadow-2xl">
+          <div
+            className={`max-h-[90vh] w-full overflow-y-auto rounded-3xl border border-white/10 bg-slate-900 p-5 shadow-2xl ${
+              manageSlug === SLUG.awards ? "max-w-4xl" : "max-w-lg"
+            }`}
+          >
             <div className="mb-4 flex items-center justify-between gap-2">
               <h3 className="text-lg font-bold text-white">
                 {manageSlug === SLUG.news && "Notícias"}
@@ -896,13 +1134,120 @@ export function PortalCollaborativeDashboard() {
                   setManageSlug(null);
                   setItemError(null);
                   setConfirmDeleteItem(null);
+                  setInspirationUploadRank(null);
                   if (portalImageFileInputRef.current) portalImageFileInputRef.current.value = "";
+                  if (inspirationFileInputRef.current) inspirationFileInputRef.current.value = "";
                 }}
                 className="rounded-full px-2 py-1 text-xs text-slate-400 hover:bg-white/10 hover:text-white"
               >
                 Fechar
               </button>
             </div>
+
+            {manageSlug === SLUG.awards && (
+              <div className="mb-4 space-y-4">
+                <p className="text-[11px] text-slate-400">
+                  Configure os três lugares do pódio (foto, nome, cargo e pontos). Atualize todo mês conforme o ranking.
+                </p>
+                <input
+                  ref={inspirationFileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) void handleInspirationPhotoPick(f);
+                  }}
+                />
+                <div className="grid gap-4 sm:grid-cols-3">
+                  {([1, 2, 3] as const).map((rank) => {
+                    const slot = inspirationSlots[rank];
+                    const label = rank === 1 ? "1º lugar" : rank === 2 ? "2º lugar" : "3º lugar";
+                    return (
+                      <div
+                        key={rank}
+                        className="rounded-2xl border border-white/10 bg-black/30 p-3 space-y-2.5"
+                      >
+                        <p className="text-center text-xs font-bold uppercase tracking-wide text-amber-200">{label}</p>
+                        <div className="relative mx-auto h-[88px] w-[88px]">
+                          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/10 to-transparent" />
+                          <div className="absolute inset-[2px] overflow-hidden rounded-full bg-slate-800 ring-1 ring-white/10">
+                            {slot.imageUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={assetUrl(slot.imageUrl)} alt="" className="h-full w-full object-cover" />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center text-[10px] text-slate-500">Foto</div>
+                            )}
+                          </div>
+                          <PodiumMedal rank={rank} />
+                        </div>
+                        <button
+                          type="button"
+                          disabled={savingItem}
+                          onClick={() => {
+                            setInspirationUploadRank(rank);
+                            inspirationFileInputRef.current?.click();
+                          }}
+                          className="w-full rounded-lg border border-white/15 bg-white/5 py-1.5 text-[11px] font-semibold text-white hover:bg-white/10 disabled:opacity-50"
+                        >
+                          {savingItem ? "Aguarde…" : "Trocar foto"}
+                        </button>
+                        <input
+                          type="text"
+                          value={slot.name}
+                          onChange={(e) =>
+                            setInspirationSlots((p) => ({ ...p, [rank]: { ...p[rank], name: e.target.value } }))
+                          }
+                          placeholder="Nome"
+                          className="w-full rounded-lg border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white placeholder:text-slate-500"
+                        />
+                        <input
+                          type="text"
+                          value={slot.cargo}
+                          onChange={(e) =>
+                            setInspirationSlots((p) => ({ ...p, [rank]: { ...p[rank], cargo: e.target.value } }))
+                          }
+                          placeholder="Cargo"
+                          className="w-full rounded-lg border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white placeholder:text-slate-500"
+                        />
+                        <input
+                          type="number"
+                          min={0}
+                          value={slot.points}
+                          onChange={(e) =>
+                            setInspirationSlots((p) => ({ ...p, [rank]: { ...p[rank], points: e.target.value } }))
+                          }
+                          placeholder="Pontos"
+                          className="w-full rounded-lg border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white placeholder:text-slate-500"
+                        />
+                        {slot.id && (
+                          <button
+                            type="button"
+                            disabled={savingItem}
+                            onClick={() => {
+                              const it = awardItems.find((x) => x.id === slot.id);
+                              if (it) setConfirmDeleteItem(it);
+                            }}
+                            className="w-full rounded-lg border border-red-500/30 bg-red-500/10 py-1.5 text-[11px] font-semibold text-red-200 hover:bg-red-500/20 disabled:opacity-50"
+                          >
+                            Remover do pódio
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                {itemError && <p className="text-xs text-red-400">{itemError}</p>}
+                <button
+                  type="button"
+                  disabled={savingItem}
+                  onClick={() => void saveInspirationFromModal()}
+                  className="w-full rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+                >
+                  {savingItem ? "Salvando…" : "Salvar alterações"}
+                </button>
+              </div>
+            )}
 
             {manageSlug && PORTAL_IMAGE_SECTION_SLUGS.has(manageSlug) && (
               <div className="mb-4 space-y-4 rounded-2xl border border-white/10 bg-black/30 p-4">
@@ -1023,11 +1368,19 @@ export function PortalCollaborativeDashboard() {
 
       {confirmDeleteItem && (
         <ConfirmModal
-          title={isImageItem(confirmDeleteItem) ? "Excluir imagem" : "Excluir item"}
+          title={
+            isInspirationItem(confirmDeleteItem)
+              ? "Remover do pódio"
+              : isImageItem(confirmDeleteItem)
+                ? "Excluir imagem"
+                : "Excluir item"
+          }
           message={
-            isImageItem(confirmDeleteItem)
-              ? "Deseja realmente excluir esta imagem? Esta ação não pode ser desfeita."
-              : `Deseja realmente excluir "${confirmDeleteItem.title}"? Esta ação não pode ser desfeita.`
+            isInspirationItem(confirmDeleteItem)
+              ? `Remover "${confirmDeleteItem.title || "este colaborador"}" do pódio de inspiração? Esta ação não pode ser desfeita.`
+              : isImageItem(confirmDeleteItem)
+                ? "Deseja realmente excluir esta imagem? Esta ação não pode ser desfeita."
+                : `Deseja realmente excluir "${confirmDeleteItem.title}"? Esta ação não pode ser desfeita.`
           }
           confirmLabel="Excluir"
           cancelLabel="Cancelar"
