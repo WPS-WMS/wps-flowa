@@ -270,7 +270,11 @@ export function KanbanBoard({
 
   function reorderColumnsById(sourceId: string, targetId: string) {
     if (!sourceId || !targetId || sourceId === targetId) return;
-    const knownIds = [...DEFAULT_COLUMNS.map((c) => c.id), ...customColumns.map((c) => c.id)];
+    const knownIds = [
+      ...DEFAULT_COLUMNS.map((c) => c.id),
+      ...customColumns.map((c) => c.id),
+      ...inferredCustomColumns.map((c) => c.id),
+    ];
     const baseOrder = columnOrder.length > 0 ? columnOrder : knownIds;
     const normalized = Array.from(new Set([...baseOrder, ...knownIds])).filter((id) => knownIds.includes(id));
     const from = normalized.indexOf(sourceId);
@@ -473,7 +477,9 @@ export function KanbanBoard({
     <div className="flex gap-5 overflow-x-auto pb-6 pt-1" style={{ scrollbarGutter: "stable" }}>
       {allColumns.map((column) => {
         const isCustomColumn = !DEFAULT_COLUMNS.some((dc) => dc.id === column.id);
+        const isCustomPersisted = customColumns.some((c) => c.id === column.id);
         const columnTickets = ticketsByColumn[column.id] || [];
+        const canDeleteCustomColumn = isCustomPersisted && columnTickets.length === 0;
         const isDropTarget = draggingTicketId && columnTickets.every((t) => t.id !== draggingTicketId);
         const isFinalizadas = column.id === "FINALIZADAS";
         const theme =
@@ -549,15 +555,24 @@ export function KanbanBoard({
                   <span className="flex-shrink-0 text-xs font-medium text-[color:var(--muted-foreground)]">
                     ({columnTickets.length})
                   </span>
-                  {isCustomColumn && (
+                  {isCustomPersisted && (
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
+                        if (!canDeleteCustomColumn) {
+                          alert("Não é possível excluir esta coluna porque há tarefas vinculadas a ela.");
+                          return;
+                        }
                         handleDeleteColumn(column.id);
                       }}
-                      className="p-1 rounded-md text-[color:var(--muted-foreground)] hover:text-red-300 hover:bg-red-500/10 transition-colors flex-shrink-0"
-                      title="Excluir coluna"
+                      disabled={!canDeleteCustomColumn}
+                      className="p-1 rounded-md text-[color:var(--muted-foreground)] hover:text-red-300 hover:bg-red-500/10 transition-colors flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-[color:var(--muted-foreground)]"
+                      title={
+                        canDeleteCustomColumn
+                          ? "Excluir coluna"
+                          : "Não é possível excluir: existem tarefas nesta coluna"
+                      }
                       aria-label="Excluir coluna"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
