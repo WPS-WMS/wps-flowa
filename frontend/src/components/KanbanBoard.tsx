@@ -546,9 +546,7 @@ export function KanbanBoard({
                   >
                     <GripVertical className="h-4 w-4 text-[color:var(--muted-foreground)]" aria-hidden />
                   </span>
-                  {isCustomColumn && (
-                    <span className={`h-2 w-2 rounded-full ${column.color}`} aria-hidden />
-                  )}
+                  <span className={`h-2 w-2 rounded-full ${column.color}`} aria-hidden />
                   <h3 className="text-sm font-semibold text-[color:var(--foreground)] truncate">
                     {column.label}
                   </h3>

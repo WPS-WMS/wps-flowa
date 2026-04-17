@@ -9,14 +9,17 @@ type ColumnColor = {
 };
 
 const COLUMN_COLORS: ColumnColor[] = [
-  { id: "slate", label: "Cinza", bgClass: "bg-slate-400" },
   { id: "amber", label: "Âmbar", bgClass: "bg-amber-500" },
   { id: "cyan", label: "Ciano", bgClass: "bg-cyan-500" },
-  { id: "blue", label: "Azul", bgClass: "bg-blue-500" },
   { id: "purple", label: "Roxo", bgClass: "bg-purple-500" },
-  { id: "emerald", label: "Verde", bgClass: "bg-emerald-500" },
+  { id: "indigo", label: "Índigo", bgClass: "bg-indigo-500" },
+  { id: "teal", label: "Turquesa", bgClass: "bg-teal-500" },
   { id: "rose", label: "Rosa", bgClass: "bg-rose-500" },
   { id: "orange", label: "Laranja", bgClass: "bg-orange-500" },
+  { id: "red", label: "Vermelho", bgClass: "bg-red-500" },
+  { id: "fuchsia", label: "Fúcsia", bgClass: "bg-fuchsia-500" },
+  { id: "lime", label: "Lima", bgClass: "bg-lime-500" },
+  { id: "yellow", label: "Amarelo", bgClass: "bg-yellow-400" },
 ];
 
 type CreateColumnModalProps = {
