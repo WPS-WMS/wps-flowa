@@ -16,6 +16,7 @@ import {
   Sparkles,
   Trash2,
   UserCircle2,
+  X,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { API_BASE_URL, apiFetch } from "@/lib/api";
@@ -59,11 +60,10 @@ const SLUG = {
   manuals: "manuais",
 } as const;
 
-/** Seções cujo gerenciamento no portal é apenas uma imagem (banner). */
-const PORTAL_IMAGE_SECTION_SLUGS = new Set<string>([SLUG.news, SLUG.employee]);
+/** Seções com modal simples de uma imagem (substituir arquivo). */
+const PORTAL_IMAGE_SECTION_SLUGS = new Set<string>([SLUG.employee]);
 
 const PORTAL_IMAGE_DEFAULT_TITLE: Record<string, string> = {
-  [SLUG.news]: "Banner de notícias",
   [SLUG.employee]: "WPSer do mês",
 };
 
@@ -151,6 +151,41 @@ function parseMetaHref(metadata: unknown): string | undefined {
   return typeof href === "string" && href.trim() ? href.trim() : undefined;
 }
 
+/** Foco da imagem de notícia (object-position em %). */
+function parseNewsFocal(metadata: unknown): { x: number; y: number } {
+  if (!metadata || typeof metadata !== "object") return { x: 50, y: 50 };
+  const o = metadata as Record<string, unknown>;
+  const x = Number(o.focalX ?? o.focal_x);
+  const y = Number(o.focalY ?? o.focal_y);
+  return {
+    x: Number.isFinite(x) ? Math.min(100, Math.max(0, x)) : 50,
+    y: Number.isFinite(y) ? Math.min(100, Math.max(0, y)) : 50,
+  };
+}
+
+function newsObjectPosition(metadata: unknown): string {
+  const { x, y } = parseNewsFocal(metadata);
+  return `${x}% ${y}%`;
+}
+
+function buildNewsMetadata(
+  prev: unknown,
+  patch: { focalX?: number; focalY?: number; href?: string },
+): Record<string, unknown> {
+  const base =
+    prev && typeof prev === "object" && !Array.isArray(prev)
+      ? { ...(prev as Record<string, unknown>) }
+      : {};
+  if (patch.focalX !== undefined) base.focalX = patch.focalX;
+  if (patch.focalY !== undefined) base.focalY = patch.focalY;
+  if (patch.href !== undefined) {
+    const h = patch.href.trim();
+    if (h) base.href = h;
+    else delete base.href;
+  }
+  return base;
+}
+
 function isImageItem(item: PortalItem): boolean {
   const t = String(item.type || "").toLowerCase();
   if (t === "image") return true;
@@ -162,22 +197,30 @@ function isInspirationItem(item: PortalItem): boolean {
   return parseInspirationMeta(item) != null;
 }
 
-function PodiumMedal({ rank }: { rank: InspirationRank }) {
+function PodiumMedal({ rank, size = "md" }: { rank: InspirationRank; size?: "sm" | "md" }) {
   const ring =
     rank === 1
       ? "from-amber-300 via-amber-400 to-amber-600"
       : rank === 2
         ? "from-slate-200 via-slate-300 to-slate-500"
         : "from-amber-700 via-orange-800 to-amber-950";
+  const sm = size === "sm";
   return (
     <div className="pointer-events-none absolute -right-0.5 -top-0.5 z-20 flex flex-col items-center">
       <div
-        className={`flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br ${ring} shadow-lg ring-2 ring-white/40`}
+        className={`flex items-center justify-center rounded-full bg-gradient-to-br ${ring} shadow-lg ring-2 ring-white/40 ${
+          sm ? "h-6 w-6 ring-1" : "h-9 w-9"
+        }`}
         aria-hidden
       >
-        <span className="text-[11px] font-black tabular-nums text-white drop-shadow">{rank}</span>
+        <span className={`font-black tabular-nums text-white drop-shadow ${sm ? "text-[9px]" : "text-[11px]"}`}>
+          {rank}
+        </span>
       </div>
-      <div className="-mt-1 h-2 w-4 rounded-b-sm bg-gradient-to-b from-red-600 to-red-800 shadow-sm" aria-hidden />
+      <div
+        className={`rounded-b-sm bg-gradient-to-b from-red-600 to-red-800 shadow-sm ${sm ? "-mt-0.5 h-1.5 w-3" : "-mt-1 h-2 w-4"}`}
+        aria-hidden
+      />
     </div>
   );
 }
@@ -209,9 +252,14 @@ export function PortalCollaborativeDashboard() {
   const [itemError, setItemError] = useState<string | null>(null);
   const [confirmDeleteItem, setConfirmDeleteItem] = useState<PortalItem | null>(null);
   const portalImageFileInputRef = useRef<HTMLInputElement>(null);
+  const newsAddFileInputRef = useRef<HTMLInputElement>(null);
   const inspirationFileInputRef = useRef<HTMLInputElement>(null);
   const [inspirationUploadRank, setInspirationUploadRank] = useState<InspirationRank | null>(null);
   const [inspirationSlots, setInspirationSlots] = useState<Record<InspirationRank, InspirationSlotDraft>>(emptyInspirationSlots);
+
+  type NewsImageDraft = { title: string; href: string; focalX: number; focalY: number };
+  const [newsImageDrafts, setNewsImageDrafts] = useState<Record<string, NewsImageDraft>>({});
+  const [newsLightboxItem, setNewsLightboxItem] = useState<PortalItem | null>(null);
 
   const [evTitle, setEvTitle] = useState("");
   const [evDate, setEvDate] = useState("");
@@ -230,12 +278,14 @@ export function PortalCollaborativeDashboard() {
   const awardItems = itemsBySlug[SLUG.awards] ?? [];
   const manualItems = itemsBySlug[SLUG.manuals] ?? [];
 
-  /** Imagem atual exibida no modal de gerenciamento (Notícias / WPSer). */
+  /** Imagem atual no modal simples (WPSer do mês). */
   const currentManageImageItem = useMemo(() => {
-    if (!manageSlug || !PORTAL_IMAGE_SECTION_SLUGS.has(manageSlug)) return null;
-    const imgs = (itemsBySlug[manageSlug] ?? []).filter(isImageItem);
+    if (manageSlug !== SLUG.employee) return null;
+    const imgs = (itemsBySlug[SLUG.employee] ?? []).filter(isImageItem);
     return imgs[0] ?? null;
   }, [manageSlug, itemsBySlug]);
+
+  const newsCarousel = useMemo(() => newsItems.filter(isImageItem), [newsItems]);
 
   const sidebarItems = useMemo(
     () =>
@@ -300,9 +350,51 @@ export function PortalCollaborativeDashboard() {
   }, [refreshAll]);
 
   useEffect(() => {
-    if (newsItems.length === 0) setNewsIndex(0);
-    else setNewsIndex((i) => Math.min(i, newsItems.length - 1));
-  }, [newsItems.length]);
+    if (newsCarousel.length === 0) setNewsIndex(0);
+    else setNewsIndex((i) => Math.min(i, newsCarousel.length - 1));
+  }, [newsCarousel.length]);
+
+  useEffect(() => {
+    if (manageSlug !== SLUG.news) return;
+    const imgs = newsItems.filter(isImageItem);
+    setNewsImageDrafts((prev) => {
+      const next = { ...prev };
+      const ids = new Set(imgs.map((i) => i.id));
+      for (const id of Object.keys(next)) {
+        if (!ids.has(id)) delete next[id];
+      }
+      for (const it of imgs) {
+        if (!next[it.id]) {
+          const f = parseNewsFocal(it.metadata);
+          next[it.id] = {
+            title: it.title || "",
+            href: parseMetaHref(it.metadata) ?? "",
+            focalX: f.x,
+            focalY: f.y,
+          };
+        }
+      }
+      return next;
+    });
+  }, [manageSlug, newsItems]);
+
+  useEffect(() => {
+    if (!newsLightboxItem) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setNewsLightboxItem(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [newsLightboxItem]);
+
+  useEffect(() => {
+    if (!newsLightboxItem) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [newsLightboxItem]);
 
   useEffect(() => {
     if (manageSlug !== SLUG.awards) return;
@@ -311,7 +403,6 @@ export function PortalCollaborativeDashboard() {
 
   const inspirationByRank = useMemo(() => inspirationItemByRank(awardItems), [awardItems]);
 
-  const newsCarousel = newsItems.filter(isImageItem);
   const activeNews = newsCarousel[newsIndex];
 
   async function ensureBootstrapSections() {
@@ -395,7 +486,7 @@ export function PortalCollaborativeDashboard() {
     }
   }
 
-  /** Anexa/substitui a imagem da seção (Notícias, WPSer): sobrescreve a primeira imagem ou cria uma nova. */
+  /** Substitui a imagem do WPSer do mês (uma imagem por seção). */
   async function replaceOrCreatePortalSectionImage(file: File) {
     const slug = manageSlug;
     if (!slug || !PORTAL_IMAGE_SECTION_SLUGS.has(slug)) return;
@@ -448,6 +539,70 @@ export function PortalCollaborativeDashboard() {
       if (portalImageFileInputRef.current) portalImageFileInputRef.current.value = "";
     } catch (e: unknown) {
       setItemError(e instanceof Error ? e.message : "Erro ao enviar.");
+    } finally {
+      setSavingItem(false);
+    }
+  }
+
+  async function addNewsImage(file: File) {
+    const sectionId = sectionIdBySlug[SLUG.news];
+    if (!sectionId) return;
+    setSavingItem(true);
+    setItemError(null);
+    try {
+      const content = await uploadPortalImage(file);
+      const n = newsItems.filter(isImageItem).length;
+      const title = `Notícia ${n + 1}`;
+      const res = await apiFetch("/api/portal/items", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sectionId,
+          title,
+          content,
+          type: "image",
+          metadata: { focalX: 50, focalY: 50 },
+          isActive: true,
+        }),
+      });
+      const errBody = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(errBody?.error || "Erro ao salvar imagem.");
+      await refreshAll();
+      if (newsAddFileInputRef.current) newsAddFileInputRef.current.value = "";
+    } catch (e: unknown) {
+      setItemError(e instanceof Error ? e.message : "Erro ao enviar.");
+    } finally {
+      setSavingItem(false);
+    }
+  }
+
+  async function saveNewsImageFields(item: PortalItem) {
+    const f0 = parseNewsFocal(item.metadata);
+    const d = newsImageDrafts[item.id] ?? {
+      title: item.title || "",
+      href: parseMetaHref(item.metadata) ?? "",
+      focalX: f0.x,
+      focalY: f0.y,
+    };
+    setSavingItem(true);
+    setItemError(null);
+    try {
+      const title = d.title.trim() || item.title || "Notícia";
+      const metadata = buildNewsMetadata(item.metadata, {
+        focalX: d.focalX,
+        focalY: d.focalY,
+        href: d.href,
+      });
+      const res = await apiFetch(`/api/portal/items/${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, metadata }),
+      });
+      const errBody = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(errBody?.error || "Erro ao salvar.");
+      await refreshAll();
+    } catch (e: unknown) {
+      setItemError(e instanceof Error ? e.message : "Erro ao salvar.");
     } finally {
       setSavingItem(false);
     }
@@ -757,82 +912,6 @@ export function PortalCollaborativeDashboard() {
 
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="space-y-8">
-            {/* Pontos de Inspiração — pódio (1º, 2º, 3º) acima das notícias */}
-            <section className="overflow-hidden rounded-3xl border border-amber-500/20 bg-gradient-to-b from-amber-950/25 via-slate-900/60 to-slate-950/80 p-4 shadow-xl backdrop-blur sm:p-5">
-              <div className="mb-4 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <Gift className="h-4 w-4 text-amber-300" />
-                  <h2 className="text-sm font-semibold uppercase tracking-wide text-amber-100/90">Pontos de Inspiração</h2>
-                </div>
-                {canEdit && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setManageSlug(SLUG.awards);
-                      setItemError(null);
-                    }}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-3 py-1.5 text-[11px] font-semibold text-amber-200 hover:bg-amber-500/25"
-                  >
-                    <ImagePlus className="h-3.5 w-3.5" />
-                    Gerenciar
-                  </button>
-                )}
-              </div>
-              <div className="flex flex-wrap items-start justify-center gap-8 sm:gap-10 md:gap-14 px-2 pb-2">
-                {([1, 2, 3] as const).map((rank) => {
-                  const item = inspirationByRank[rank];
-                  const meta = item ? parseInspirationMeta(item) : null;
-                  const name = (item?.title || "").trim() || `— ${rank}º lugar —`;
-                  const cargo = (meta?.cargo || "").trim();
-                  const points = meta?.points ?? null;
-                  const photo = item?.content?.trim() || "";
-                  const initials = name
-                    .split(/\s+/)
-                    .filter(Boolean)
-                    .slice(0, 2)
-                    .map((w) => w[0])
-                    .join("")
-                    .toUpperCase() || "?";
-                  return (
-                    <div key={rank} className="flex w-[140px] shrink-0 flex-col items-center sm:w-[160px]">
-                      <div className="relative mx-auto aspect-square w-[120px] max-w-full sm:w-[132px]">
-                        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/12 to-white/5 shadow-inner ring-2 ring-amber-400/25" />
-                        <div className="absolute inset-[3px] overflow-hidden rounded-full bg-slate-900 ring-1 ring-white/10">
-                          {photo ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={assetUrl(photo)} alt="" className="h-full w-full object-cover" />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center bg-slate-800 text-lg font-bold text-slate-500">
-                              {initials}
-                            </div>
-                          )}
-                        </div>
-                        <PodiumMedal rank={rank} />
-                        {points != null && (
-                          <div className="absolute bottom-1 left-1/2 z-10 -translate-x-1/2 rounded-full bg-sky-600 px-2 py-0.5 text-[10px] font-bold tabular-nums text-white shadow-md ring-2 ring-slate-950/80">
-                            {points}
-                          </div>
-                        )}
-                      </div>
-                      <p className="mt-3 text-center text-[11px] font-bold uppercase leading-tight tracking-wide text-sky-200 sm:text-xs">
-                        {name}
-                      </p>
-                      {cargo ? (
-                        <p className="mt-0.5 text-center text-[9px] font-medium uppercase leading-snug tracking-wide text-sky-300/85 sm:text-[10px]">
-                          {cargo}
-                        </p>
-                      ) : (
-                        <p className="mt-0.5 h-3 text-[9px] text-slate-600 sm:text-[10px]"> </p>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-              {!canEdit && ![1, 2, 3].some((r) => inspirationByRank[r as InspirationRank]) && (
-                <p className="text-center text-[11px] text-slate-500">Em breve o pódio do mês será publicado aqui.</p>
-              )}
-            </section>
-
             {/* Notícias — carrossel de imagens */}
             <section className="overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-2xl shadow-black/40 backdrop-blur">
               <div className="flex items-center justify-between gap-2 border-b border-white/10 px-4 py-3 sm:px-5">
@@ -854,23 +933,38 @@ export function PortalCollaborativeDashboard() {
                   </button>
                 )}
               </div>
-              <div className="relative aspect-[21/9] min-h-[200px] w-full bg-slate-900/80 sm:aspect-[21/8]">
+              <div className="relative w-full overflow-hidden bg-slate-900/80 aspect-[16/10] min-h-[280px] max-h-[min(520px,72vh)] sm:min-h-[320px] sm:max-h-[min(560px,65vh)]">
                 {activeNews ? (
                   <>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={assetUrl(activeNews.content)}
                       alt={activeNews.title}
-                      className="h-full w-full object-cover object-center"
+                      className="relative z-0 h-full w-full object-cover"
+                      style={{ objectPosition: newsObjectPosition(activeNews.metadata) }}
                     />
-                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-4 py-4 sm:px-6">
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      aria-label="Ampliar imagem da notícia"
+                      className="absolute inset-0 z-[1] cursor-zoom-in bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fuchsia-400/60"
+                      onClick={() => setNewsLightboxItem(activeNews)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setNewsLightboxItem(activeNews);
+                        }
+                      }}
+                    />
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/85 via-black/45 to-transparent px-4 py-4 sm:px-6">
                       <p className="text-sm font-semibold text-white drop-shadow-md sm:text-base">{activeNews.title}</p>
                       {parseMetaHref(activeNews.metadata) && (
                         <a
                           href={parseMetaHref(activeNews.metadata)}
                           target="_blank"
                           rel="noreferrer"
-                          className="mt-1 inline-block text-xs font-medium text-fuchsia-200 underline-offset-2 hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                          className="pointer-events-auto mt-1 inline-block text-xs font-medium text-fuchsia-200 underline-offset-2 hover:underline"
                         >
                           Abrir link
                         </a>
@@ -881,35 +975,47 @@ export function PortalCollaborativeDashboard() {
                         <button
                           type="button"
                           aria-label="Anterior"
-                          onClick={() => setNewsIndex((i) => (i - 1 + newsCarousel.length) % newsCarousel.length)}
-                          className="absolute left-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setNewsIndex((i) => (i - 1 + newsCarousel.length) % newsCarousel.length);
+                          }}
+                          className="absolute left-2 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
                         >
                           <ChevronLeft className="h-5 w-5" />
                         </button>
                         <button
                           type="button"
                           aria-label="Próximo"
-                          onClick={() => setNewsIndex((i) => (i + 1) % newsCarousel.length)}
-                          className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setNewsIndex((i) => (i + 1) % newsCarousel.length);
+                          }}
+                          className="absolute right-2 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
                         >
                           <ChevronRight className="h-5 w-5" />
                         </button>
-                        <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
+                        <div className="pointer-events-auto absolute bottom-3 left-0 right-0 z-20 flex justify-center gap-1.5">
                           {newsCarousel.map((_, idx) => (
                             <button
                               key={idx}
                               type="button"
                               aria-label={`Slide ${idx + 1}`}
-                              onClick={() => setNewsIndex(idx)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setNewsIndex(idx);
+                              }}
                               className={`h-1.5 rounded-full transition-all ${idx === newsIndex ? "w-6 bg-fuchsia-400" : "w-1.5 bg-white/40"}`}
                             />
                           ))}
                         </div>
                       </>
                     )}
+                    <p className="pointer-events-none absolute right-3 top-3 z-10 rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-medium text-white/90">
+                      Clique para ampliar
+                    </p>
                   </>
                 ) : (
-                  <div className="flex h-full min-h-[200px] flex-col items-center justify-center gap-2 px-6 text-center text-slate-500">
+                  <div className="flex h-full min-h-[280px] flex-col items-center justify-center gap-2 px-6 text-center text-slate-500">
                     <ImagePlus className="h-10 w-10 opacity-50" />
                     <p className="text-sm">Nenhuma imagem de notícia ainda.</p>
                     {canEdit && (
@@ -926,6 +1032,82 @@ export function PortalCollaborativeDashboard() {
                   </div>
                 )}
               </div>
+            </section>
+
+            {/* Pontos de Inspiração — pódio compacto abaixo das notícias */}
+            <section className="overflow-hidden rounded-2xl border border-amber-500/15 bg-amber-950/15 p-3 shadow-lg backdrop-blur sm:p-4">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  <Gift className="h-3.5 w-3.5 text-amber-300/90" />
+                  <h2 className="text-xs font-semibold uppercase tracking-wide text-amber-100/85">Pontos de Inspiração</h2>
+                </div>
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setManageSlug(SLUG.awards);
+                      setItemError(null);
+                    }}
+                    className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2.5 py-1 text-[10px] font-semibold text-amber-200 hover:bg-amber-500/25"
+                  >
+                    <ImagePlus className="h-3 w-3" />
+                    Gerenciar
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-wrap items-start justify-center gap-5 sm:gap-8 px-1 pb-1">
+                {([1, 2, 3] as const).map((rank) => {
+                  const item = inspirationByRank[rank];
+                  const meta = item ? parseInspirationMeta(item) : null;
+                  const name = (item?.title || "").trim() || `— ${rank}º lugar —`;
+                  const cargo = (meta?.cargo || "").trim();
+                  const points = meta?.points ?? null;
+                  const photo = item?.content?.trim() || "";
+                  const initials = name
+                    .split(/\s+/)
+                    .filter(Boolean)
+                    .slice(0, 2)
+                    .map((w) => w[0])
+                    .join("")
+                    .toUpperCase() || "?";
+                  return (
+                    <div key={rank} className="flex w-[104px] shrink-0 flex-col items-center sm:w-[112px]">
+                      <div className="relative mx-auto aspect-square w-[72px] max-w-full sm:w-[78px]">
+                        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/10 to-white/5 shadow-inner ring-1 ring-amber-400/20" />
+                        <div className="absolute inset-[2px] overflow-hidden rounded-full bg-slate-900 ring-1 ring-white/10">
+                          {photo ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={assetUrl(photo)} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center bg-slate-800 text-xs font-bold text-slate-500">
+                              {initials}
+                            </div>
+                          )}
+                        </div>
+                        <PodiumMedal rank={rank} size="sm" />
+                        {points != null && (
+                          <div className="absolute bottom-0.5 left-1/2 z-10 -translate-x-1/2 rounded-full bg-sky-600 px-1.5 py-px text-[9px] font-bold tabular-nums text-white shadow ring-1 ring-slate-950/80">
+                            {points}
+                          </div>
+                        )}
+                      </div>
+                      <p className="mt-2 max-w-full truncate text-center text-[10px] font-bold uppercase leading-tight tracking-wide text-sky-200/95">
+                        {name}
+                      </p>
+                      {cargo ? (
+                        <p className="mt-0.5 line-clamp-2 max-w-full text-center text-[8px] font-medium uppercase leading-snug tracking-wide text-sky-300/80">
+                          {cargo}
+                        </p>
+                      ) : (
+                        <p className="mt-0.5 h-2.5 text-[8px] text-slate-600"> </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              {!canEdit && ![1, 2, 3].some((r) => inspirationByRank[r as InspirationRank]) && (
+                <p className="text-center text-[10px] text-slate-500">Em breve o pódio do mês será publicado aqui.</p>
+              )}
             </section>
 
           </div>
@@ -1112,13 +1294,14 @@ export function PortalCollaborativeDashboard() {
               setConfirmDeleteItem(null);
               setInspirationUploadRank(null);
               if (portalImageFileInputRef.current) portalImageFileInputRef.current.value = "";
+              if (newsAddFileInputRef.current) newsAddFileInputRef.current.value = "";
               if (inspirationFileInputRef.current) inspirationFileInputRef.current.value = "";
             }
           }}
         >
           <div
             className={`max-h-[90vh] w-full overflow-y-auto rounded-3xl border border-white/10 bg-slate-900 p-5 shadow-2xl ${
-              manageSlug === SLUG.awards ? "max-w-4xl" : "max-w-lg"
+              manageSlug === SLUG.awards ? "max-w-4xl" : manageSlug === SLUG.news ? "max-w-2xl" : "max-w-lg"
             }`}
           >
             <div className="mb-4 flex items-center justify-between gap-2">
@@ -1136,6 +1319,7 @@ export function PortalCollaborativeDashboard() {
                   setConfirmDeleteItem(null);
                   setInspirationUploadRank(null);
                   if (portalImageFileInputRef.current) portalImageFileInputRef.current.value = "";
+                  if (newsAddFileInputRef.current) newsAddFileInputRef.current.value = "";
                   if (inspirationFileInputRef.current) inspirationFileInputRef.current.value = "";
                 }}
                 className="rounded-full px-2 py-1 text-xs text-slate-400 hover:bg-white/10 hover:text-white"
@@ -1143,6 +1327,152 @@ export function PortalCollaborativeDashboard() {
                 Fechar
               </button>
             </div>
+
+            {manageSlug === SLUG.news && (
+              <div className="mb-4 space-y-4">
+                <p className="text-[11px] text-slate-400">
+                  Anexe várias imagens. Ajuste o enquadramento (foco) como em um portal de notícias — use os controles ou
+                  arraste os valores. Salve cada card ao terminar. Clique na imagem no portal para ampliar.
+                </p>
+                <input
+                  ref={newsAddFileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) void addNewsImage(f);
+                  }}
+                />
+                <button
+                  type="button"
+                  disabled={savingItem}
+                  onClick={() => newsAddFileInputRef.current?.click()}
+                  className="w-full rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+                >
+                  {savingItem ? "Enviando…" : "Anexar nova imagem"}
+                </button>
+                {itemError && <p className="text-xs text-red-400">{itemError}</p>}
+                <ul className="space-y-4">
+                  {newsCarousel.map((it) => {
+                    const f0 = parseNewsFocal(it.metadata);
+                    const defaultDraft: NewsImageDraft = {
+                      title: it.title || "",
+                      href: parseMetaHref(it.metadata) ?? "",
+                      focalX: f0.x,
+                      focalY: f0.y,
+                    };
+                    const d = newsImageDrafts[it.id] ?? defaultDraft;
+                    const pos = `${d.focalX}% ${d.focalY}%`;
+                    const mergeNewsDraft = (patch: Partial<NewsImageDraft>) =>
+                      setNewsImageDrafts((p) => ({
+                        ...p,
+                        [it.id]: { ...(p[it.id] ?? defaultDraft), ...patch },
+                      }));
+                    const setFocal = (x: number, y: number) => mergeNewsDraft({ focalX: x, focalY: y });
+                    return (
+                      <li
+                        key={it.id}
+                        className="overflow-hidden rounded-2xl border border-white/10 bg-black/30 p-3 sm:p-4"
+                      >
+                        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                          Pré-visualização (mesmo recorte do portal)
+                        </p>
+                        <div className="relative mb-3 aspect-[16/10] w-full max-h-[200px] overflow-hidden rounded-xl border border-white/10 bg-slate-950">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={assetUrl(it.content)}
+                            alt=""
+                            className="h-full w-full object-cover"
+                            style={{ objectPosition: pos }}
+                          />
+                        </div>
+                        <div className="mb-2 flex flex-wrap gap-1">
+                          {(
+                            [
+                              ["Centro", 50, 50],
+                              ["Topo", 50, 18],
+                              ["Base", 50, 82],
+                              ["Esquerda", 18, 50],
+                              ["Direita", 82, 50],
+                            ] as const
+                          ).map(([label, x, y]) => (
+                            <button
+                              key={label}
+                              type="button"
+                              className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-medium text-slate-200 hover:bg-white/10"
+                              onClick={() => setFocal(x, y)}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="mb-2 grid gap-2 sm:grid-cols-2">
+                          <label className="block text-[10px] text-slate-400">
+                            Foco horizontal ({d.focalX}%)
+                            <input
+                              type="range"
+                              min={0}
+                              max={100}
+                              value={d.focalX}
+                              onChange={(e) => mergeNewsDraft({ focalX: Number(e.target.value) })}
+                              className="mt-1 w-full accent-fuchsia-500"
+                            />
+                          </label>
+                          <label className="block text-[10px] text-slate-400">
+                            Foco vertical ({d.focalY}%)
+                            <input
+                              type="range"
+                              min={0}
+                              max={100}
+                              value={d.focalY}
+                              onChange={(e) => mergeNewsDraft({ focalY: Number(e.target.value) })}
+                              className="mt-1 w-full accent-fuchsia-500"
+                            />
+                          </label>
+                        </div>
+                        <input
+                          type="text"
+                          value={d.title}
+                          onChange={(e) => mergeNewsDraft({ title: e.target.value })}
+                          placeholder="Título exibido no card"
+                          className="mb-2 w-full rounded-lg border border-white/10 bg-black/40 px-2 py-1.5 text-sm text-white placeholder:text-slate-500"
+                        />
+                        <input
+                          type="url"
+                          value={d.href}
+                          onChange={(e) => mergeNewsDraft({ href: e.target.value })}
+                          placeholder="Link opcional (https://...)"
+                          className="mb-2 w-full rounded-lg border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white placeholder:text-slate-500"
+                        />
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            disabled={savingItem}
+                            onClick={() => void saveNewsImageFields(it)}
+                            className="rounded-lg bg-fuchsia-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-fuchsia-500 disabled:opacity-50"
+                          >
+                            Salvar este card
+                          </button>
+                          <button
+                            type="button"
+                            disabled={savingItem}
+                            onClick={() => setConfirmDeleteItem(it)}
+                            className="inline-flex items-center gap-1 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-200 hover:bg-red-500/20 disabled:opacity-50"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Excluir
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+                {newsCarousel.length === 0 && (
+                  <p className="text-center text-xs text-slate-500">Nenhuma imagem ainda. Anexe a primeira acima.</p>
+                )}
+              </div>
+            )}
 
             {manageSlug === SLUG.awards && (
               <div className="mb-4 space-y-4">
@@ -1363,6 +1693,40 @@ export function PortalCollaborativeDashboard() {
               </>
             )}
           </div>
+        </div>
+      )}
+
+      {newsLightboxItem && (
+        <div
+          className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/90 p-3 sm:p-5"
+          role="presentation"
+          onClick={() => setNewsLightboxItem(null)}
+        >
+          <button
+            type="button"
+            className="absolute right-3 top-3 z-[102] rounded-full border border-white/15 bg-white/10 p-2 text-white transition hover:bg-white/20"
+            aria-label="Fechar"
+            onClick={(e) => {
+              e.stopPropagation();
+              setNewsLightboxItem(null);
+            }}
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <div
+            className="max-h-[92vh] w-full max-w-[min(96vw,1440px)] overflow-auto rounded-xl border border-white/10 bg-slate-950/90 p-2 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+            role="presentation"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={assetUrl(newsLightboxItem.content)}
+              alt={newsLightboxItem.title}
+              className="mx-auto block h-auto w-auto max-w-none"
+            />
+          </div>
+          <p className="mt-3 max-w-2xl px-2 text-center text-sm font-medium text-slate-200">{newsLightboxItem.title}</p>
+          <p className="mt-1 text-center text-[10px] text-slate-500">Role a tela se a imagem for maior que a janela.</p>
         </div>
       )}
 
