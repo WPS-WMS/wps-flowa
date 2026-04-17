@@ -12,6 +12,7 @@ import { FinalizeTaskModal } from "./FinalizeTaskModal";
 import { isTopicTicket } from "@/lib/ticketCodeDisplay";
 import { resolveTicketResponsibleMembers } from "@/lib/ticketMemberNames";
 import { Avatar } from "@/components/Avatar";
+import { getTicketStatusDisplay } from "@/lib/ticketStatusDisplay";
 
 type UserOption = { id: string; name: string; email?: string; avatarUrl?: string | null; updatedAt?: string };
 type LightTicket = { id: string; code: string; title: string; type: string };
@@ -1606,8 +1607,15 @@ export function EditTaskModalFull({
               </h2>
               <div className="flex flex-wrap items-center gap-2">
                 <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold border ${getStatusPillClass(status)}`}>
-                  <span className={`h-2 w-2 rounded-full ${status === "EXECUCAO" || status === "TESTE" ? "bg-blue-500" : status === "ENCERRADO" ? "bg-emerald-500" : "bg-slate-400"}`} />
-                  {status === "ABERTO" ? "Backlog" : status === "EXECUCAO" ? "Em execução" : status === "ENCERRADO" ? "Finalizada" : status}
+                  {(() => {
+                    const resolved = getTicketStatusDisplay({ status, projectId, dataFimPrevista: ticket.dataFimPrevista, allowOverdue: false });
+                    return (
+                      <>
+                        <span className={`h-2 w-2 rounded-full ${resolved.color || "bg-slate-400"}`} aria-hidden />
+                        {resolved.label}
+                      </>
+                    );
+                  })()}
                 </span>
                 {String(budget?.status ?? "").toUpperCase() === "AGUARDANDO_APROVACAO" && (
                   <span className="inline-flex items-center rounded-full border border-[color:var(--border)] bg-[color:var(--background)]/25 px-3 py-1 text-xs font-semibold text-[color:var(--foreground)]">

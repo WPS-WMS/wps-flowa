@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { EditTaskModalFull } from "@/components/EditTaskModalFull";
 import type { PackageTicket } from "@/components/PackageCard";
+import { getTicketStatusDisplay } from "@/lib/ticketStatusDisplay";
 
 type TicketForClient = {
   id: string;
@@ -55,16 +56,6 @@ function isTicketAtrasada(t: TicketForClient, now: Date): boolean {
   return now.getTime() > due.getTime();
 }
 
-function getStatusBadge(statusRaw: unknown): { label: string; className: string } {
-  const s = String(statusRaw ?? "").toUpperCase();
-  if (s === "ENCERRADO") return { label: "Finalizado", className: "text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded" };
-  if (s === "ABERTO") return { label: "Backlog", className: "text-xs font-medium text-slate-600 bg-slate-100 px-2 py-1 rounded" };
-  if (s === "EM_ANDAMENTO" || s === "EXECUCAO" || s === "EM_EXECUCAO") {
-    return { label: "Em execução", className: "text-xs font-medium text-amber-600 bg-amber-50 px-2 py-1 rounded" };
-  }
-  return { label: "Em execução", className: "text-xs font-medium text-amber-600 bg-amber-50 px-2 py-1 rounded" };
-}
-
 function getTicketDisplayBadge(t: TicketForClient, now: Date): { label: string; className: string } {
   if (isTicketAtrasada(t, now)) {
     return {
@@ -72,7 +63,14 @@ function getTicketDisplayBadge(t: TicketForClient, now: Date): { label: string; 
       className: "text-xs font-medium text-red-700 bg-red-50 px-2 py-1 rounded",
     };
   }
-  return getStatusBadge(t.status);
+  const st = getTicketStatusDisplay({ status: t.status, projectId: t.project?.id, dataFimPrevista: t.dataFimPrevista, allowOverdue: false });
+  const className =
+    st.sortBucket === 2
+      ? "text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded"
+      : st.sortBucket === 1
+        ? "text-xs font-medium text-slate-600 bg-slate-100 px-2 py-1 rounded"
+        : "text-xs font-medium text-amber-600 bg-amber-50 px-2 py-1 rounded";
+  return { label: st.label, className };
 }
 
 type ProjectForClient = {

@@ -60,6 +60,22 @@ export function loadKanbanCustomColumns(projectId: string): KanbanColumn[] {
   }
 }
 
+function decodeCustomColumnLabelFromId(statusRaw: string): string | null {
+  const raw = String(statusRaw ?? "").trim();
+  const m = /^CUSTOM_(.+)_(\d{10,})$/i.exec(raw);
+  if (!m) return null;
+  const core = String(m[1] || "").trim();
+  if (!core) return null;
+  const words = core
+    .split("_")
+    .map((w) => w.trim())
+    .filter(Boolean)
+    .map((w) => w.toLowerCase())
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1));
+  const label = words.join(" ").trim();
+  return label || null;
+}
+
 function isPastDue(dateIso: string): boolean {
   const todayStr = new Date().toISOString().slice(0, 10);
   const fimStr = String(dateIso).slice(0, 10);
@@ -96,6 +112,11 @@ export function getTicketStatusDisplay(input: {
     return { label: DEFAULT_COLUMN_LABEL[s], color: DEFAULT_COLUMN_COLOR[s] ?? "bg-slate-400", sortBucket: bucket };
   }
 
+  // Coluna customizada do Kanban (status = id da coluna, ex: CUSTOM_MINHA_COLUNA_1712345678901)
+  // Primeiro tenta ler do localStorage (label exata); se não existir (outro usuário/perfil),
+  // decodifica o label a partir do próprio ID para evitar expor o identificador técnico ao cliente.
+  const decoded = decodeCustomColumnLabelFromId(statusRaw);
+
   // Coluna customizada do Kanban (status = id da coluna)
   const pid = input.projectId ? String(input.projectId) : "";
   if (pid) {
@@ -103,6 +124,10 @@ export function getTicketStatusDisplay(input: {
     if (custom) {
       return { label: custom.label, color: custom.color || "bg-slate-400", sortBucket: 0 };
     }
+  }
+
+  if (decoded) {
+    return { label: decoded, color: "bg-slate-400", sortBucket: 0 };
   }
 
   // Fallback: exibe o próprio status (sem forçar backlog/em execução)
