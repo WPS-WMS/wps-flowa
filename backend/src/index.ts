@@ -61,11 +61,7 @@ const productionOrigins = [
   // Firebase Hosting — site QA do mesmo projeto
   "https://wps-one-frontend-qa.web.app",
   "https://wps-one-frontend-qa.firebaseapp.com",
-  // Legado / outros projetos Firebase (remover quando não forem mais usados)
-  "https://wps-flowa.web.app",
-  "https://wps-flowa.firebaseapp.com",
-  "https://wps-one.web.app",
-  "https://wps-one.firebaseapp.com",
+  // Outras origens (ambientes/preview) podem ser adicionadas via CORS_ORIGIN no .env/Render
   "http://localhost:3000",
 ];
 const allowedOrigins = [...new Set([...productionOrigins, ...envOrigins])];

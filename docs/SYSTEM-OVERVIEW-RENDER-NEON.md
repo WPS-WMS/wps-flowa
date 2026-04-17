@@ -38,12 +38,12 @@ Este documento descreve **como o sistema está funcionando hoje** após a migra�
 
 ### 2. Repositório e estrutura de pastas
 
-- Repositório GitHub: `https://github.com/WPS-WMS/wps-flowa`
+- Repositório GitHub: `https://github.com/WPS-WMS/wps-one`
 
 Estrutura relevante:
 
 ```text
-wps-flowa/
+wps-one/
 ├── backend/           # API Express + Prisma
 │   ├── src/           # Código TypeScript do backend
 │   ├── dist/          # Saída compilada (gerada por tsc)
@@ -70,7 +70,7 @@ O Render **não** altera o subdomínio depois que o serviço foi criado. Renomea
 Para ficar com **`wps-one-backend.onrender.com`**:
 
 1. No Render: **New +** → **Web Service** (não é “rename”).
-2. Conecte o mesmo repo **`WPS-WMS/wps-flowa`**, branch **`main`**.
+2. Conecte o mesmo repo **`WPS-WMS/wps-one`**, branch **`main`**.
 3. No passo de nome, use exatamente **`wps-one-backend`** (define o host `https://wps-one-backend.onrender.com`).  
    Se o Render disser que o nome já existe, **renomeie o serviço antigo** para algo como `wps-flowa-legacy` e tente de novo, ou use outro nome único (ex.: `wps-one-api`) — o slug será esse nome.
 4. **Root Directory:** `backend`  
@@ -303,8 +303,8 @@ No navegador (DevTools → Network) ao usar `https://wps-one-frontend.web.app` (
 1. **Clonar o repositório** e instalar dependências:
 
    ```bash
-   git clone https://github.com/WPS-WMS/wps-flowa.git
-   cd wps-flowa
+   git clone https://github.com/WPS-WMS/wps-one.git
+   cd wps-one
 
    # Backend
    cd backend

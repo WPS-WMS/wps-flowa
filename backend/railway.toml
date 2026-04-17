@@ -1,4 +1,4 @@
-# Configuração do Railway para o backend (wps-flowa).
+# Configuração do Railway para o backend (wps-one).
 # Com este arquivo, build e start ficam definidos no repositório.
 # Ainda é necessário definir no painel do Railway: Root Directory = "backend" e as variáveis de ambiente.
 
