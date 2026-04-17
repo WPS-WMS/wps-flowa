@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   CalendarDays,
@@ -20,6 +20,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { API_BASE_URL, apiFetch } from "@/lib/api";
 import { Avatar } from "@/components/Avatar";
+import { ConfirmModal } from "@/components/ConfirmModal";
 
 type PortalSection = {
   id: string;
@@ -57,6 +58,15 @@ const SLUG = {
   awards: "premios",
   manuals: "manuais",
 } as const;
+
+/** Seções cujo gerenciamento no portal é apenas uma imagem (banner). */
+const PORTAL_IMAGE_SECTION_SLUGS = new Set<string>([SLUG.news, SLUG.employee, SLUG.awards]);
+
+const PORTAL_IMAGE_DEFAULT_TITLE: Record<string, string> = {
+  [SLUG.news]: "Banner de notícias",
+  [SLUG.employee]: "WPSer do mês",
+  [SLUG.awards]: "Pontos de Inspiração",
+};
 
 const WPS_ONE_ICON_SVG_SRC = "/WPS%20One%20%C3%ADcone.svg";
 
@@ -104,10 +114,10 @@ export function PortalCollaborativeDashboard() {
   const [manageEventsOpen, setManageEventsOpen] = useState(false);
   const [newItemTitle, setNewItemTitle] = useState("");
   const [newItemHref, setNewItemHref] = useState("");
-  const [newItemFile, setNewItemFile] = useState<File | null>(null);
-  const [newItemType, setNewItemType] = useState<"image" | "link">("image");
   const [savingItem, setSavingItem] = useState(false);
   const [itemError, setItemError] = useState<string | null>(null);
+  const [confirmDeleteItem, setConfirmDeleteItem] = useState<PortalItem | null>(null);
+  const portalImageFileInputRef = useRef<HTMLInputElement>(null);
 
   const [evTitle, setEvTitle] = useState("");
   const [evDate, setEvDate] = useState("");
@@ -125,6 +135,14 @@ export function PortalCollaborativeDashboard() {
   const employeeItems = itemsBySlug[SLUG.employee] ?? [];
   const awardItems = itemsBySlug[SLUG.awards] ?? [];
   const manualItems = itemsBySlug[SLUG.manuals] ?? [];
+
+  /** Imagem atual exibida no modal de gerenciamento (Notícias / WPSer / Pontos de Inspiração). */
+  const currentManageImageItem = useMemo(() => {
+    if (!manageSlug || !PORTAL_IMAGE_SECTION_SLUGS.has(manageSlug)) return null;
+    const imgs = (itemsBySlug[manageSlug] ?? []).filter(isImageItem);
+    return imgs[0] ?? null;
+  }, [manageSlug, itemsBySlug]);
+
   const sidebarItems = useMemo(
     () =>
       [
@@ -239,7 +257,7 @@ export function PortalCollaborativeDashboard() {
 
   async function handleCreateItem() {
     const sectionId = manageSlug ? sectionIdBySlug[manageSlug] : null;
-    if (!sectionId || !manageSlug) return;
+    if (!sectionId || manageSlug !== SLUG.manuals) return;
     const title = newItemTitle.trim();
     if (!title) {
       setItemError("Informe um título.");
@@ -248,21 +266,8 @@ export function PortalCollaborativeDashboard() {
     setSavingItem(true);
     setItemError(null);
     try {
-      let content = "";
-      let type = newItemType;
-      let metadata: { href?: string } | null = null;
-
-      if (manageSlug === SLUG.manuals && newItemType === "link") {
-        content = newItemHref.trim();
-        if (!content) throw new Error("Informe o link (URL) do manual.");
-        type = "link";
-      } else {
-        if (!newItemFile) throw new Error("Selecione uma imagem.");
-        content = await uploadPortalImage(newItemFile);
-        type = "image";
-        const href = newItemHref.trim();
-        metadata = href ? { href } : null;
-      }
+      const content = newItemHref.trim();
+      if (!content) throw new Error("Informe o link (URL) do manual.");
 
       const res = await apiFetch("/api/portal/items", {
         method: "POST",
@@ -271,8 +276,8 @@ export function PortalCollaborativeDashboard() {
           sectionId,
           title,
           content,
-          type,
-          metadata,
+          type: "link",
+          metadata: null,
           isActive: true,
         }),
       });
@@ -281,7 +286,6 @@ export function PortalCollaborativeDashboard() {
 
       setNewItemTitle("");
       setNewItemHref("");
-      setNewItemFile(null);
       await refreshAll();
     } catch (e: unknown) {
       setItemError(e instanceof Error ? e.message : "Erro ao salvar.");
@@ -290,8 +294,65 @@ export function PortalCollaborativeDashboard() {
     }
   }
 
-  async function handleDeleteItem(item: PortalItem) {
-    if (!window.confirm(`Remover "${item.title}" do portal?`)) return;
+  /** Anexa/substitui a imagem da seção (Notícias, WPSer, Pontos de Inspiração): sobrescreve a primeira imagem ou cria uma nova. */
+  async function replaceOrCreatePortalSectionImage(file: File) {
+    const slug = manageSlug;
+    if (!slug || !PORTAL_IMAGE_SECTION_SLUGS.has(slug)) return;
+    const sectionId = sectionIdBySlug[slug];
+    if (!sectionId) return;
+
+    setSavingItem(true);
+    setItemError(null);
+    try {
+      const content = await uploadPortalImage(file);
+      const title = PORTAL_IMAGE_DEFAULT_TITLE[slug] || "Imagem";
+      const items = itemsBySlug[slug] ?? [];
+      const imageItems = items.filter(isImageItem);
+
+      if (imageItems.length > 0) {
+        const first = imageItems[0];
+        const res = await apiFetch(`/api/portal/items/${first.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title,
+            content,
+            type: "image",
+            metadata: null,
+          }),
+        });
+        const errBody = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(errBody?.error || "Erro ao atualizar imagem.");
+        for (const extra of imageItems.slice(1)) {
+          await apiFetch(`/api/portal/items/${extra.id}`, { method: "DELETE" });
+        }
+      } else {
+        const res = await apiFetch("/api/portal/items", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sectionId,
+            title,
+            content,
+            type: "image",
+            metadata: null,
+            isActive: true,
+          }),
+        });
+        const errBody = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(errBody?.error || "Erro ao salvar imagem.");
+      }
+
+      await refreshAll();
+      if (portalImageFileInputRef.current) portalImageFileInputRef.current.value = "";
+    } catch (e: unknown) {
+      setItemError(e instanceof Error ? e.message : "Erro ao enviar.");
+    } finally {
+      setSavingItem(false);
+    }
+  }
+
+  async function removePortalItem(item: PortalItem) {
     setItemError(null);
     try {
       const res = await apiFetch(`/api/portal/items/${item.id}`, { method: "DELETE" });
@@ -303,6 +364,13 @@ export function PortalCollaborativeDashboard() {
     } catch (e: unknown) {
       setItemError(e instanceof Error ? e.message : "Erro ao remover.");
     }
+  }
+
+  async function confirmRemovePortalItem() {
+    const item = confirmDeleteItem;
+    if (!item) return;
+    setConfirmDeleteItem(null);
+    await removePortalItem(item);
   }
 
   async function handleCreateEvent() {
@@ -509,7 +577,6 @@ export function PortalCollaborativeDashboard() {
                     type="button"
                     onClick={() => {
                       setManageSlug(SLUG.news);
-                      setNewItemType("image");
                       setItemError(null);
                     }}
                     className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-white/15"
@@ -582,7 +649,6 @@ export function PortalCollaborativeDashboard() {
                         type="button"
                         onClick={() => {
                           setManageSlug(SLUG.news);
-                          setNewItemType("image");
                         }}
                         className="text-xs font-semibold text-fuchsia-300 hover:underline"
                       >
@@ -594,46 +660,8 @@ export function PortalCollaborativeDashboard() {
               </div>
             </section>
 
-            <div className="grid gap-6 md:grid-cols-2">
-              {/* WPSer do mês */}
-              <section className="overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-4 shadow-xl backdrop-blur sm:p-5">
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <UserCircle2 className="h-4 w-4 text-violet-300" />
-                    <h2 className="text-sm font-semibold text-slate-200">WPSer do mês</h2>
-                  </div>
-                  {canEdit && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setManageSlug(SLUG.employee);
-                        setNewItemType("image");
-                        setItemError(null);
-                      }}
-                      className="text-[11px] font-semibold text-violet-300 hover:underline"
-                    >
-                      Gerenciar
-                    </button>
-                  )}
-                </div>
-                <div className="overflow-hidden rounded-2xl border border-white/10 bg-slate-950/50">
-                  {employeeItems[0] && isImageItem(employeeItems[0]) ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={assetUrl(employeeItems[0].content)}
-                      alt={employeeItems[0].title}
-                      className="aspect-[4/3] w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex aspect-[4/3] flex-col items-center justify-center gap-2 text-center text-slate-500">
-                      <p className="text-xs px-4">Arte do WPSer do mês (imagem).</p>
-                    </div>
-                  )}
-                </div>
-              </section>
-
-              {/* Pontos de Inspiração */}
-              <section className="overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-4 shadow-xl backdrop-blur sm:p-5">
+            {/* Pontos de Inspiração */}
+            <section className="overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-4 shadow-xl backdrop-blur sm:p-5">
                 <div className="mb-3 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <Gift className="h-4 w-4 text-amber-300" />
@@ -644,7 +672,6 @@ export function PortalCollaborativeDashboard() {
                       type="button"
                       onClick={() => {
                         setManageSlug(SLUG.awards);
-                        setNewItemType("image");
                         setItemError(null);
                       }}
                       className="text-[11px] font-semibold text-amber-300 hover:underline"
@@ -668,13 +695,12 @@ export function PortalCollaborativeDashboard() {
                   )}
                 </div>
               </section>
-            </div>
 
           </div>
 
-          {/* Coluna direita: agenda + aniversários */}
-          <div className="space-y-6">
-            <section className="rounded-3xl border border-white/10 bg-white/5 p-4 shadow-xl backdrop-blur sm:p-5">
+          {/* Coluna direita: agenda, aniversariantes e WPSer do mês */}
+          <div className="flex w-full min-w-0 flex-col gap-6">
+            <section className="w-full rounded-3xl border border-white/10 bg-white/5 p-4 shadow-xl backdrop-blur sm:p-5">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <CalendarDays className="h-4 w-4 text-sky-300" />
@@ -754,7 +780,7 @@ export function PortalCollaborativeDashboard() {
               )}
             </section>
 
-            <section className="rounded-3xl border border-fuchsia-500/20 bg-gradient-to-b from-fuchsia-950/40 to-slate-950/60 p-4 shadow-xl backdrop-blur sm:p-5">
+            <section className="w-full rounded-3xl border border-fuchsia-500/20 bg-gradient-to-b from-fuchsia-950/40 to-slate-950/60 p-4 shadow-xl backdrop-blur sm:p-5">
               <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-fuchsia-100">
                 <Sparkles className="h-4 w-4 text-fuchsia-300" />
                 Aniversariantes do mês
@@ -801,6 +827,42 @@ export function PortalCollaborativeDashboard() {
                 </ul>
               )}
             </section>
+
+            {/* WPSer do mês — abaixo dos aniversariantes */}
+            <section className="w-full overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-4 shadow-xl backdrop-blur sm:p-5">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <UserCircle2 className="h-4 w-4 text-violet-300" />
+                  <h2 className="text-sm font-semibold text-slate-200">WPSer do mês</h2>
+                </div>
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setManageSlug(SLUG.employee);
+                      setItemError(null);
+                    }}
+                    className="text-[11px] font-semibold text-violet-300 hover:underline"
+                  >
+                    Gerenciar
+                  </button>
+                )}
+              </div>
+              <div className="w-full overflow-hidden rounded-2xl border border-white/10 bg-slate-950/50">
+                {employeeItems[0] && isImageItem(employeeItems[0]) ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={assetUrl(employeeItems[0].content)}
+                    alt={employeeItems[0].title}
+                    className="aspect-[4/3] w-full max-w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex aspect-[4/3] w-full max-w-full flex-col items-center justify-center gap-2 text-center text-slate-500">
+                    <p className="text-xs px-4">Arte do WPSer do mês (imagem).</p>
+                  </div>
+                )}
+              </div>
+            </section>
           </div>
         </div>
       </main>
@@ -815,6 +877,8 @@ export function PortalCollaborativeDashboard() {
             if (e.target === e.currentTarget) {
               setManageSlug(null);
               setItemError(null);
+              setConfirmDeleteItem(null);
+              if (portalImageFileInputRef.current) portalImageFileInputRef.current.value = "";
             }
           }}
         >
@@ -831,6 +895,8 @@ export function PortalCollaborativeDashboard() {
                 onClick={() => {
                   setManageSlug(null);
                   setItemError(null);
+                  setConfirmDeleteItem(null);
+                  if (portalImageFileInputRef.current) portalImageFileInputRef.current.value = "";
                 }}
                 className="rounded-full px-2 py-1 text-xs text-slate-400 hover:bg-white/10 hover:text-white"
               >
@@ -838,38 +904,53 @@ export function PortalCollaborativeDashboard() {
               </button>
             </div>
 
-            {manageSlug !== SLUG.manuals && (
-              <div className="mb-4 space-y-3 rounded-2xl border border-white/10 bg-black/30 p-4">
-                <p className="text-[11px] text-slate-400">Envie uma imagem (PNG, JPG, WebP). Opcional: link ao clicar na notícia.</p>
+            {manageSlug && PORTAL_IMAGE_SECTION_SLUGS.has(manageSlug) && (
+              <div className="mb-4 space-y-4 rounded-2xl border border-white/10 bg-black/30 p-4">
+                <p className="text-[11px] text-slate-400">
+                  Envie uma imagem (PNG, JPG, WebP ou GIF). Se já existir uma imagem, o novo arquivo substitui a anterior.
+                </p>
                 <input
-                  type="text"
-                  value={newItemTitle}
-                  onChange={(e) => setNewItemTitle(e.target.value)}
-                  placeholder="Título / legenda"
-                  className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-slate-500"
-                />
-                <input
-                  type="url"
-                  value={newItemHref}
-                  onChange={(e) => setNewItemHref(e.target.value)}
-                  placeholder="Link opcional (https://...)"
-                  className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-slate-500"
-                />
-                <input
+                  ref={portalImageFileInputRef}
                   type="file"
                   accept="image/png,image/jpeg,image/webp,image/gif"
-                  onChange={(e) => setNewItemFile(e.target.files?.[0] ?? null)}
-                  className="w-full text-xs text-slate-300 file:mr-2 file:rounded-lg file:border-0 file:bg-violet-600 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) void replaceOrCreatePortalSectionImage(f);
+                  }}
                 />
-                {itemError && <p className="text-xs text-red-400">{itemError}</p>}
                 <button
                   type="button"
                   disabled={savingItem}
-                  onClick={() => void handleCreateItem()}
+                  onClick={() => portalImageFileInputRef.current?.click()}
                   className="w-full rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-2.5 text-sm font-bold text-white disabled:opacity-50"
                 >
-                  {savingItem ? "Enviando…" : "Publicar imagem"}
+                  {savingItem ? "Enviando…" : "Anexar arquivo"}
                 </button>
+                {itemError && <p className="text-xs text-red-400">{itemError}</p>}
+                {currentManageImageItem ? (
+                  <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/40">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={assetUrl(currentManageImageItem.content)}
+                      alt={currentManageImageItem.title}
+                      className="aspect-video w-full object-cover"
+                    />
+                    <div className="flex justify-end border-t border-white/10 p-3">
+                      <button
+                        type="button"
+                        disabled={savingItem}
+                        onClick={() => setConfirmDeleteItem(currentManageImageItem)}
+                        className="inline-flex items-center gap-2 rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-200 hover:bg-red-500/20 disabled:opacity-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Excluir imagem
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-center text-xs text-slate-500">Nenhuma imagem anexada ainda.</p>
+                )}
               </div>
             )}
 
@@ -902,38 +983,58 @@ export function PortalCollaborativeDashboard() {
               </div>
             )}
 
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Publicados</p>
-            <ul className="space-y-2">
-              {(itemsBySlug[manageSlug] ?? []).map((it) => (
-                <li
-                  key={it.id}
-                  className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2"
-                >
-                  {isImageItem(it) ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={assetUrl(it.content)} alt="" className="h-12 w-16 rounded-lg object-cover" />
-                  ) : (
-                    <div className="flex h-12 w-16 items-center justify-center rounded-lg bg-slate-800 text-[10px] text-slate-500">
-                      link
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-white">{it.title}</p>
-                    <p className="truncate text-[10px] text-slate-500">{it.type}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => void handleDeleteItem(it)}
-                    className="rounded-lg p-2 text-slate-500 hover:bg-red-500/20 hover:text-red-300"
-                    aria-label="Remover"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </li>
-              ))}
-            </ul>
+            {manageSlug === SLUG.manuals && (
+              <>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Publicados</p>
+                <ul className="space-y-2">
+                  {(itemsBySlug[SLUG.manuals] ?? []).map((it) => (
+                    <li
+                      key={it.id}
+                      className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2"
+                    >
+                      {isImageItem(it) ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={assetUrl(it.content)} alt="" className="h-12 w-16 rounded-lg object-cover" />
+                      ) : (
+                        <div className="flex h-12 w-16 items-center justify-center rounded-lg bg-slate-800 text-[10px] text-slate-500">
+                          link
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-white">{it.title}</p>
+                        <p className="truncate text-[10px] text-slate-500">{it.type}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDeleteItem(it)}
+                        className="rounded-lg p-2 text-slate-500 hover:bg-red-500/20 hover:text-red-300"
+                        aria-label="Remover"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
           </div>
         </div>
+      )}
+
+      {confirmDeleteItem && (
+        <ConfirmModal
+          title={isImageItem(confirmDeleteItem) ? "Excluir imagem" : "Excluir item"}
+          message={
+            isImageItem(confirmDeleteItem)
+              ? "Deseja realmente excluir esta imagem? Esta ação não pode ser desfeita."
+              : `Deseja realmente excluir "${confirmDeleteItem.title}"? Esta ação não pode ser desfeita.`
+          }
+          confirmLabel="Excluir"
+          cancelLabel="Cancelar"
+          variant="danger"
+          onConfirm={() => void confirmRemovePortalItem()}
+          onCancel={() => setConfirmDeleteItem(null)}
+        />
       )}
 
       {/* Modal: novo evento */}
