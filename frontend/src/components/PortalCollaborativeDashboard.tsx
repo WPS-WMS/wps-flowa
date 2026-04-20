@@ -1077,7 +1077,7 @@ export function PortalCollaborativeDashboard() {
                 {newsCount > 0 ? (
                   <>
                     {newsCount === 1 && activeNews ? (
-                      <div className="relative aspect-[16/9] w-full">
+                      <div className="relative aspect-[21/9] w-full">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={assetUrl(activeNews.content)}
@@ -1113,7 +1113,7 @@ export function PortalCollaborativeDashboard() {
                     ) : newsCount === 2 ? (
                       <div className="grid gap-2 p-2 sm:gap-3 sm:p-3 md:grid-cols-2">
                         {newsPageItems.map((it) => (
-                          <div key={it.id} className="group relative overflow-hidden rounded-2xl border border-white/10 bg-black/20 aspect-[16/10]">
+                          <div key={it.id} className="group relative overflow-hidden rounded-2xl border border-white/10 bg-black/20 aspect-[21/9]">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                               src={assetUrl(it.content)}
@@ -1147,7 +1147,7 @@ export function PortalCollaborativeDashboard() {
                       <div className="relative p-2 sm:p-3">
                         <div className="grid gap-2 sm:gap-3 md:grid-cols-3 md:grid-rows-2">
                           {newsPageItems[0] && (
-                            <div className="group relative overflow-hidden rounded-2xl border border-white/10 bg-black/20 aspect-[16/10] md:aspect-auto md:col-span-2 md:row-span-2">
+                            <div className="group relative overflow-hidden rounded-2xl border border-white/10 bg-black/20 aspect-[21/9] md:aspect-auto md:col-span-2 md:row-span-2">
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
                                 src={assetUrl(newsPageItems[0].content)}
@@ -1181,7 +1181,7 @@ export function PortalCollaborativeDashboard() {
                           {[newsPageItems[1], newsPageItems[2]].filter(Boolean).map((it) => (
                             <div
                               key={(it as PortalItem).id}
-                              className="group relative overflow-hidden rounded-2xl border border-white/10 bg-black/20 aspect-[16/10] md:aspect-auto"
+                              className="group relative overflow-hidden rounded-2xl border border-white/10 bg-black/20 aspect-[21/9] md:aspect-auto"
                             >
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
