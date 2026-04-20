@@ -1106,7 +1106,7 @@ export function PortalCollaborativeDashboard() {
                   </button>
                 )}
               </div>
-              <div className="relative w-full overflow-hidden bg-slate-900/80 min-h-[200px] max-h-[min(420px,64vh)] sm:min-h-[230px] sm:max-h-[min(460px,56vh)]">
+              <div className="relative w-full bg-slate-900/80 min-h-[200px] max-h-[min(420px,64vh)] sm:min-h-[230px] sm:max-h-[min(460px,56vh)]">
                 {newsCount > 0 ? (
                   <>
                     {newsCount === 1 && activeNews ? (
