@@ -1098,11 +1098,13 @@ export function PortalCollaborativeDashboard() {
                             }
                           }}
                         />
-                        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/85 via-black/45 to-transparent px-4 py-4 sm:px-6">
+                        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/85 via-black/45 to-transparent px-4 py-2.5 sm:px-6 sm:py-3">
                           {(() => {
                             const cap = newsDisplayCaption(activeNews);
                             return cap ? (
-                              <p className="text-sm font-semibold text-white drop-shadow-md sm:text-base">{cap}</p>
+                              <p className="text-sm font-semibold leading-snug text-white drop-shadow-md line-clamp-2 sm:text-base">
+                                {cap}
+                              </p>
                             ) : null;
                           })()}
                         </div>
@@ -1134,10 +1136,12 @@ export function PortalCollaborativeDashboard() {
                                 }
                               }}
                             />
-                            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-3 py-3">
+                            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-3 py-2.5 sm:py-3">
                               {(() => {
                                 const cap = newsDisplayCaption(it);
-                                return cap ? <p className="text-sm font-semibold text-white drop-shadow">{cap}</p> : null;
+                                return cap ? (
+                                  <p className="text-sm font-semibold leading-snug text-white drop-shadow line-clamp-2">{cap}</p>
+                                ) : null;
                               })()}
                             </div>
                           </div>
@@ -1168,11 +1172,13 @@ export function PortalCollaborativeDashboard() {
                                   }
                                 }}
                               />
-                              <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-4 py-4">
+                              <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-4 py-2.5 sm:py-3">
                                 {(() => {
                                   const cap = newsDisplayCaption(newsPageItems[0]);
                                   return cap ? (
-                                    <p className="text-sm font-semibold text-white drop-shadow sm:text-base">{cap}</p>
+                                    <p className="text-sm font-semibold leading-snug text-white drop-shadow line-clamp-2 sm:text-base">
+                                      {cap}
+                                    </p>
                                   ) : null;
                                 })()}
                               </div>
@@ -1203,10 +1209,12 @@ export function PortalCollaborativeDashboard() {
                                   }
                                 }}
                               />
-                              <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-3 py-3">
+                              <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-3 py-2.5 sm:py-3">
                                 {(() => {
                                   const cap = newsDisplayCaption(it as PortalItem);
-                                  return cap ? <p className="text-sm font-semibold text-white drop-shadow">{cap}</p> : null;
+                                  return cap ? (
+                                    <p className="text-sm font-semibold leading-snug text-white drop-shadow line-clamp-2">{cap}</p>
+                                  ) : null;
                                 })()}
                               </div>
                             </div>
