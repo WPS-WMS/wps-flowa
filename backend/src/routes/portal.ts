@@ -154,7 +154,7 @@ function portalMediaUsesDatabase(): boolean {
   return process.env.NODE_ENV === "production";
 }
 
-// POST /api/portal/media — upload de imagem para banners do portal (admin)
+// POST /api/portal/media — upload de mídia do portal (admin)
 portalRouter.post("/media", ensurePortalAdmin, async (req, res) => {
   const user = req.user;
   const { fileName, fileData, fileType } = req.body as {
@@ -166,11 +166,11 @@ portalRouter.post("/media", ensurePortalAdmin, async (req, res) => {
     res.status(400).json({ error: "fileName e fileData são obrigatórios" });
     return;
   }
-  const allowedMime = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
-  const allowedExt = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif"]);
+  const allowedMime = new Set(["image/png", "image/jpeg", "image/webp", "image/gif", "application/pdf"]);
+  const allowedExt = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif", ".pdf"]);
   const ext = String(fileName).toLowerCase().substring(String(fileName).lastIndexOf("."));
   if (!allowedExt.has(ext)) {
-    res.status(400).json({ error: "Envie apenas imagem (PNG, JPG, WebP ou GIF)." });
+    res.status(400).json({ error: "Envie apenas imagem (PNG, JPG, WebP ou GIF) ou PDF." });
     return;
   }
   const mimeFromData =
@@ -182,9 +182,9 @@ portalRouter.post("/media", ensurePortalAdmin, async (req, res) => {
   }
   const base64 = fileData.replace(/^data:.*,/, "");
   const buffer = Buffer.from(base64, "base64");
-  const max = 8 * 1024 * 1024;
+  const max = 15 * 1024 * 1024;
   if (buffer.length > max) {
-    res.status(400).json({ error: "Imagem muito grande (máx. 8MB)." });
+    res.status(400).json({ error: "Arquivo muito grande (máx. 15MB)." });
     return;
   }
   const mimeResolved =
@@ -192,13 +192,15 @@ portalRouter.post("/media", ensurePortalAdmin, async (req, res) => {
       ? effective
       : mimeFromData && allowedMime.has(mimeFromData)
         ? mimeFromData
-        : ext === ".png"
-          ? "image/png"
-          : ext === ".gif"
-            ? "image/gif"
-            : ext === ".webp"
-              ? "image/webp"
-              : "image/jpeg";
+        : ext === ".pdf"
+          ? "application/pdf"
+          : ext === ".png"
+            ? "image/png"
+            : ext === ".gif"
+              ? "image/gif"
+              : ext === ".webp"
+                ? "image/webp"
+                : "image/jpeg";
 
   if (portalMediaUsesDatabase()) {
     const fileUrl = `data:${mimeResolved};base64,${buffer.toString("base64")}`;
