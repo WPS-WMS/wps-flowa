@@ -145,13 +145,11 @@ async function tryUnlinkPortalTenantFile(tenantId: string, contentUrl: string | 
   }
 }
 
-/** Sem volume persistente, gravar em disco perde ficheiros a cada deploy; data URL fica na BD. */
-function portalMediaUsesDatabase(): boolean {
-  const explicit = process.env.PORTAL_MEDIA_STORAGE?.trim().toLowerCase();
-  if (explicit === "database" || explicit === "db" || explicit === "inline") return true;
-  if (explicit === "filesystem" || explicit === "disk" || explicit === "file") return false;
-  if (process.env.UPLOADS_ROOT?.trim()) return false;
-  return process.env.NODE_ENV === "production";
+function extractPortalPdfUrl(metadata: unknown): string {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return "";
+  const o = metadata as Record<string, unknown>;
+  const raw = o.pdfUrl ?? o.pdf_url ?? o.pdf;
+  return typeof raw === "string" ? raw.trim() : "";
 }
 
 // POST /api/portal/media — upload de mídia do portal (admin)
@@ -201,12 +199,6 @@ portalRouter.post("/media", ensurePortalAdmin, async (req, res) => {
               : ext === ".webp"
                 ? "image/webp"
                 : "image/jpeg";
-
-  if (portalMediaUsesDatabase()) {
-    const fileUrl = `data:${mimeResolved};base64,${buffer.toString("base64")}`;
-    res.status(201).json({ fileUrl, storage: "database" as const });
-    return;
-  }
 
   const tenantDir = join(portalMediaDir, user.tenantId);
   if (!existsSync(tenantDir)) {
@@ -346,6 +338,7 @@ portalRouter.patch("/items/:id", ensurePortalAdmin, async (req, res) => {
 
   const { title, content, type, metadata, isActive } = req.body;
   const oldContent = existing.content;
+  const oldPdf = extractPortalPdfUrl(existing.metadata);
   const updated = await prisma.portalItem.update({
     where: { id },
     data: {
@@ -359,6 +352,12 @@ portalRouter.patch("/items/:id", ensurePortalAdmin, async (req, res) => {
 
   if (content !== undefined && oldContent && oldContent !== updated.content) {
     await tryUnlinkPortalTenantFile(user.tenantId, oldContent);
+  }
+  if (metadata !== undefined) {
+    const nextPdf = extractPortalPdfUrl(updated.metadata);
+    if (oldPdf && oldPdf !== nextPdf) {
+      await tryUnlinkPortalTenantFile(user.tenantId, oldPdf);
+    }
   }
 
   res.json(updated);
@@ -377,6 +376,7 @@ portalRouter.delete("/items/:id", ensurePortalAdmin, async (req, res) => {
   }
 
   await tryUnlinkPortalTenantFile(user.tenantId, existing.content);
+  await tryUnlinkPortalTenantFile(user.tenantId, extractPortalPdfUrl(existing.metadata));
   await prisma.portalItem.delete({ where: { id } });
   res.status(204).end();
 });
