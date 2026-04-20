@@ -735,9 +735,43 @@ export function PortalCollaborativeDashboard() {
     }
   }
 
-  function newsPdfHref(item: PortalItem): string {
-    const u = parseNewsPdfUrl(item.metadata);
-    return u ? assetUrl(u) : "";
+  function clickOpenInNewTab(href: string) {
+    const a = document.createElement("a");
+    a.href = href;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  function openNewsPdfInNewTab(item: PortalItem): boolean {
+    const raw = parseNewsPdfUrl(item.metadata);
+    if (!raw) return false;
+    const href = assetUrl(raw);
+
+    // Alguns browsers bloqueiam abrir data: em nova guia. Converter para Blob URL resolve.
+    if (href.startsWith("data:application/pdf") || href.startsWith("data:application/octet-stream")) {
+      try {
+        const comma = href.indexOf(",");
+        if (comma === -1) return false;
+        const meta = href.slice(0, comma);
+        const base64 = href.slice(comma + 1);
+        const mime = meta.match(/^data:([^;]+);base64$/i)?.[1] || "application/pdf";
+        const bin = atob(base64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        const blobUrl = URL.createObjectURL(new Blob([bytes], { type: mime }));
+        clickOpenInNewTab(blobUrl);
+        window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    clickOpenInNewTab(href);
+    return true;
   }
 
   function openNewsLightbox(item: PortalItem) {
@@ -1086,27 +1120,18 @@ export function PortalCollaborativeDashboard() {
                             style={{ objectPosition: newsObjectPosition(activeNews.metadata) }}
                           />
                           {(() => {
-                            const href = newsPdfHref(activeNews);
-                            return href ? (
-                              <a
-                                href={href}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                aria-label="Abrir PDF da notícia em nova guia"
-                                className="absolute inset-0 z-[1] block h-full w-full cursor-pointer bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fuchsia-400/60"
-                              />
-                            ) : (
-                              <div
-                                role="button"
-                                tabIndex={0}
-                                aria-label="Abrir imagem da notícia"
-                                className="absolute inset-0 z-[1] cursor-zoom-in bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fuchsia-400/60"
-                                onClick={() => openNewsLightbox(activeNews)}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter" || e.key === " ") {
-                                    e.preventDefault();
-                                    openNewsLightbox(activeNews);
-                                  }
+                            const hasPdf = !!parseNewsPdfUrl(activeNews.metadata);
+                            const label = hasPdf ? "Abrir PDF da notícia em nova guia" : "Abrir imagem da notícia";
+                            return (
+                              <button
+                                type="button"
+                                aria-label={label}
+                                className={`absolute inset-0 z-[1] h-full w-full bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fuchsia-400/60 ${
+                                  hasPdf ? "cursor-pointer" : "cursor-zoom-in"
+                                }`}
+                                onClick={() => {
+                                  if (hasPdf) openNewsPdfInNewTab(activeNews);
+                                  else openNewsLightbox(activeNews);
                                 }}
                               />
                             );
@@ -1139,27 +1164,18 @@ export function PortalCollaborativeDashboard() {
                                 style={{ objectPosition: newsObjectPosition(it.metadata) }}
                               />
                               {(() => {
-                                const href = newsPdfHref(it);
-                                return href ? (
-                                  <a
-                                    href={href}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    aria-label="Abrir PDF da notícia em nova guia"
-                                    className="absolute inset-0 z-[1] block h-full w-full cursor-pointer bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fuchsia-400/60"
-                                  />
-                                ) : (
-                                  <div
-                                    role="button"
-                                    tabIndex={0}
-                                    aria-label="Abrir imagem da notícia"
-                                    className="absolute inset-0 z-[1] cursor-zoom-in bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fuchsia-400/60"
-                                    onClick={() => openNewsLightbox(it)}
-                                    onKeyDown={(e) => {
-                                      if (e.key === "Enter" || e.key === " ") {
-                                        e.preventDefault();
-                                        openNewsLightbox(it);
-                                      }
+                                const hasPdf = !!parseNewsPdfUrl(it.metadata);
+                                const label = hasPdf ? "Abrir PDF da notícia em nova guia" : "Abrir imagem da notícia";
+                                return (
+                                  <button
+                                    type="button"
+                                    aria-label={label}
+                                    className={`absolute inset-0 z-[1] h-full w-full bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fuchsia-400/60 ${
+                                      hasPdf ? "cursor-pointer" : "cursor-zoom-in"
+                                    }`}
+                                    onClick={() => {
+                                      if (hasPdf) openNewsPdfInNewTab(it);
+                                      else openNewsLightbox(it);
                                     }}
                                   />
                                 );
@@ -1190,27 +1206,18 @@ export function PortalCollaborativeDashboard() {
                                   style={{ objectPosition: newsObjectPosition(newsPageItems[0].metadata) }}
                                 />
                                 {(() => {
-                                  const href = newsPdfHref(newsPageItems[0]);
-                                  return href ? (
-                                    <a
-                                      href={href}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      aria-label="Abrir PDF da notícia em nova guia"
-                                      className="absolute inset-0 z-[1] block h-full w-full cursor-pointer bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fuchsia-400/60"
-                                    />
-                                  ) : (
-                                    <div
-                                      role="button"
-                                      tabIndex={0}
-                                      aria-label="Abrir imagem da notícia"
-                                      className="absolute inset-0 z-[1] cursor-zoom-in bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fuchsia-400/60"
-                                      onClick={() => openNewsLightbox(newsPageItems[0])}
-                                      onKeyDown={(e) => {
-                                        if (e.key === "Enter" || e.key === " ") {
-                                          e.preventDefault();
-                                          openNewsLightbox(newsPageItems[0]);
-                                        }
+                                  const hasPdf = !!parseNewsPdfUrl(newsPageItems[0].metadata);
+                                  const label = hasPdf ? "Abrir PDF da notícia em nova guia" : "Abrir imagem da notícia";
+                                  return (
+                                    <button
+                                      type="button"
+                                      aria-label={label}
+                                      className={`absolute inset-0 z-[1] h-full w-full bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fuchsia-400/60 ${
+                                        hasPdf ? "cursor-pointer" : "cursor-zoom-in"
+                                      }`}
+                                      onClick={() => {
+                                        if (hasPdf) openNewsPdfInNewTab(newsPageItems[0]);
+                                        else openNewsLightbox(newsPageItems[0]);
                                       }}
                                     />
                                   );
@@ -1239,27 +1246,19 @@ export function PortalCollaborativeDashboard() {
                                   style={{ objectPosition: newsObjectPosition((it as PortalItem).metadata) }}
                                 />
                                 {(() => {
-                                  const href = newsPdfHref(it as PortalItem);
-                                  return href ? (
-                                    <a
-                                      href={href}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      aria-label="Abrir PDF da notícia em nova guia"
-                                      className="absolute inset-0 z-[1] block h-full w-full cursor-pointer bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fuchsia-400/60"
-                                    />
-                                  ) : (
-                                    <div
-                                      role="button"
-                                      tabIndex={0}
-                                      aria-label="Abrir imagem da notícia"
-                                      className="absolute inset-0 z-[1] cursor-zoom-in bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fuchsia-400/60"
-                                      onClick={() => openNewsLightbox(it as PortalItem)}
-                                      onKeyDown={(e) => {
-                                        if (e.key === "Enter" || e.key === " ") {
-                                          e.preventDefault();
-                                          openNewsLightbox(it as PortalItem);
-                                        }
+                                  const pit = it as PortalItem;
+                                  const hasPdf = !!parseNewsPdfUrl(pit.metadata);
+                                  const label = hasPdf ? "Abrir PDF da notícia em nova guia" : "Abrir imagem da notícia";
+                                  return (
+                                    <button
+                                      type="button"
+                                      aria-label={label}
+                                      className={`absolute inset-0 z-[1] h-full w-full bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fuchsia-400/60 ${
+                                        hasPdf ? "cursor-pointer" : "cursor-zoom-in"
+                                      }`}
+                                      onClick={() => {
+                                        if (hasPdf) openNewsPdfInNewTab(pit);
+                                        else openNewsLightbox(pit);
                                       }}
                                     />
                                   );
