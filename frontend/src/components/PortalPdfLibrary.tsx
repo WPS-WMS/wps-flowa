@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { FileText, Plus, Trash2, Upload } from "lucide-react";
 import { API_BASE_URL, apiFetch } from "@/lib/api";
 import { ConfirmModal } from "@/components/ConfirmModal";
@@ -250,7 +251,7 @@ export function PortalPdfLibrary({ title, description, sectionId, items, canEdit
   );
 
   return (
-    <section className="overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-xl backdrop-blur">
+    <section className="rounded-3xl border border-white/10 bg-white/5 shadow-xl backdrop-blur overflow-x-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3 sm:px-5">
         <div className="flex min-w-0 items-center gap-2">
           <FileText className="h-4 w-4 shrink-0 text-sky-300" />
@@ -358,70 +359,74 @@ export function PortalPdfLibrary({ title, description, sectionId, items, canEdit
         )}
       </div>
 
-      {modalOpen && canEdit && (
-        <div
-          className="fixed inset-0 z-[60] flex items-end justify-center bg-black/70 p-4 sm:items-center"
-          role="presentation"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setModalOpen(false);
-              setError(null);
-            }
-          }}
-        >
+      {modalOpen &&
+        canEdit &&
+        typeof document !== "undefined" &&
+        createPortal(
           <div
-            className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-900 p-5 shadow-2xl"
-            role="dialog"
-            aria-modal
-            aria-labelledby="pdf-lib-modal-title"
+            className="fixed inset-0 z-[200] flex items-end justify-center bg-black/70 p-4 sm:items-center"
+            role="presentation"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setModalOpen(false);
+                setError(null);
+              }
+            }}
           >
-            <h3 id="pdf-lib-modal-title" className="mb-3 text-lg font-bold text-white">
-              Anexar PDF
-            </h3>
-            <div className="space-y-3">
-              <input
-                type="text"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                placeholder="Nome exibido na lista"
-                className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-slate-500"
-              />
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="application/pdf"
-                onChange={(e) => setNewFile(e.target.files?.[0] ?? null)}
-                className="block w-full text-xs text-slate-300 file:mr-2 file:rounded-lg file:border-0 file:bg-violet-600 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white"
-              />
-              {error && <p className="text-xs text-red-400">{error}</p>}
-              <div className="flex gap-2 pt-1">
-                <button
-                  type="button"
-                  disabled={saving}
-                  onClick={() => void handleAddPdf()}
-                  className="flex-1 rounded-xl bg-gradient-to-r from-sky-600 to-violet-600 py-2.5 text-sm font-bold text-white disabled:opacity-50"
-                >
-                  {saving ? "Salvando…" : "Salvar"}
-                </button>
-                <button
-                  type="button"
-                  disabled={saving}
-                  onClick={() => {
-                    setModalOpen(false);
-                    setNewName("");
-                    setNewFile(null);
-                    setError(null);
-                    if (fileInputRef.current) fileInputRef.current.value = "";
-                  }}
-                  className="rounded-xl border border-white/15 px-4 py-2.5 text-sm text-slate-300 hover:bg-white/5"
-                >
-                  Cancelar
-                </button>
+            <div
+              className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-900 p-5 shadow-2xl"
+              role="dialog"
+              aria-modal
+              aria-labelledby="pdf-lib-modal-title"
+            >
+              <h3 id="pdf-lib-modal-title" className="mb-3 text-lg font-bold text-white">
+                Anexar PDF
+              </h3>
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="Nome exibido na lista"
+                  className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-slate-500"
+                />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="application/pdf"
+                  onChange={(e) => setNewFile(e.target.files?.[0] ?? null)}
+                  className="block w-full text-xs text-slate-300 file:mr-2 file:rounded-lg file:border-0 file:bg-violet-600 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white"
+                />
+                {error && <p className="text-xs text-red-400">{error}</p>}
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={() => void handleAddPdf()}
+                    className="flex-1 rounded-xl bg-gradient-to-r from-sky-600 to-violet-600 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+                  >
+                    {saving ? "Salvando…" : "Salvar"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={() => {
+                      setModalOpen(false);
+                      setNewName("");
+                      setNewFile(null);
+                      setError(null);
+                      if (fileInputRef.current) fileInputRef.current.value = "";
+                    }}
+                    className="rounded-xl border border-white/15 px-4 py-2.5 text-sm text-slate-300 hover:bg-white/5"
+                  >
+                    Cancelar
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
 
       {confirmDelete && (
         <ConfirmModal
