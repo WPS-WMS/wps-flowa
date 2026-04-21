@@ -631,7 +631,9 @@ export function AbrirChamadoContent({ afterCreateHref }: AbrirChamadoContentProp
                       )}
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-[color:var(--muted-foreground)] mb-1.5">Tipo</label>
+                      <label className="block text-sm font-medium text-[color:var(--muted-foreground)] mb-1.5">
+                        Tipo <span className="text-rose-600">*</span>
+                      </label>
                       <select
                         value={tipo}
                         onChange={(e) => setTipo(e.target.value)}
