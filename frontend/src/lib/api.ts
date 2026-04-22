@@ -21,12 +21,46 @@ export const ASSET_PUBLIC_BASE_URL = normalizeOrigin(
   process.env.NEXT_PUBLIC_ASSET_PUBLIC_ORIGIN?.trim() || API_URL,
 );
 
+let cachedApiOrigin = "";
+let cachedAssetOrigin = "";
+try {
+  cachedApiOrigin = new URL(API_URL).origin;
+} catch {
+  /* ignore */
+}
+try {
+  cachedAssetOrigin = new URL(ASSET_PUBLIC_BASE_URL).origin;
+} catch {
+  /* ignore */
+}
+
+/**
+ * Conteúdo antigo pode vir como URL absoluta do host da API (ex. Render).
+ * Nesse caso trocamos só a origem para `ASSET_PUBLIC_BASE_URL`, mantendo o path `/uploads/...`.
+ */
+function rewriteUploadsAbsoluteUrl(absolute: string): string {
+  try {
+    const u = new URL(absolute);
+    if (!u.pathname.startsWith("/uploads/")) return absolute;
+    if (cachedAssetOrigin && u.origin === cachedAssetOrigin) return absolute;
+
+    const sameApiHost = cachedApiOrigin && u.origin === cachedApiOrigin;
+    const legacyRenderUploads =
+      u.hostname.endsWith(".onrender.com") && u.pathname.startsWith("/uploads/");
+    if (!sameApiHost && !legacyRenderUploads) return absolute;
+
+    return `${ASSET_PUBLIC_BASE_URL}${u.pathname}${u.search}${u.hash}`;
+  } catch {
+    return absolute;
+  }
+}
+
 /** Monta URL absoluta para paths relativos da API (ex.: `/uploads/portal/...`). */
 export function publicFileUrl(path: string): string {
   const p = String(path || "").trim();
   if (!p) return "";
   if (p.startsWith("data:") || p.startsWith("blob:")) return p;
-  if (p.startsWith("http://") || p.startsWith("https://")) return p;
+  if (p.startsWith("http://") || p.startsWith("https://")) return rewriteUploadsAbsoluteUrl(p);
   if (p.startsWith("/")) return `${ASSET_PUBLIC_BASE_URL}${p}`;
   return `${ASSET_PUBLIC_BASE_URL}/${p}`;
 }
