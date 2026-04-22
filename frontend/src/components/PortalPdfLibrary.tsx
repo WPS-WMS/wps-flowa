@@ -14,15 +14,28 @@ export type PortalPdfItem = {
   metadata?: unknown;
 };
 
-/** Itens exibidos nas telas de biblioteca: PDF em `content` ou link para .pdf. */
+const MAX_PORTAL_FILE_BYTES = 20 * 1024 * 1024;
+const ALLOWED_PORTAL_EXTS = new Set([".pdf", ".docx", ".xlsx"]);
+
+function fileExtLower(name: string): string {
+  const s = String(name || "");
+  const dot = s.lastIndexOf(".");
+  return dot >= 0 ? s.slice(dot).toLowerCase() : "";
+}
+
+function isAllowedPortalFileName(name: string): boolean {
+  return ALLOWED_PORTAL_EXTS.has(fileExtLower(name));
+}
+
+/** Itens exibidos nas telas de biblioteca: PDF/DOCX/XLSX em `content` ou link para esses formatos. */
 export function isPdfLibraryRow(item: PortalPdfItem): boolean {
   const t = String(item.type || "").toLowerCase();
   if (t === "inspiration" || t === "image") return false;
   const c = String(item.content || "").trim();
   if (!c) return false;
   if (t === "pdf" || t === "file") return true;
-  if (t === "link" && /\.pdf(\?|$)/i.test(c)) return true;
-  if (/\/uploads\/portal\/.+\.pdf(\?|$)/i.test(c)) return true;
+  if (t === "link" && /\.(pdf|docx|xlsx)(\?|$)/i.test(c)) return true;
+  if (/\/uploads\/portal\/.+\.(pdf|docx|xlsx)(\?|$)/i.test(c)) return true;
   return false;
 }
 
@@ -36,14 +49,14 @@ function clickOpenInNewTab(href: string) {
   a.remove();
 }
 
-function openPdfDataUrlInNewTab(href: string): boolean {
-  if (!href.startsWith("data:application/pdf") && !href.startsWith("data:application/octet-stream")) return false;
+function openDataUrlInNewTab(href: string): boolean {
+  if (!href.startsWith("data:")) return false;
   try {
     const comma = href.indexOf(",");
     if (comma === -1) return false;
     const meta = href.slice(0, comma);
     const base64 = href.slice(comma + 1);
-    const mime = meta.match(/^data:([^;]+);base64$/i)?.[1] || "application/pdf";
+    const mime = meta.match(/^data:([^;]+);base64$/i)?.[1] || "application/octet-stream";
     const bin = atob(base64);
     const bytes = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
@@ -69,14 +82,12 @@ function isPortalTenantDiskPath(raw: string): boolean {
   return false;
 }
 
-/** Abre PDF do portal: ficheiros em disco via API autenticada; `data:` ou links externos mantêm o fluxo anterior. */
+/** Abre documento do portal: arquivos em disco via API autenticada; `data:` ou links externos mantêm o fluxo anterior. */
 export async function openPortalPdfItemInNewTab(item: PortalPdfItem): Promise<boolean> {
   const raw = String(item.content || "").trim();
   if (!raw) return false;
 
-  if (raw.startsWith("data:application/pdf") || raw.startsWith("data:application/octet-stream")) {
-    return openPdfDataUrlInNewTab(raw);
-  }
+  if (raw.startsWith("data:")) return openDataUrlInNewTab(raw);
 
   if (!isPortalTenantDiskPath(raw)) {
     const href = publicFileUrl(raw);
@@ -175,7 +186,15 @@ export function PortalPdfLibrary({ title, description, sectionId, items, canEdit
       return;
     }
     if (!newFile) {
-      setError("Selecione um arquivo PDF.");
+      setError("Selecione um arquivo (PDF, DOCX ou XLSX).");
+      return;
+    }
+    if (!isAllowedPortalFileName(newFile.name)) {
+      setError("Arquivo inválido. Envie apenas PDF, DOCX ou XLSX.");
+      return;
+    }
+    if (newFile.size > MAX_PORTAL_FILE_BYTES) {
+      setError("Arquivo muito grande (máx. 20MB).");
       return;
     }
     setSaving(true);
@@ -189,7 +208,7 @@ export function PortalPdfLibrary({ title, description, sectionId, items, canEdit
           sectionId,
           title: name,
           content: fileUrl,
-          type: "pdf",
+          type: "file",
           metadata: null,
           isActive: true,
         }),
@@ -237,6 +256,14 @@ export function PortalPdfLibrary({ title, description, sectionId, items, canEdit
 
   const replacePdf = useCallback(
     async (item: PortalPdfItem, file: File) => {
+      if (!isAllowedPortalFileName(file.name)) {
+        setError("Arquivo inválido. Envie apenas PDF, DOCX ou XLSX.");
+        return;
+      }
+      if (file.size > MAX_PORTAL_FILE_BYTES) {
+        setError("Arquivo muito grande (máx. 20MB).");
+        return;
+      }
       setSaving(true);
       setError(null);
       try {
@@ -244,10 +271,10 @@ export function PortalPdfLibrary({ title, description, sectionId, items, canEdit
         const res = await apiFetch(`/api/portal/items/${item.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content: fileUrl, type: "pdf" }),
+          body: JSON.stringify({ content: fileUrl, type: "file" }),
         });
         const errBody = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(errBody?.error || "Erro ao substituir PDF.");
+        if (!res.ok) throw new Error(errBody?.error || "Erro ao substituir arquivo.");
         setReplaceId(null);
         if (replaceInputRef.current) replaceInputRef.current.value = "";
         await runRefresh();
@@ -296,7 +323,7 @@ export function PortalPdfLibrary({ title, description, sectionId, items, canEdit
             className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-sky-500/25 px-3 py-1.5 text-[11px] font-semibold text-sky-100 hover:bg-sky-500/35"
           >
             <Plus className="h-3.5 w-3.5" />
-            Anexar PDF
+            Anexar arquivo
           </button>
         )}
       </div>
@@ -310,7 +337,7 @@ export function PortalPdfLibrary({ title, description, sectionId, items, canEdit
         <input
           ref={replaceInputRef}
           type="file"
-          accept="application/pdf"
+          accept=".pdf,.docx,.xlsx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           className="hidden"
           onChange={(e) => {
             const f = e.target.files?.[0];
@@ -322,7 +349,7 @@ export function PortalPdfLibrary({ title, description, sectionId, items, canEdit
         />
 
         {pdfItems.length === 0 ? (
-          <p className="text-center text-sm text-slate-500">Nenhum PDF publicado ainda.</p>
+          <p className="text-center text-sm text-slate-500">Nenhum documento publicado ainda.</p>
         ) : (
           <ul className="space-y-2">
             {pdfItems.map((it) => {
@@ -375,7 +402,7 @@ export function PortalPdfLibrary({ title, description, sectionId, items, canEdit
                           setReplaceId(it.id);
                           replaceInputRef.current?.click();
                         }}
-                        title="Substituir PDF"
+                        title="Substituir arquivo"
                         className="inline-flex items-center justify-center rounded-lg border border-white/15 bg-white/5 p-2 text-white hover:bg-white/10 disabled:opacity-50"
                       >
                         <Upload className="h-4 w-4" aria-hidden />
@@ -437,7 +464,7 @@ export function PortalPdfLibrary({ title, description, sectionId, items, canEdit
               aria-labelledby="pdf-lib-modal-title"
             >
               <h3 id="pdf-lib-modal-title" className="mb-3 text-lg font-bold text-white">
-                Anexar PDF
+                Anexar arquivo
               </h3>
               <div className="space-y-3">
                 <input
@@ -450,7 +477,7 @@ export function PortalPdfLibrary({ title, description, sectionId, items, canEdit
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="application/pdf"
+                  accept=".pdf,.docx,.xlsx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                   onChange={(e) => setNewFile(e.target.files?.[0] ?? null)}
                   className="block w-full text-xs text-slate-300 file:mr-2 file:rounded-lg file:border-0 file:bg-violet-600 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white"
                 />
