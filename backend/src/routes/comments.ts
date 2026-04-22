@@ -2,6 +2,7 @@ import { Request, Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { authMiddleware } from "../lib/auth.js";
 import { notifyTicketMembers } from "../lib/ticketEmailNotifications.js";
+import sanitizeHtml from "sanitize-html";
 
 export const commentsRouter = Router();
 commentsRouter.use(authMiddleware);
@@ -18,17 +19,59 @@ function escapeCommentName(input: string): string {
   return escapeCommentText(input);
 }
 
-function sanitizeHtmlBasic(html: string): string {
-  if (!html) return "";
-  let s = String(html);
-  // Remove tags de script e seu conteúdo
-  s = s.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "");
-  // Remove atributos on* (onload, onclick, etc.)
-  s = s.replace(/\s*on\w+="[^"]*"/gi, "");
-  s = s.replace(/\s*on\w+='[^']*'/gi, "");
-  // Remove javascript: em URLs
-  s = s.replace(/javascript:/gi, "");
-  return s;
+function sanitizeCommentHtml(html: string): string {
+  // Allowlist minimal: foco em texto + links + listas + quebras de linha e imagens/âncoras do editor.
+  return sanitizeHtml(String(html || ""), {
+    allowedTags: [
+      "b",
+      "strong",
+      "i",
+      "em",
+      "u",
+      "s",
+      "p",
+      "br",
+      "div",
+      "span",
+      "ul",
+      "ol",
+      "li",
+      "blockquote",
+      "code",
+      "pre",
+      "a",
+      "img",
+      "h1",
+      "h2",
+      "h3",
+      "h4",
+      "h5",
+      "h6",
+    ],
+    allowedAttributes: {
+      a: ["href", "target", "rel", "title"],
+      img: ["src", "alt", "title"],
+      "*": ["style"],
+    },
+    // Remover qualquer on* e atributos não listados.
+    allowedSchemes: ["http", "https", "data", "blob"],
+    allowProtocolRelative: false,
+    // Impede tags perigosas por completo (svg, iframe, etc.).
+    disallowedTagsMode: "discard",
+    // Normaliza/limpa CSS inline (mantemos simples; pode apertar mais depois).
+    allowedStyles: {
+      "*": {
+        color: [/^#(0x)?[0-9a-f]+$/i, /^rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)$/i],
+        "text-align": [/^left$/, /^right$/, /^center$/, /^justify$/],
+        "font-weight": [/^\d+$/, /^bold$/, /^normal$/],
+        "font-style": [/^italic$/, /^normal$/],
+        "text-decoration": [/^none$/, /^underline$/, /^line-through$/],
+      },
+    },
+    transformTags: {
+      a: sanitizeHtml.simpleTransform("a", { rel: "noopener noreferrer" }, true),
+    },
+  });
 }
 
 // GET /api/comments?ticketId=xxx - Lista comentários de um ticket
@@ -37,10 +80,7 @@ commentsRouter.get("/", async (req, res) => {
     const user = (req as Request & { user: { id: string; role: string; tenantId: string } }).user;
     const { ticketId } = req.query;
 
-    console.log("GET /api/comments - ticketId:", ticketId, "user:", user.id, "tenantId:", user.tenantId);
-
     if (!ticketId || typeof ticketId !== "string") {
-      console.error("ticketId inválido:", ticketId);
       res.status(400).json({ error: "ticketId é obrigatório" });
       return;
     }
@@ -63,14 +103,12 @@ commentsRouter.get("/", async (req, res) => {
     });
 
     if (!ticket) {
-      console.error("Ticket não encontrado:", ticketId, "para tenant:", user.tenantId);
       // Verifica se o ticket existe mas não pertence ao tenant
       const ticketExists = await prisma.ticket.findUnique({
         where: { id: ticketId },
         select: { id: true, projectId: true },
       });
       if (ticketExists) {
-        console.error("Ticket existe mas não pertence ao tenant do usuário");
         res.status(403).json({ error: "Você não tem permissão para acessar este ticket" });
         return;
       }
@@ -97,8 +135,6 @@ commentsRouter.get("/", async (req, res) => {
         createdAt: "asc",
       },
     });
-
-    console.log("Comentários encontrados:", comments.length);
     res.json(comments);
   } catch (error) {
     console.error("Erro ao buscar comentários:", error);
@@ -112,10 +148,7 @@ commentsRouter.post("/", async (req, res) => {
     const user = (req as Request & { user: { id: string; tenantId: string; role: string } }).user;
     const { ticketId, content, visibility } = req.body;
 
-    console.log("POST /api/comments - ticketId:", ticketId, "content length:", content?.length, "user:", user.id);
-
     if (!ticketId || !content) {
-      console.error("Dados inválidos:", { ticketId, hasContent: !!content });
       res.status(400).json({ error: "ticketId e content são obrigatórios" });
       return;
     }
@@ -137,17 +170,15 @@ commentsRouter.post("/", async (req, res) => {
     });
 
     if (!ticket) {
-      console.error("Ticket não encontrado:", ticketId, "para tenant:", user.tenantId);
       res.status(404).json({ error: "Ticket não encontrado" });
       return;
     }
 
     // Valida se o conteúdo tem texto real (remove tags HTML e verifica se sobra texto)
     const rawHtmlContent = String(content);
-    const htmlContent = sanitizeHtmlBasic(rawHtmlContent);
+    const htmlContent = sanitizeCommentHtml(rawHtmlContent);
     const textContent = htmlContent.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
     if (!textContent) {
-      console.error("Comentário vazio após remover HTML");
       res.status(400).json({ error: "O comentário não pode estar vazio" });
       return;
     }
@@ -190,8 +221,6 @@ commentsRouter.post("/", async (req, res) => {
         details: "Comentário adicionado",
       },
     });
-
-    console.log("Comentário criado com sucesso:", comment.id);
 
     if (comment.visibility === "PUBLIC") {
       const plain = htmlContent.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
@@ -265,8 +294,6 @@ commentsRouter.patch("/:id", async (req, res) => {
     const commentId = req.params.id;
     const { content } = req.body;
 
-    console.log("PATCH /api/comments/:id - commentId:", commentId, "user:", user.id);
-
     if (!content) {
       res.status(400).json({ error: "content é obrigatório" });
       return;
@@ -291,14 +318,13 @@ commentsRouter.patch("/:id", async (req, res) => {
 
     // Apenas o autor ou SUPER_ADMIN pode editar
     if (comment.userId !== user.id && user.role !== "SUPER_ADMIN") {
-      console.error("Usuário sem permissão para editar comentário:", user.id, "comment userId:", comment.userId);
       res.status(403).json({ error: "Você não tem permissão para editar este comentário" });
       return;
     }
 
     // Valida se o conteúdo tem texto real (remove tags HTML e verifica se sobra texto)
     const rawHtmlContent = String(content);
-    const htmlContent = sanitizeHtmlBasic(rawHtmlContent);
+    const htmlContent = sanitizeCommentHtml(rawHtmlContent);
     const textContent = htmlContent.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
     if (!textContent) {
       console.error("Comentário vazio após remover HTML");
@@ -337,7 +363,6 @@ commentsRouter.patch("/:id", async (req, res) => {
       },
     });
 
-    console.log("Comentário atualizado com sucesso:", updatedComment.id);
     res.json(updatedComment);
   } catch (error) {
     console.error("Erro ao atualizar comentário:", error);
@@ -350,8 +375,6 @@ commentsRouter.delete("/:id", async (req, res) => {
   try {
     const user = (req as Request & { user: { id: string; tenantId: string; role: string } }).user;
     const commentId = req.params.id;
-
-    console.log("DELETE /api/comments/:id - commentId:", commentId, "user:", user.id);
 
     const comment = await prisma.ticketComment.findFirst({
       where: {
@@ -372,7 +395,6 @@ commentsRouter.delete("/:id", async (req, res) => {
 
     // Apenas o autor ou SUPER_ADMIN pode deletar
     if (comment.userId !== user.id && user.role !== "SUPER_ADMIN") {
-      console.error("Usuário sem permissão para deletar comentário:", user.id, "comment userId:", comment.userId);
       res.status(403).json({ error: "Você não tem permissão para deletar este comentário" });
       return;
     }
@@ -396,7 +418,6 @@ commentsRouter.delete("/:id", async (req, res) => {
       },
     });
 
-    console.log("Comentário deletado com sucesso:", commentId);
     res.status(204).send();
   } catch (error) {
     console.error("Erro ao deletar comentário:", error);

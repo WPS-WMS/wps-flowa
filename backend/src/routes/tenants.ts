@@ -1,14 +1,23 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { hashPassword, signToken } from "../lib/auth.js";
+import rateLimit from "express-rate-limit";
 
 export const tenantsRouter = Router();
+
+const signupLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { error: "Muitas tentativas de cadastro. Tente novamente em alguns minutos." },
+});
 
 /**
  * Cadastro de novo tenant (organização) com usuário admin inicial.
  * Endpoint público - usado para onboarding de novas empresas.
  */
-tenantsRouter.post("/signup", async (req, res) => {
+tenantsRouter.post("/signup", signupLimiter, async (req, res) => {
   try {
     const { tenantName, tenantSlug, email, name, password } = req.body;
     if (!tenantName || !tenantSlug || !email || !name || !password) {
@@ -87,7 +96,7 @@ tenantsRouter.post("/signup", async (req, res) => {
       },
     });
   } catch (err) {
-    console.error(err);
+    console.error("POST /api/tenants/signup error:", err);
     res.status(500).json({ error: "Erro ao criar organização" });
   }
 });

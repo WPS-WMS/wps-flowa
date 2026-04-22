@@ -63,6 +63,47 @@ wps-one/
 
 ### 3. Backend – detalhes (Render)
 
+#### 3.x. Guardrails (QA/PROD): não perder uploads + envs estáveis
+
+Esta seção existe para reduzir o risco de “sumir arquivo” após deploy.
+
+##### 3.x.1. Regra de ouro sobre uploads
+
+- O backend serve arquivos de `UPLOADS_ROOT` em `GET /uploads/*` e grava uploads em subpastas (portal, tickets, users, projects).
+- **Se `UPLOADS_ROOT` não apontar para um volume persistente**, os arquivos podem sumir em redeploy/recriação do serviço.
+- No Render, o mais comum é montar um **Persistent Disk** em um path como `/var/data` e configurar:
+  - `UPLOADS_ROOT=/var/data` (ou `/var/data/wps-uploads`).
+
+##### 3.x.2. Modelo recomendado: 2 serviços (QA e PROD) + 2 discos
+
+- **Render PROD**: Web Service próprio + **Persistent Disk PROD**
+  - `DATABASE_URL` → banco/branch **PROD** no Neon
+  - `UPLOADS_ROOT` → mount path do **disk PROD**
+- **Render QA**: Web Service próprio + **Persistent Disk QA**
+  - `DATABASE_URL` → banco/branch **QA** no Neon
+  - `UPLOADS_ROOT` → mount path do **disk QA**
+
+Evite “reaproveitar” o mesmo serviço para QA/PROD apenas trocando envs: é a forma mais fácil de cruzar dados ou perder uploads.
+
+##### 3.x.3. Checklist antes de qualquer deploy (QA/PROD)
+
+No serviço correto (QA ou PROD), confirme:
+
+- **Volume**: o Persistent Disk está **montado** no serviço (o mount path existe).
+- **`UPLOADS_ROOT`**: aponta exatamente para o mount path do disk.
+- **`DATABASE_URL`**: aponta para o banco do ambiente correto (QA vs PROD).
+- **`JWT_SECRET`**: está presente (produção) e não foi apagado.
+
+Depois disso, faça o deploy.
+
+##### 3.x.4. Mini “runbook” quando “sumiu PDF/foto/anexo”
+
+1. Verifique no Render se o serviço que você está olhando é o **ambiente correto** (QA vs PROD).
+2. Confirme se o **Persistent Disk** continua montado no serviço e se o mount path não mudou.
+3. Confirme se `UPLOADS_ROOT` continua igual ao mount path do disk.
+4. Se `UPLOADS_ROOT` estiver vazio ou apontando para dentro do diretório da aplicação, os uploads podem ter ido para o filesystem efêmero.
+5. Se o disco foi removido/trocado, trate como incidente: recuperar a partir de backup/cópia (se existir).
+
 #### 3.0. Ter a URL `https://wps-one-backend.onrender.com`
 
 O Render **não** altera o subdomínio depois que o serviço foi criado. Renomear no painel ≠ mudar `*.onrender.com`.

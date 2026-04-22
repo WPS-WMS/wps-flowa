@@ -22,17 +22,23 @@ export interface JwtPayload {
 }
 
 const rawSecret = process.env.JWT_SECRET || "dev-secret-change-in-production";
+const secret = rawSecret;
 
-if (process.env.NODE_ENV === "production" && (!process.env.JWT_SECRET || process.env.JWT_SECRET === "dev-secret-change-in-production")) {
-  // Em produção, é obrigatório configurar um JWT_SECRET forte via variável de ambiente.
-  // Não lançamos erro aqui para não quebrar o boot em ambientes parcialmente configurados,
-  // mas registramos um alerta claro no log.
-  console.warn(
-    '[SECURITY] JWT_SECRET não configurado corretamente em produção. Defina uma variável de ambiente JWT_SECRET com um valor forte e secreto.'
-  );
+function validateJwtSecretOrThrow() {
+  const isProd = process.env.NODE_ENV === "production";
+  if (!isProd) return;
+  if (!process.env.JWT_SECRET || process.env.JWT_SECRET === "dev-secret-change-in-production") {
+    throw new Error(
+      "[SECURITY] JWT_SECRET ausente/invalidado em produção. Defina JWT_SECRET com um valor forte e secreto.",
+    );
+  }
+  // Defesa em profundidade: tamanho mínimo para evitar segredo fraco.
+  if (String(process.env.JWT_SECRET).trim().length < 32) {
+    throw new Error("[SECURITY] JWT_SECRET muito curto em produção (mínimo recomendado: 32 caracteres).");
+  }
 }
 
-const secret = rawSecret;
+validateJwtSecretOrThrow();
 
 export function signToken(payload: JwtPayload): string {
   return jwt.sign(payload, secret, { expiresIn: "7d" });
