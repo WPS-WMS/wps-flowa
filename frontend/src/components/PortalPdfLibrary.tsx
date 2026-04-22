@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { FileText, Pencil, Plus, Trash2, Upload } from "lucide-react";
+import { Check, FileText, Pencil, Plus, Trash2, Upload, X } from "lucide-react";
 import { apiFetch, apiFetchBlob, publicFileUrl } from "@/lib/api";
 import { ConfirmModal } from "@/components/ConfirmModal";
 
@@ -352,16 +352,14 @@ export function PortalPdfLibrary({ title, description, sectionId, items, canEdit
                         </button>
                       )}
                     </div>
-                    {canEdit && (
+                    {canEdit && !rowEditing && (
                       <button
                         type="button"
-                        title={rowEditing ? "Fechar edição" : "Editar documento"}
-                        aria-expanded={rowEditing}
-                        onClick={() => setEditPdfRowId((cur) => (cur === it.id ? null : it.id))}
+                        title="Editar documento"
+                        aria-expanded={false}
+                        onClick={() => setEditPdfRowId(it.id)}
                         className={`shrink-0 rounded-lg border p-2 transition-colors ${
-                          rowEditing
-                            ? "border-violet-400/60 bg-violet-500/25 text-violet-100"
-                            : "border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
+                          "border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
                         }`}
                       >
                         <Pencil className="h-4 w-4" aria-hidden />
@@ -373,39 +371,41 @@ export function PortalPdfLibrary({ title, description, sectionId, items, canEdit
                       <button
                         type="button"
                         disabled={saving}
-                        onClick={() => void openPortalPdfItemInNewTab(it)}
-                        className="rounded-lg border border-sky-500/40 bg-sky-500/15 px-2.5 py-1 text-[11px] font-semibold text-sky-100 hover:bg-sky-500/25 disabled:opacity-50"
-                      >
-                        Abrir PDF
-                      </button>
-                      <button
-                        type="button"
-                        disabled={saving}
-                        onClick={() => void saveTitle(it)}
-                        className="rounded-lg bg-violet-600 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-violet-500 disabled:opacity-50"
-                      >
-                        Salvar nome
-                      </button>
-                      <button
-                        type="button"
-                        disabled={saving}
                         onClick={() => {
                           setReplaceId(it.id);
                           replaceInputRef.current?.click();
                         }}
-                        className="inline-flex items-center gap-1 rounded-lg border border-white/15 bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-white/10 disabled:opacity-50"
+                        title="Substituir PDF"
+                        className="inline-flex items-center justify-center rounded-lg border border-white/15 bg-white/5 p-2 text-white hover:bg-white/10 disabled:opacity-50"
                       >
-                        <Upload className="h-3 w-3" />
-                        Substituir PDF
+                        <Upload className="h-4 w-4" aria-hidden />
                       </button>
                       <button
                         type="button"
                         disabled={saving}
                         onClick={() => setConfirmDelete(it)}
-                        className="inline-flex items-center gap-1 rounded-lg border border-red-500/40 bg-red-500/10 px-2.5 py-1 text-[11px] font-semibold text-red-200 hover:bg-red-500/20 disabled:opacity-50"
+                        title="Excluir"
+                        className="inline-flex items-center justify-center rounded-lg border border-red-500/40 bg-red-500/10 p-2 text-red-200 hover:bg-red-500/20 disabled:opacity-50"
                       >
-                        <Trash2 className="h-3 w-3" />
-                        Excluir
+                        <Trash2 className="h-4 w-4" aria-hidden />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={saving}
+                        onClick={() => void saveTitle(it)}
+                        title="Salvar"
+                        className="inline-flex items-center justify-center rounded-lg border border-violet-400/60 bg-violet-500/25 p-2 text-violet-100 hover:bg-violet-500/35 disabled:opacity-50"
+                      >
+                        <Check className="h-4 w-4" aria-hidden />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={saving}
+                        onClick={() => setEditPdfRowId(null)}
+                        title="Fechar edição"
+                        className="inline-flex items-center justify-center rounded-lg border border-white/15 bg-white/5 p-2 text-slate-200 hover:bg-white/10 disabled:opacity-50"
+                      >
+                        <X className="h-4 w-4" aria-hidden />
                       </button>
                     </div>
                   )}
