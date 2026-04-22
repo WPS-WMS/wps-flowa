@@ -721,6 +721,66 @@ export function PortalCollaborativeDashboard() {
     a.remove();
   }
 
+function portalDiskPathFromUrl(raw: string): string {
+  const s = String(raw || "").trim();
+  if (!s) return "";
+  if (s.startsWith("/uploads/portal/")) return s;
+  if (s.startsWith("http://") || s.startsWith("https://")) {
+    try {
+      const u = new URL(s);
+      return u.pathname.startsWith("/uploads/portal/") ? u.pathname : "";
+    } catch {
+      return "";
+    }
+  }
+  return "";
+}
+
+function PortalItemImage({
+  itemId,
+  srcRaw,
+  alt,
+  className,
+  style,
+}: {
+  itemId: string;
+  srcRaw: string;
+  alt: string;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  const [src, setSrc] = useState<string>(() => publicFileUrl(srcRaw));
+
+  useEffect(() => {
+    let cancelled = false;
+    let obj: string | null = null;
+    const portalPath = portalDiskPathFromUrl(srcRaw);
+    if (!portalPath) {
+      setSrc(publicFileUrl(srcRaw));
+      return () => {};
+    }
+    void (async () => {
+      try {
+        const res = await apiFetchBlob(`/api/portal/items/${itemId}/file`);
+        if (!res.ok) return;
+        const blob = await res.blob();
+        obj = URL.createObjectURL(blob);
+        if (!cancelled) setSrc(obj);
+      } catch {
+        // fallback para o URL público (dev/QA)
+        if (!cancelled) setSrc(publicFileUrl(srcRaw));
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (obj) URL.revokeObjectURL(obj);
+    };
+  }, [itemId, srcRaw]);
+
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={src} alt={alt} className={className} style={style} />;
+}
+
   function newsPdfIsOnPortalDisk(raw: string): boolean {
     const s = String(raw || "").trim();
     if (s.startsWith("/uploads/portal/")) return true;
@@ -1127,9 +1187,9 @@ export function PortalCollaborativeDashboard() {
                     {newsCount === 1 && activeNews ? (
                       <div className="w-full">
                         <div className="relative aspect-[21/9] w-full overflow-hidden">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={publicFileUrl(activeNews.content)}
+                          <PortalItemImage
+                            itemId={activeNews.id}
+                            srcRaw={activeNews.content}
                             alt={newsDisplayCaption(activeNews)}
                             className="h-full w-full object-contain bg-black/20"
                             style={{ objectPosition: newsObjectPosition(activeNews.metadata) }}
@@ -1171,9 +1231,9 @@ export function PortalCollaborativeDashboard() {
                         {newsPageItems.map((it) => (
                           <div key={it.id} className="overflow-hidden rounded-2xl border border-white/10 bg-black/20">
                             <div className="group relative aspect-[21/9] w-full overflow-hidden">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={publicFileUrl(it.content)}
+                              <PortalItemImage
+                                itemId={it.id}
+                                srcRaw={it.content}
                                 alt={newsDisplayCaption(it)}
                                 className="h-full w-full object-contain bg-black/20 transition duration-300 group-hover:opacity-95"
                                 style={{ objectPosition: newsObjectPosition(it.metadata) }}
@@ -1213,9 +1273,9 @@ export function PortalCollaborativeDashboard() {
                           {newsPageItems[0] && (
                             <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/20 md:col-span-2 md:row-span-2">
                               <div className="group relative aspect-[21/9] w-full overflow-hidden md:aspect-auto md:min-h-[240px]">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={publicFileUrl(newsPageItems[0].content)}
+                                <PortalItemImage
+                                  itemId={newsPageItems[0].id}
+                                  srcRaw={newsPageItems[0].content}
                                   alt={newsDisplayCaption(newsPageItems[0])}
                                   className="h-full w-full object-contain bg-black/20 transition duration-300 group-hover:opacity-95"
                                   style={{ objectPosition: newsObjectPosition(newsPageItems[0].metadata) }}
@@ -1253,9 +1313,9 @@ export function PortalCollaborativeDashboard() {
                           {[newsPageItems[1], newsPageItems[2]].filter(Boolean).map((it) => (
                             <div key={(it as PortalItem).id} className="overflow-hidden rounded-2xl border border-white/10 bg-black/20">
                               <div className="group relative aspect-[21/9] w-full overflow-hidden md:aspect-auto md:min-h-[116px]">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={publicFileUrl((it as PortalItem).content)}
+                                <PortalItemImage
+                                  itemId={(it as PortalItem).id}
+                                  srcRaw={(it as PortalItem).content}
                                   alt={newsDisplayCaption(it as PortalItem)}
                                   className="h-full w-full object-contain bg-black/20 transition duration-300 group-hover:opacity-95"
                                   style={{ objectPosition: newsObjectPosition((it as PortalItem).metadata) }}
@@ -1388,9 +1448,8 @@ export function PortalCollaborativeDashboard() {
                       <div className="relative mx-auto aspect-square w-[96px] max-w-full sm:w-[104px]">
                         <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/10 to-white/5 shadow-inner ring-1 ring-amber-400/20" />
                         <div className="absolute inset-[2px] overflow-hidden rounded-full bg-slate-900 ring-1 ring-white/10">
-                          {photo ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={publicFileUrl(photo)} alt="" className="h-full w-full object-cover" />
+                          {photo && item ? (
+                            <PortalItemImage itemId={item.id} srcRaw={photo} alt="" className="h-full w-full object-cover" />
                           ) : (
                             <div className="flex h-full w-full items-center justify-center bg-slate-800 text-xs font-bold text-slate-500">
                               {initials}
@@ -1576,9 +1635,9 @@ export function PortalCollaborativeDashboard() {
               </div>
               <div className="w-full overflow-hidden rounded-2xl border border-white/10 bg-slate-950/50">
                 {employeeItems[0] && isImageItem(employeeItems[0]) ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={publicFileUrl(employeeItems[0].content)}
+                  <PortalItemImage
+                    itemId={employeeItems[0].id}
+                    srcRaw={employeeItems[0].content}
                     alt={employeeItems[0].title}
                     className="aspect-[4/3] w-full max-w-full object-cover"
                   />
@@ -1994,9 +2053,9 @@ export function PortalCollaborativeDashboard() {
                 {itemError && <p className="text-xs text-red-400">{itemError}</p>}
                 {currentManageImageItem ? (
                   <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/40">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={publicFileUrl(currentManageImageItem.content)}
+                    <PortalItemImage
+                      itemId={currentManageImageItem.id}
+                      srcRaw={currentManageImageItem.content}
                       alt={currentManageImageItem.title}
                       className="aspect-video w-full object-cover"
                     />
@@ -2044,9 +2103,9 @@ export function PortalCollaborativeDashboard() {
             onClick={(e) => e.stopPropagation()}
             role="presentation"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={publicFileUrl(newsLightboxItem.content)}
+            <PortalItemImage
+              itemId={newsLightboxItem.id}
+              srcRaw={newsLightboxItem.content}
               alt={newsDisplayCaption(newsLightboxItem)}
               className="mx-auto block h-auto w-auto max-w-none"
             />

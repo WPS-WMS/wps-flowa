@@ -4,6 +4,7 @@ import express from "express";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { join } from "path";
+import cookieParser from "cookie-parser";
 import { getUploadsRoot } from "./lib/uploadsRoot.js";
 import { authRouter } from "./routes/auth.js";
 import { projectsRouter } from "./routes/projects.js";
@@ -30,6 +31,8 @@ import { emailNotificationRulesRouter } from "./routes/emailNotificationRules.js
 const app = express();
 app.disable("x-powered-by");
 app.use(compression());
+// Necessário para cookies `secure` atrás de proxy (Render).
+app.set("trust proxy", 1);
 const PORT = process.env.PORT || 4000;
 
 // Headers de segurança (API JSON)
@@ -127,6 +130,7 @@ app.use((req, res, next) => {
 // Aumentar limite do corpo JSON para permitir upload de anexos em base64
 // 10MB em arquivo viram ~13–14MB em base64, então 20MB é seguro
 app.use(express.json({ limit: "20mb" }));
+app.use(cookieParser());
 
 // Rate limit básico para evitar abuso e proteger disponibilidade
 app.use(
@@ -160,8 +164,34 @@ app.use("/api/client-reports", clientReportsRouter);
 app.use("/api/access-control", accessControlRouter);
 app.use("/api/portal", portalRouter);
 
-// Servir arquivos estáticos de uploads (mesma raiz que UPLOADS_ROOT / uploads padrão)
-app.use("/uploads", express.static(getUploadsRoot()));
+// Uploads: em produção, restringir exposição pública.
+// - Mantém avatares públicos por compatibilidade (/uploads/users/**)
+// - Portal: permite apenas imagens em /uploads/portal/** (PDFs devem passar por rotas autenticadas)
+// - Tickets/Projects: bloqueados (devem passar por rotas autenticadas)
+if (process.env.NODE_ENV === "production") {
+  const imgExt = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"]);
+
+  app.use("/uploads/users", express.static(join(getUploadsRoot(), "users")));
+
+  app.use("/uploads/portal", (req, res, next) => {
+    const p = String(req.path || "").toLowerCase();
+    const dot = p.lastIndexOf(".");
+    const ext = dot >= 0 ? p.slice(dot) : "";
+    if (!ext || !imgExt.has(ext)) return res.status(404).end();
+    return next();
+  });
+  app.use("/uploads/portal", express.static(join(getUploadsRoot(), "portal")));
+
+  // Bloqueia anexos sensíveis por URL pública
+  app.use("/uploads/tickets", (_req, res) => res.status(404).end());
+  app.use("/uploads/projects", (_req, res) => res.status(404).end());
+
+  // Qualquer outro prefixo de uploads não deve ser público
+  app.use("/uploads", (_req, res) => res.status(404).end());
+} else {
+  // Em dev/QA, manter compatibilidade para facilitar debug.
+  app.use("/uploads", express.static(getUploadsRoot()));
+}
 
 app.get("/", (_req, res) =>
   res.json({ api: "WPS One", status: "ok", docs: "/health" })
