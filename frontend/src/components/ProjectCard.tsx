@@ -147,7 +147,7 @@ function getProjectStatus(project: ProjectForCard): { label: string; color: stri
             : "ATIVO";
 
   if (normalized === "ENCERRADO") return { label: "Encerrado", color: "bg-slate-500" };
-  if (normalized === "EM_ESPERA") return { label: "Em espera", color: "bg-amber-500" };
+  if (normalized === "EM_ESPERA") return { label: "Em espera", color: "bg-yellow-400" };
   return { label: "Ativo", color: "bg-emerald-500" };
 }
 
@@ -427,9 +427,7 @@ export function ProjectCard({
         aria-hidden
       />
       <div
-        className={`flex-1 min-w-0 grid grid-cols-1 lg:grid-cols-[minmax(0,1.4fr)_repeat(4,minmax(0,0.95fr))_minmax(0,1.15fr)] gap-y-4 gap-x-4 xl:gap-x-5 items-start lg:items-center py-4 px-5 ${
-          projectAtrasado ? "bg-rose-50/70" : horasExcedidas ? "bg-orange-50/70" : ""
-        }`}
+        className="flex-1 min-w-0 grid grid-cols-1 lg:grid-cols-[minmax(0,1.4fr)_repeat(4,minmax(0,0.95fr))_minmax(0,1.15fr)] gap-y-4 gap-x-4 xl:gap-x-5 items-start lg:items-center py-4 px-5"
       >
           {/* Identidade do projeto: título sem competir com o badge */}
           <div className="min-w-0 lg:pr-2">
