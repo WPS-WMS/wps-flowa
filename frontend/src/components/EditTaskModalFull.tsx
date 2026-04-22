@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { X, Maximize2, Send, Pencil, Trash2, Check, X as XIcon, Plus, Users, Upload, Download, File, Image as ImageIcon } from "lucide-react";
-import { API_BASE_URL, apiFetch, getToken } from "@/lib/api";
+import { API_BASE_URL, ASSET_PUBLIC_BASE_URL, apiFetch, getToken, publicFileUrl } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { RichTextEditor } from "./RichTextEditor";
 import { TimeEntryPermissionModal, type TimeEntryPermissionPayload } from "./TimeEntryPermissionModal";
@@ -715,7 +715,7 @@ export function EditTaskModalFull({
     const attachment = await response.json().catch(() => null);
     const fileUrl = attachment?.fileUrl as string | undefined;
     if (!fileUrl) throw new Error("Resposta sem fileUrl");
-    const absolute = fileUrl.startsWith("http") ? fileUrl : `${API_BASE_URL}${fileUrl}`;
+    const absolute = publicFileUrl(fileUrl);
     // Mantém lista de anexos atualizada caso o usuário esteja na aba
     if (activeTab === "anexos") loadAttachments();
     // Retornamos ABSOLUTO para o editor conseguir pré-visualizar a imagem imediatamente.
@@ -725,8 +725,11 @@ export function EditTaskModalFull({
 
   function stripApiBaseFromCommentHtml(html: string): string {
     try {
-      const base = String(API_BASE_URL || "").trim().replace(/\/+$/, "");
-      if (!base) return html;
+      const bases = [
+        String(API_BASE_URL || "").trim().replace(/\/+$/, ""),
+        String(ASSET_PUBLIC_BASE_URL || "").trim().replace(/\/+$/, ""),
+      ].filter((b, i, a) => b && a.indexOf(b) === i);
+      if (!bases.length) return html;
       const doc = new DOMParser().parseFromString(String(html || ""), "text/html");
 
       const strip = (raw: string | null): string | null => {
@@ -743,8 +746,10 @@ export function EditTaskModalFull({
           // ignore
         }
 
-        // Converte "https://api.../uploads/..." -> "/uploads/..."
-        if (s.startsWith(`${base}/uploads/`)) return s.slice(base.length);
+        // Converte "https://.../uploads/..." (API ou origem pública de assets) -> "/uploads/..."
+        for (const base of bases) {
+          if (s.startsWith(`${base}/uploads/`)) return s.slice(base.length);
+        }
         return s;
       };
 
@@ -767,7 +772,7 @@ export function EditTaskModalFull({
 
   function normalizeCommentHtmlForAssets(html: string): string {
     try {
-      const base = String(API_BASE_URL || "").trim().replace(/\/+$/, "");
+      const base = String(ASSET_PUBLIC_BASE_URL || "").trim().replace(/\/+$/, "");
       if (!base) return html;
 
       const doc = new DOMParser().parseFromString(String(html || ""), "text/html");
@@ -778,7 +783,7 @@ export function EditTaskModalFull({
         if (!s) return s;
         if (s.startsWith("data:")) return s;
 
-        // Se for URL absoluta e o pathname contiver /uploads/, força o host atual
+        // Se for URL absoluta e o pathname contiver /uploads/, força a origem pública (mesma dos PDFs do portal)
         try {
           const u = new URL(s);
           if (u.pathname.includes("/uploads/")) return `${base}${u.pathname}${u.search}${u.hash}`;
@@ -789,7 +794,7 @@ export function EditTaskModalFull({
         // Normaliza "uploads/..." (sem slash)
         if (s.startsWith("uploads/")) return `${base}/${s}`;
 
-        // URL relativa deve apontar para o backend (uploads)
+        // URL relativa deve apontar para a origem pública de uploads
         if (s.startsWith("/uploads/")) return `${base}${s}`;
 
         return s;
@@ -1161,9 +1166,7 @@ export function EditTaskModalFull({
   }
 
   async function handleDownloadAttachment(attachment: typeof attachments[0]) {
-    const fileUrl = attachment.fileUrl.startsWith("http")
-      ? attachment.fileUrl
-      : `${API_BASE_URL}${attachment.fileUrl}`;
+    const fileUrl = publicFileUrl(attachment.fileUrl);
     try {
       const token = getToken();
       const res = await fetch(fileUrl, {
@@ -2911,9 +2914,7 @@ export function EditTaskModalFull({
                       {attachments.map((attachment) => {
                         const isImage = attachment.fileType.startsWith("image/");
                         // Arquivos estáticos são servidos diretamente pelo backend, não pelo proxy
-                        const fileUrl = attachment.fileUrl.startsWith("http")
-                          ? attachment.fileUrl
-                          : `${API_BASE_URL}${attachment.fileUrl}`;
+                        const fileUrl = publicFileUrl(attachment.fileUrl);
 
                         return (
                           <div

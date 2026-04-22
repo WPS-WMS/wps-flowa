@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { apiFetch, API_BASE_URL } from "@/lib/api";
+import { apiFetch, publicFileUrl } from "@/lib/api";
 import { X, Users, Calendar, FileText, Settings, CheckCircle2 } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import {
@@ -147,7 +147,7 @@ export function NewProjectModal({ onClose, onSaved, mode = "create", projectId }
   const userPickerRef = useRef<HTMLDivElement>(null);
   const [loadingProject, setLoadingProject] = useState(false);
   const [anexoRemoved, setAnexoRemoved] = useState(false);
-  const attachmentUrl = anexoUrl ? `${API_BASE_URL}${anexoUrl}` : "";
+  const attachmentUrl = anexoUrl ? publicFileUrl(anexoUrl) : "";
 
   useEffect(() => {
     apiFetch("/api/clients/for-project-select")

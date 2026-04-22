@@ -24,7 +24,7 @@ import {
   X,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { API_BASE_URL, apiFetch } from "@/lib/api";
+import { apiFetch, publicFileUrl } from "@/lib/api";
 import { Avatar } from "@/components/Avatar";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ThemeToggleInline } from "@/components/ThemeToggle";
@@ -174,15 +174,6 @@ function slotsFromAwardItems(items: PortalItem[]): Record<InspirationRank, Inspi
 }
 
 const WPS_ONE_ICON_SVG_SRC = "/WPS%20One%20%C3%ADcone.svg";
-
-function assetUrl(path: string): string {
-  const p = String(path || "").trim();
-  if (!p) return "";
-  if (p.startsWith("data:")) return p;
-  if (p.startsWith("http://") || p.startsWith("https://")) return p;
-  if (p.startsWith("/")) return `${API_BASE_URL}${p}`;
-  return `${API_BASE_URL}/${p}`;
-}
 
 /** Texto de referência exibido no card de notícias (substitui título + link no portal). */
 function parseNewsMarker(metadata: unknown): string {
@@ -733,7 +724,7 @@ export function PortalCollaborativeDashboard() {
   function openNewsPdfInNewTab(item: PortalItem): boolean {
     const raw = parseNewsPdfUrl(item.metadata);
     if (!raw) return false;
-    const href = assetUrl(raw);
+    const href = publicFileUrl(raw);
 
     // Alguns browsers bloqueiam abrir data: em nova guia. Converter para Blob URL resolve.
     if (href.startsWith("data:application/pdf") || href.startsWith("data:application/octet-stream")) {
@@ -1113,7 +1104,7 @@ export function PortalCollaborativeDashboard() {
                         <div className="relative aspect-[21/9] w-full overflow-hidden">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
-                            src={assetUrl(activeNews.content)}
+                            src={publicFileUrl(activeNews.content)}
                             alt={newsDisplayCaption(activeNews)}
                             className="h-full w-full object-contain bg-black/20"
                             style={{ objectPosition: newsObjectPosition(activeNews.metadata) }}
@@ -1157,7 +1148,7 @@ export function PortalCollaborativeDashboard() {
                             <div className="group relative aspect-[21/9] w-full overflow-hidden">
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
-                                src={assetUrl(it.content)}
+                                src={publicFileUrl(it.content)}
                                 alt={newsDisplayCaption(it)}
                                 className="h-full w-full object-contain bg-black/20 transition duration-300 group-hover:opacity-95"
                                 style={{ objectPosition: newsObjectPosition(it.metadata) }}
@@ -1199,7 +1190,7 @@ export function PortalCollaborativeDashboard() {
                               <div className="group relative aspect-[21/9] w-full overflow-hidden md:aspect-auto md:min-h-[240px]">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
-                                  src={assetUrl(newsPageItems[0].content)}
+                                  src={publicFileUrl(newsPageItems[0].content)}
                                   alt={newsDisplayCaption(newsPageItems[0])}
                                   className="h-full w-full object-contain bg-black/20 transition duration-300 group-hover:opacity-95"
                                   style={{ objectPosition: newsObjectPosition(newsPageItems[0].metadata) }}
@@ -1239,7 +1230,7 @@ export function PortalCollaborativeDashboard() {
                               <div className="group relative aspect-[21/9] w-full overflow-hidden md:aspect-auto md:min-h-[116px]">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
-                                  src={assetUrl((it as PortalItem).content)}
+                                  src={publicFileUrl((it as PortalItem).content)}
                                   alt={newsDisplayCaption(it as PortalItem)}
                                   className="h-full w-full object-contain bg-black/20 transition duration-300 group-hover:opacity-95"
                                   style={{ objectPosition: newsObjectPosition((it as PortalItem).metadata) }}
@@ -1374,7 +1365,7 @@ export function PortalCollaborativeDashboard() {
                         <div className="absolute inset-[2px] overflow-hidden rounded-full bg-slate-900 ring-1 ring-white/10">
                           {photo ? (
                             // eslint-disable-next-line @next/next/no-img-element
-                            <img src={assetUrl(photo)} alt="" className="h-full w-full object-cover" />
+                            <img src={publicFileUrl(photo)} alt="" className="h-full w-full object-cover" />
                           ) : (
                             <div className="flex h-full w-full items-center justify-center bg-slate-800 text-xs font-bold text-slate-500">
                               {initials}
@@ -1562,7 +1553,7 @@ export function PortalCollaborativeDashboard() {
                 {employeeItems[0] && isImageItem(employeeItems[0]) ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={assetUrl(employeeItems[0].content)}
+                    src={publicFileUrl(employeeItems[0].content)}
                     alt={employeeItems[0].title}
                     className="aspect-[4/3] w-full max-w-full object-cover"
                   />
@@ -1877,7 +1868,7 @@ export function PortalCollaborativeDashboard() {
                           <div className="absolute inset-[2px] overflow-hidden rounded-full bg-slate-800 ring-1 ring-white/10">
                             {slot.imageUrl ? (
                               // eslint-disable-next-line @next/next/no-img-element
-                              <img src={assetUrl(slot.imageUrl)} alt="" className="h-full w-full object-cover" />
+                              <img src={publicFileUrl(slot.imageUrl)} alt="" className="h-full w-full object-cover" />
                             ) : (
                               <div className="flex h-full w-full items-center justify-center text-[10px] text-slate-500">Foto</div>
                             )}
@@ -1980,7 +1971,7 @@ export function PortalCollaborativeDashboard() {
                   <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/40">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={assetUrl(currentManageImageItem.content)}
+                      src={publicFileUrl(currentManageImageItem.content)}
                       alt={currentManageImageItem.title}
                       className="aspect-video w-full object-cover"
                     />
@@ -2030,7 +2021,7 @@ export function PortalCollaborativeDashboard() {
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={assetUrl(newsLightboxItem.content)}
+              src={publicFileUrl(newsLightboxItem.content)}
               alt={newsDisplayCaption(newsLightboxItem)}
               className="mx-auto block h-auto w-auto max-w-none"
             />

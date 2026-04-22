@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, publicFileUrl } from "@/lib/api";
 import { ArrowLeft, Camera, CloudUpload } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 
@@ -11,11 +11,6 @@ type AvatarPreview = {
   url: string;
   name: string;
 };
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL && process.env.NEXT_PUBLIC_API_URL.length > 0
-    ? process.env.NEXT_PUBLIC_API_URL
-    : "http://127.0.0.1:4000";
 
 export default function PerfilPage() {
   const { user, loading, setUser } = useAuth();
@@ -213,9 +208,7 @@ export default function PerfilPage() {
   }
 
   const avatarPath = avatarPreview?.url || user.avatarUrl || "";
-  const displayAvatar = avatarPath
-    ? `${API_BASE_URL}${avatarPath.startsWith("/") ? avatarPath : `/${avatarPath}`}`
-    : undefined;
+  const displayAvatar = avatarPath ? publicFileUrl(avatarPath) : undefined;
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-8 bg-[color:var(--background)]">

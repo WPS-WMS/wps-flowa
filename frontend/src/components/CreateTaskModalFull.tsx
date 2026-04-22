@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { X, Maximize2, Send, Pencil, Trash2, Plus, Users } from "lucide-react";
-import { API_BASE_URL, apiFetch } from "@/lib/api";
+import { API_BASE_URL, ASSET_PUBLIC_BASE_URL, apiFetch, publicFileUrl } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { RichTextEditor } from "./RichTextEditor";
 import { Avatar } from "@/components/Avatar";
@@ -278,14 +278,16 @@ export function CreateTaskModalFull({
     const attachment = await response.json().catch(() => null);
     const fileUrl = attachment?.fileUrl as string | undefined;
     if (!fileUrl) throw new Error("Resposta sem fileUrl");
-    const absolute = fileUrl.startsWith("http") ? fileUrl : `${API_BASE_URL}${fileUrl}`;
-    return absolute;
+    return publicFileUrl(fileUrl);
   }
 
   function stripApiBaseFromCommentHtml(html: string): string {
     try {
-      const base = String(API_BASE_URL || "").trim().replace(/\/+$/, "");
-      if (!base) return html;
+      const bases = [
+        String(API_BASE_URL || "").trim().replace(/\/+$/, ""),
+        String(ASSET_PUBLIC_BASE_URL || "").trim().replace(/\/+$/, ""),
+      ].filter((b, i, a) => b && a.indexOf(b) === i);
+      if (!bases.length) return html;
       const doc = new DOMParser().parseFromString(String(html || ""), "text/html");
 
       const strip = (raw: string | null): string | null => {
@@ -302,8 +304,10 @@ export function CreateTaskModalFull({
           // ignore
         }
 
-        // Converte "https://api.../uploads/..." -> "/uploads/..."
-        if (s.startsWith(`${base}/uploads/`)) return s.slice(base.length);
+        // Converte "https://.../uploads/..." (API ou origem pública de assets) -> "/uploads/..."
+        for (const base of bases) {
+          if (s.startsWith(`${base}/uploads/`)) return s.slice(base.length);
+        }
 
         return s;
       };
@@ -327,7 +331,7 @@ export function CreateTaskModalFull({
 
   function normalizeCommentHtmlForAssets(html: string): string {
     try {
-      const base = String(API_BASE_URL || "").trim().replace(/\/+$/, "");
+      const base = String(ASSET_PUBLIC_BASE_URL || "").trim().replace(/\/+$/, "");
       if (!base) return html;
 
       const doc = new DOMParser().parseFromString(String(html || ""), "text/html");
@@ -338,7 +342,7 @@ export function CreateTaskModalFull({
         if (!s) return s;
         if (s.startsWith("data:")) return s;
 
-        // Se for URL absoluta e o pathname for /uploads/..., força o host atual
+        // Se for URL absoluta e o pathname for /uploads/..., força a origem pública (mesma dos PDFs do portal)
         try {
           const u = new URL(s);
           if (u.pathname.startsWith("/uploads/")) return `${base}${u.pathname}${u.search}${u.hash}`;
@@ -346,7 +350,7 @@ export function CreateTaskModalFull({
           // ignore
         }
 
-        // URL relativa deve apontar para o backend (uploads)
+        // URL relativa deve apontar para a origem pública de uploads
         if (s.startsWith("/uploads/")) return `${base}${s}`;
 
         return s;

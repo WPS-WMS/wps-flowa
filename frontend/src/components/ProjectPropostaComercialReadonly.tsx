@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react";
 import { FileText, Download, ExternalLink } from "lucide-react";
 import { type ProjectForCard } from "@/components/ProjectCard";
-import { apiFetch, API_BASE_URL } from "@/lib/api";
+import { apiFetch, API_BASE_URL, publicFileUrl } from "@/lib/api";
 
 function formatFileSize(bytes: number | null | undefined): string {
   if (bytes == null || !Number.isFinite(bytes) || bytes < 0) return "";
@@ -23,8 +23,7 @@ function tipoArquivoLabel(tipo: string | null | undefined): string {
 function getAttachmentFullUrl(anexoUrl: string | null | undefined): string | null {
   const u = anexoUrl?.trim();
   if (!u) return null;
-  if (u.startsWith("http://") || u.startsWith("https://")) return u;
-  return `${API_BASE_URL}${u.startsWith("/") ? u : `/${u}`}`;
+  return publicFileUrl(u) || null;
 }
 
 type Props = {

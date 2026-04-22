@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { FileText, Plus, Trash2, Upload } from "lucide-react";
-import { API_BASE_URL, apiFetch } from "@/lib/api";
+import { apiFetch, publicFileUrl } from "@/lib/api";
 import { ConfirmModal } from "@/components/ConfirmModal";
 
 export type PortalPdfItem = {
@@ -13,15 +13,6 @@ export type PortalPdfItem = {
   type: string;
   metadata?: unknown;
 };
-
-function assetUrl(path: string): string {
-  const p = String(path || "").trim();
-  if (!p) return "";
-  if (p.startsWith("data:")) return p;
-  if (p.startsWith("http://") || p.startsWith("https://")) return p;
-  if (p.startsWith("/")) return `${API_BASE_URL}${p}`;
-  return `${API_BASE_URL}/${p}`;
-}
 
 /** Itens exibidos nas telas de biblioteca: PDF em `content` ou link para .pdf. */
 export function isPdfLibraryRow(item: PortalPdfItem): boolean {
@@ -46,7 +37,7 @@ function clickOpenInNewTab(href: string) {
 }
 
 export function openPdfUrlInNewTab(rawUrl: string): boolean {
-  const href = assetUrl(rawUrl);
+  const href = publicFileUrl(rawUrl);
   if (!href) return false;
 
   if (href.startsWith("data:application/pdf") || href.startsWith("data:application/octet-stream")) {

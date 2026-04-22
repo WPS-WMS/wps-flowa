@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { API_BASE_URL } from "@/lib/api";
+import { publicFileUrl } from "@/lib/api";
 
 type Props = {
   name?: string | null;
@@ -28,11 +28,7 @@ function getInitials(nameOrEmail: string) {
 function resolveAvatarSrc(avatarUrl: string) {
   const raw = avatarUrl.trim();
   if (!raw) return "";
-  // Suportar preview local (FileReader / URL.createObjectURL)
-  if (raw.startsWith("data:") || raw.startsWith("blob:")) return raw;
-  if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
-  const base = API_BASE_URL;
-  return `${base}${raw.startsWith("/") ? raw : `/${raw}`}`;
+  return publicFileUrl(raw);
 }
 
 export function Avatar({
