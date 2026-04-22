@@ -58,7 +58,9 @@ export async function authMiddleware(
   next: NextFunction
 ) {
   const auth = req.headers.authorization;
-  const token = auth?.startsWith("Bearer ") ? auth.slice(7) : null;
+  const bearer = auth?.startsWith("Bearer ") ? auth.slice(7) : null;
+  const cookieToken = (req as Request & { cookies?: Record<string, string> }).cookies?.wps_token || null;
+  const token = bearer || cookieToken;
   if (!token) {
     res.status(401).json({ error: "Não autenticado" });
     return;

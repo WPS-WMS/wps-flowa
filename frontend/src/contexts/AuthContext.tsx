@@ -41,10 +41,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    if (!getToken()) {
-      setLoading(false);
-      return;
-    }
     let cancelled = false;
     let skipFirstFinally = false;
     async function loadUser(retry = false) {
@@ -73,6 +69,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
+    // Limpa cookie no backend e também token local (compatibilidade)
+    void apiFetch("/api/auth/logout", { method: "POST" }).catch(() => null);
     clearToken();
     setUser(null);
     // Navegação completa garante que o estado da app seja resetado (evita falha do Sair para usuários novos / export estático)

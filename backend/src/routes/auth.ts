@@ -7,6 +7,22 @@ import { sendMail } from "../lib/mailer.js";
 import { renderEmailLayout, escapeHtml } from "../lib/emailTemplate.js";
 
 export const authRouter = Router();
+const TOKEN_COOKIE_NAME = "wps_token";
+
+function cookieDomainForEnv(): string | undefined {
+  const raw = String(process.env.COOKIE_DOMAIN || "").trim();
+  if (raw) return raw;
+  // Produção padrão: compartilhar cookie entre subdomínios (api.wpsone.com.br e wpsone.com.br)
+  if (String(process.env.NODE_ENV || "").trim().toLowerCase() === "production") return ".wpsone.com.br";
+  return undefined;
+}
+
+function getTokenFromRequest(req: { headers: Record<string, any>; cookies?: Record<string, string> }): string | null {
+  const auth = req.headers.authorization as string | undefined;
+  const bearer = auth?.startsWith("Bearer ") ? auth.slice(7) : null;
+  const cookieToken = req.cookies?.[TOKEN_COOKIE_NAME] || null;
+  return bearer || cookieToken;
+}
 
 type RateLimitState = {
   count: number;
@@ -119,6 +135,15 @@ authRouter.post("/login", async (req, res) => {
       role,
       tenantId: user.tenantId,
     });
+    // Cookie HttpOnly (reduz impacto de XSS). Mantemos resposta com token por compatibilidade.
+    res.cookie(TOKEN_COOKIE_NAME, token, {
+      httpOnly: true,
+      secure: String(process.env.NODE_ENV || "").trim().toLowerCase() === "production",
+      sameSite: "none",
+      domain: cookieDomainForEnv(),
+      path: "/",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
     res.json({
       token,
       user: {
@@ -139,10 +164,20 @@ authRouter.post("/login", async (req, res) => {
   }
 });
 
+authRouter.post("/logout", async (_req, res) => {
+  res.clearCookie(TOKEN_COOKIE_NAME, {
+    httpOnly: true,
+    secure: String(process.env.NODE_ENV || "").trim().toLowerCase() === "production",
+    sameSite: "none",
+    domain: cookieDomainForEnv(),
+    path: "/",
+  });
+  res.json({ ok: true });
+});
+
 // Para verificar token (frontend chama para validar sessão)
 authRouter.get("/me", async (req, res) => {
-  const auth = req.headers.authorization;
-  const token = auth?.startsWith("Bearer ") ? auth.slice(7) : null;
+  const token = getTokenFromRequest(req as any);
   if (!token) {
     res.status(401).json({ error: "Não autenticado" });
     return;
@@ -189,8 +224,7 @@ authRouter.get("/me", async (req, res) => {
 });
 
 authRouter.get("/client-home-summary", async (req, res) => {
-  const auth = req.headers.authorization;
-  const token = auth?.startsWith("Bearer ") ? auth.slice(7) : null;
+  const token = getTokenFromRequest(req as any);
   if (!token) {
     res.status(401).json({ error: "Não autenticado" });
     return;

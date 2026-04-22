@@ -80,7 +80,7 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
   if (token) (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
   const url = `${API_BASE_URL}${path.startsWith("/") ? path : "/" + path}`;
   try {
-    const res = await fetch(url, { ...options, headers });
+    const res = await fetch(url, { ...options, headers, credentials: "include" });
     return res;
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Erro de rede";
@@ -97,7 +97,7 @@ export async function apiFetchBlob(path: string, options: RequestInit = {}) {
   if (token) baseHeaders.Authorization = `Bearer ${token}`;
   const url = `${API_BASE_URL}${path.startsWith("/") ? path : "/" + path}`;
   try {
-    return await fetch(url, { ...options, headers: baseHeaders });
+    return await fetch(url, { ...options, headers: baseHeaders, credentials: "include" });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Erro de rede";
     throw new Error(`Falha ao conectar com a API: ${msg}. Verifique se o backend está rodando em ${API_BASE_URL}`);

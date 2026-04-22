@@ -72,7 +72,8 @@ export default function LoginPage() {
         setError(data.error || "E-mail ou senha inválidos.");
         return;
       }
-      setToken(data.token);
+      // Preferir cookie HttpOnly (defesa contra XSS). Mantém compatibilidade se backend ainda devolver token.
+      if (data?.token) setToken(data.token);
       setUser(data.user);
       if (data.user.mustChangePassword) {
         router.push("/trocar-senha");
