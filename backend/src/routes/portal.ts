@@ -251,25 +251,33 @@ portalRouter.post("/media", ensurePortalAdmin, async (req, res) => {
     res.status(400).json({ error: "fileName e fileData são obrigatórios" });
     return;
   }
-  const allowedMime = new Set(["image/png", "image/jpeg", "image/webp", "image/gif", "application/pdf"]);
-  const allowedExt = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif", ".pdf"]);
+  const allowedMime = new Set([
+    "image/png",
+    "image/jpeg",
+    "image/webp",
+    "image/gif",
+    "application/pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // docx
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // xlsx
+  ]);
+  const allowedExt = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif", ".pdf", ".docx", ".xlsx"]);
   const ext = String(fileName).toLowerCase().substring(String(fileName).lastIndexOf("."));
   if (!allowedExt.has(ext)) {
-    res.status(400).json({ error: "Envie apenas imagem (PNG, JPG, WebP ou GIF) ou PDF." });
+    res.status(400).json({ error: "Envie imagem (PNG, JPG, WebP ou GIF) ou arquivo (PDF, DOCX, XLSX)." });
     return;
   }
   const mimeFromData =
     typeof fileData === "string" ? (fileData.match(/^data:([^;]+);base64,/)?.[1] ?? "") : "";
   const effective = String(fileType || mimeFromData || "");
   if (effective && !allowedMime.has(effective)) {
-    res.status(400).json({ error: "Tipo de imagem não permitido." });
+    res.status(400).json({ error: "Tipo de arquivo não permitido." });
     return;
   }
   const base64 = fileData.replace(/^data:.*,/, "");
   const buffer = Buffer.from(base64, "base64");
-  const max = 15 * 1024 * 1024;
+  const max = 20 * 1024 * 1024;
   if (buffer.length > max) {
-    res.status(400).json({ error: "Arquivo muito grande (máx. 15MB)." });
+    res.status(400).json({ error: "Arquivo muito grande (máx. 20MB)." });
     return;
   }
   const mimeResolved =
@@ -279,6 +287,10 @@ portalRouter.post("/media", ensurePortalAdmin, async (req, res) => {
         ? mimeFromData
         : ext === ".pdf"
           ? "application/pdf"
+          : ext === ".docx"
+            ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            : ext === ".xlsx"
+              ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           : ext === ".png"
             ? "image/png"
             : ext === ".gif"
