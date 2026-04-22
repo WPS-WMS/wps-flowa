@@ -370,6 +370,10 @@ usersRouter.patch("/:id", async (req, res) => {
       res.status(404).json({ error: "Usuário não encontrado" });
       return;
     }
+    if (existing.tenantId !== authUser.tenantId) {
+      res.status(404).json({ error: "Usuário não encontrado" });
+      return;
+    }
 
     const newRole = role !== undefined ? String(role) : existing.role;
     if (newRole === "CLIENTE") {
@@ -628,6 +632,10 @@ usersRouter.delete("/:id", async (req, res) => {
 
   const existing = await prisma.user.findUnique({ where: { id: userId } });
   if (!existing) {
+    res.status(404).json({ error: "Usuário não encontrado" });
+    return;
+  }
+  if (existing.tenantId !== authUser.tenantId) {
     res.status(404).json({ error: "Usuário não encontrado" });
     return;
   }
