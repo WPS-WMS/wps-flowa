@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, LayoutGrid, MoreVertical, Eye, Pencil, Archive, Trash2, RotateCcw, List, Clock } from "lucide-react";
+import { Plus, LayoutGrid, MoreVertical, Eye, Pencil, Archive, Trash2, RotateCcw, List, Clock, AlertTriangle } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { PackageCard, type PackageTicket } from "./PackageCard";
 import { SubprojectCardHorizontal } from "./SubprojectCardHorizontal";
@@ -289,6 +289,7 @@ export function ProjectCard({
     needsFullDetail && detailProject != null ? detailProject : project;
   const horasCfg = getConfiguredHorasProjeto(projectForHoras);
   const horasUsadas = projectForHoras.horasUtilizadas ?? 0;
+  const horasExcedidas = horasCfg.horas != null && horasUsadas > horasCfg.horas;
 
   const canEdit = !!canEditProject;
   const canDelete = !!canDeleteProject && !!onDelete;
@@ -411,8 +412,12 @@ export function ProjectCard({
 
   const cardContent = (
     <>
-      <div className={`w-2 flex-shrink-0 ${statusInfo.color}`} aria-hidden />
-      <div className="flex-1 min-w-0 grid grid-cols-1 lg:grid-cols-[minmax(0,1.4fr)_repeat(4,minmax(0,0.95fr))_minmax(0,1.15fr)] gap-y-4 gap-x-4 xl:gap-x-5 items-start lg:items-center py-4 px-5">
+      <div className={`w-2 flex-shrink-0 ${horasExcedidas ? "bg-orange-500" : statusInfo.color}`} aria-hidden />
+      <div
+        className={`flex-1 min-w-0 grid grid-cols-1 lg:grid-cols-[minmax(0,1.4fr)_repeat(4,minmax(0,0.95fr))_minmax(0,1.15fr)] gap-y-4 gap-x-4 xl:gap-x-5 items-start lg:items-center py-4 px-5 ${
+          horasExcedidas ? "bg-orange-50/70" : ""
+        }`}
+      >
           {/* Identidade do projeto: título sem competir com o badge */}
           <div className="min-w-0 lg:pr-2">
             <h3
@@ -453,8 +458,19 @@ export function ProjectCard({
               </span>
               <span className="tabular-nums">
                 Utilizadas:{" "}
-                <span className="font-semibold text-slate-700">{formatHorasProjetoCard(horasUsadas)} h</span>
+                <span className={`font-semibold ${horasExcedidas ? "text-orange-700" : "text-slate-700"}`}>
+                  {formatHorasProjetoCard(horasUsadas)} h
+                </span>
               </span>
+              {horasExcedidas && (
+                <span
+                  className="inline-flex items-center gap-1 rounded-full border border-orange-200 bg-orange-100 px-2 py-0.5 text-[11px] font-semibold text-orange-800"
+                  title="Horas utilizadas ultrapassaram as horas contratadas."
+                >
+                  <AlertTriangle className="h-3.5 w-3.5" aria-hidden />
+                  Alerta
+                </span>
+              )}
             </p>
           </div>
           <div className="min-w-0">
