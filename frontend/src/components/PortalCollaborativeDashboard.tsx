@@ -24,7 +24,7 @@ import {
   X,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { apiFetch, publicFileUrl } from "@/lib/api";
+import { apiFetch, apiFetchBlob, publicFileUrl } from "@/lib/api";
 import { Avatar } from "@/components/Avatar";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ThemeToggleInline } from "@/components/ThemeToggle";
@@ -721,18 +721,29 @@ export function PortalCollaborativeDashboard() {
     a.remove();
   }
 
-  function openNewsPdfInNewTab(item: PortalItem): boolean {
+  function newsPdfIsOnPortalDisk(raw: string): boolean {
+    const s = String(raw || "").trim();
+    if (s.startsWith("/uploads/portal/")) return true;
+    if (s.startsWith("http://") || s.startsWith("https://")) {
+      try {
+        return new URL(s).pathname.startsWith("/uploads/portal/");
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  }
+
+  async function openNewsPdfInNewTab(item: PortalItem): Promise<boolean> {
     const raw = parseNewsPdfUrl(item.metadata);
     if (!raw) return false;
-    const href = publicFileUrl(raw);
 
-    // Alguns browsers bloqueiam abrir data: em nova guia. Converter para Blob URL resolve.
-    if (href.startsWith("data:application/pdf") || href.startsWith("data:application/octet-stream")) {
+    if (raw.startsWith("data:application/pdf") || raw.startsWith("data:application/octet-stream")) {
       try {
-        const comma = href.indexOf(",");
+        const comma = raw.indexOf(",");
         if (comma === -1) return false;
-        const meta = href.slice(0, comma);
-        const base64 = href.slice(comma + 1);
+        const meta = raw.slice(0, comma);
+        const base64 = raw.slice(comma + 1);
         const mime = meta.match(/^data:([^;]+);base64$/i)?.[1] || "application/pdf";
         const bin = atob(base64);
         const bytes = new Uint8Array(bin.length);
@@ -746,8 +757,22 @@ export function PortalCollaborativeDashboard() {
       }
     }
 
-    clickOpenInNewTab(href);
-    return true;
+    if (!newsPdfIsOnPortalDisk(raw)) {
+      clickOpenInNewTab(publicFileUrl(raw));
+      return true;
+    }
+
+    try {
+      const res = await apiFetchBlob(`/api/portal/items/${item.id}/file?variant=metadata`);
+      if (!res.ok) return false;
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      clickOpenInNewTab(blobUrl);
+      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 120_000);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   function openNewsLightbox(item: PortalItem) {
@@ -1120,7 +1145,7 @@ export function PortalCollaborativeDashboard() {
                                   hasPdf ? "cursor-pointer" : "cursor-zoom-in"
                                 }`}
                                 onClick={() => {
-                                  if (hasPdf) openNewsPdfInNewTab(activeNews);
+                                  if (hasPdf) void openNewsPdfInNewTab(activeNews);
                                   else openNewsLightbox(activeNews);
                                 }}
                               />
@@ -1164,7 +1189,7 @@ export function PortalCollaborativeDashboard() {
                                       hasPdf ? "cursor-pointer" : "cursor-zoom-in"
                                     }`}
                                     onClick={() => {
-                                      if (hasPdf) openNewsPdfInNewTab(it);
+                                      if (hasPdf) void openNewsPdfInNewTab(it);
                                       else openNewsLightbox(it);
                                     }}
                                   />
@@ -1206,7 +1231,7 @@ export function PortalCollaborativeDashboard() {
                                         hasPdf ? "cursor-pointer" : "cursor-zoom-in"
                                       }`}
                                       onClick={() => {
-                                        if (hasPdf) openNewsPdfInNewTab(newsPageItems[0]);
+                                        if (hasPdf) void openNewsPdfInNewTab(newsPageItems[0]);
                                         else openNewsLightbox(newsPageItems[0]);
                                       }}
                                     />
@@ -1247,7 +1272,7 @@ export function PortalCollaborativeDashboard() {
                                         hasPdf ? "cursor-pointer" : "cursor-zoom-in"
                                       }`}
                                       onClick={() => {
-                                        if (hasPdf) openNewsPdfInNewTab(pit);
+                                        if (hasPdf) void openNewsPdfInNewTab(pit);
                                         else openNewsLightbox(pit);
                                       }}
                                     />

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { X, Maximize2, Send, Pencil, Trash2, Check, X as XIcon, Plus, Users, Upload, Download, File, Image as ImageIcon } from "lucide-react";
-import { API_BASE_URL, ASSET_PUBLIC_BASE_URL, apiFetch, getToken, publicFileUrl } from "@/lib/api";
+import { API_BASE_URL, ASSET_PUBLIC_BASE_URL, apiFetch, apiFetchBlob, getToken, publicFileUrl } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { RichTextEditor } from "./RichTextEditor";
 import { TimeEntryPermissionModal, type TimeEntryPermissionPayload } from "./TimeEntryPermissionModal";
@@ -70,6 +70,47 @@ function getPrioridadeDotClass(prioridade: string): string {
     Baixa: "bg-blue-500", BAIXA: "bg-blue-500",
   };
   return map[prioridade] ?? "bg-slate-400";
+}
+
+/** Miniatura de anexo de imagem via rota autenticada (evita `<img src>` em URL pública). */
+function TicketAttachmentImageThumb({ attachment }: { attachment: { id: string; filename: string } }) {
+  const [src, setSrc] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    let obj: string | null = null;
+    void (async () => {
+      try {
+        const res = await apiFetchBlob(`/api/ticket-attachments/${attachment.id}/file`);
+        if (!res.ok || cancelled) return;
+        const blob = await res.blob();
+        obj = URL.createObjectURL(blob);
+        if (!cancelled) setSrc(obj);
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (obj) URL.revokeObjectURL(obj);
+    };
+  }, [attachment.id]);
+  if (!src) {
+    return <div className="mt-3 mb-2 h-32 w-full max-w-md animate-pulse rounded-lg border border-slate-200 bg-slate-50" />;
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => window.open(src, "_blank", "noopener,noreferrer")}
+      className="mt-3 mb-2 block text-left"
+      title="Visualizar imagem"
+    >
+      <img
+        src={src}
+        alt={attachment.filename}
+        className="max-w-full max-h-48 rounded-lg border border-slate-200 shadow-sm hover:ring-2 hover:ring-blue-400 transition-shadow cursor-pointer"
+      />
+    </button>
+  );
 }
 
 export function EditTaskModalFull({
@@ -1166,13 +1207,8 @@ export function EditTaskModalFull({
   }
 
   async function handleDownloadAttachment(attachment: typeof attachments[0]) {
-    const fileUrl = publicFileUrl(attachment.fileUrl);
     try {
-      const token = getToken();
-      const res = await fetch(fileUrl, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        credentials: "include",
-      });
+      const res = await apiFetchBlob(`/api/ticket-attachments/${attachment.id}/file`);
       if (!res.ok) throw new Error("Falha ao baixar arquivo");
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -1184,6 +1220,20 @@ export function EditTaskModalFull({
     } catch (err) {
       console.error("Erro ao baixar anexo:", err);
       setError("Não foi possível baixar o arquivo.");
+    }
+  }
+
+  async function openTicketAttachmentInNewTab(attachment: typeof attachments[0]) {
+    try {
+      const res = await apiFetchBlob(`/api/ticket-attachments/${attachment.id}/file`);
+      if (!res.ok) throw new Error("Falha ao abrir arquivo");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener,noreferrer");
+      window.setTimeout(() => URL.revokeObjectURL(url), 120_000);
+    } catch (err) {
+      console.error("Erro ao abrir anexo:", err);
+      setError("Não foi possível abrir o arquivo.");
     }
   }
 
@@ -2913,8 +2963,6 @@ export function EditTaskModalFull({
                     <div className="divide-y divide-slate-100">
                       {attachments.map((attachment) => {
                         const isImage = attachment.fileType.startsWith("image/");
-                        // Arquivos estáticos são servidos diretamente pelo backend, não pelo proxy
-                        const fileUrl = publicFileUrl(attachment.fileUrl);
 
                         return (
                           <div
@@ -2925,7 +2973,7 @@ export function EditTaskModalFull({
                               {/* Ícone do arquivo — clicável para visualizar */}
                               <button
                                 type="button"
-                                onClick={() => window.open(fileUrl, "_blank", "noopener,noreferrer")}
+                                onClick={() => void openTicketAttachmentInNewTab(attachment)}
                                 className="shrink-0 p-3 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
                                 title="Visualizar arquivo"
                               >
@@ -2936,7 +2984,7 @@ export function EditTaskModalFull({
                               <div className="flex-1 min-w-0">
                                 <button
                                   type="button"
-                                  onClick={() => window.open(fileUrl, "_blank", "noopener,noreferrer")}
+                                  onClick={() => void openTicketAttachmentInNewTab(attachment)}
                                   className="text-left w-full group"
                                   title="Visualizar arquivo"
                                 >
@@ -2960,23 +3008,10 @@ export function EditTaskModalFull({
                                   <span className="truncate">{attachment.user.name}</span>
                                 </div>
 
-                                {/* Preview de imagem — clicável para visualizar */}
                                 {isImage && (
-                                  <button
-                                    type="button"
-                                    onClick={() => window.open(fileUrl, "_blank", "noopener,noreferrer")}
-                                    className="mt-3 mb-2 block text-left"
-                                    title="Visualizar imagem"
-                                  >
-                                    <img
-                                      src={fileUrl}
-                                      alt={attachment.filename}
-                                      className="max-w-full max-h-48 rounded-lg border border-slate-200 shadow-sm hover:ring-2 hover:ring-blue-400 transition-shadow cursor-pointer"
-                                      onError={(e) => {
-                                        (e.target as HTMLImageElement).style.display = "none";
-                                      }}
-                                    />
-                                  </button>
+                                  <TicketAttachmentImageThumb
+                                    attachment={{ id: attachment.id, filename: attachment.filename }}
+                                  />
                                 )}
 
                                 {/* Botões de ação */}
@@ -2989,15 +3024,16 @@ export function EditTaskModalFull({
                                     <Download className="h-3.5 w-3.5" />
                                     Baixar
                                   </button>
-                                  <a
-                                    href={fileUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                                  <button
+                                    type="button"
                                     className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors duration-200"
-                                    onClick={(e) => e.stopPropagation()}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      void openTicketAttachmentInNewTab(attachment);
+                                    }}
                                   >
                                     Visualizar
-                                  </a>
+                                  </button>
                                   {(currentUser?.id === attachment.user.id ||
                                     currentUser?.role === "SUPER_ADMIN" ||
                                     currentUser?.role === "GESTOR_PROJETOS") && (

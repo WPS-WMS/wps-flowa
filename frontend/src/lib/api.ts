@@ -88,6 +88,22 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
   }
 }
 
+/** GET binário (ficheiro) com JWT; não define `Content-Type: application/json`. */
+export async function apiFetchBlob(path: string, options: RequestInit = {}) {
+  const token = getToken();
+  const baseHeaders: Record<string, string> = {
+    ...(options.headers as Record<string, string> | undefined),
+  };
+  if (token) baseHeaders.Authorization = `Bearer ${token}`;
+  const url = `${API_BASE_URL}${path.startsWith("/") ? path : "/" + path}`;
+  try {
+    return await fetch(url, { ...options, headers: baseHeaders });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Erro de rede";
+    throw new Error(`Falha ao conectar com a API: ${msg}. Verifique se o backend está rodando em ${API_BASE_URL}`);
+  }
+}
+
 export function setToken(token: string) {
   if (typeof window !== "undefined") {
     localStorage.setItem("wps_token", token);

@@ -1,9 +1,9 @@
 import { Router } from "express";
 import { writeFile, mkdir, unlink } from "fs/promises";
-import { join } from "path";
+import { join, normalize, sep } from "path";
 import { existsSync } from "fs";
 import { prisma } from "../lib/prisma.js";
-import { getUploadsRoot } from "../lib/uploadsRoot.js";
+import { getUploadsRoot, resolveUploadsPublicPath } from "../lib/uploadsRoot.js";
 import { authMiddleware } from "../lib/auth.js";
 import { requireFeature } from "../lib/authorizeFeature.js";
 
@@ -151,6 +151,86 @@ async function tryUnlinkPortalTenantFile(tenantId: string, contentUrl: string | 
     /* arquivo já ausente ou permissão */
   }
 }
+
+function portalTenantUploadsDirPrefix(tenantId: string): string {
+  return normalize(join(getUploadsRoot(), "portal", tenantId)) + sep;
+}
+
+function isPathUnderPortalTenant(tenantId: string, absPath: string): boolean {
+  const root = portalTenantUploadsDirPrefix(tenantId);
+  const n = normalize(absPath) + sep;
+  return n.startsWith(root);
+}
+
+/**
+ * Download autenticado de ficheiro do portal (PDF/imagem) em disco.
+ * Query `variant=metadata` usa `metadata.pdfUrl` (ex.: notícias); caso contrário usa `content`.
+ */
+portalRouter.get("/items/:id/file", async (req, res) => {
+  try {
+    const user = req.user;
+    const { id } = req.params;
+    const variantRaw = String(req.query.variant || "content").toLowerCase();
+    const variant = variantRaw === "metadata" ? "metadata" : "content";
+
+    const item = await prisma.portalItem.findFirst({
+      where: { id, tenantId: user.tenantId },
+      select: { content: true, metadata: true },
+    });
+    if (!item) {
+      res.status(404).json({ error: "Item não encontrado" });
+      return;
+    }
+
+    let raw =
+      variant === "metadata" ? extractPortalPdfUrl(item.metadata) : String(item.content || "").trim();
+    if (!raw) {
+      res.status(404).json({ error: "Arquivo não encontrado" });
+      return;
+    }
+    if (raw.startsWith("data:")) {
+      res.status(400).json({ error: "Arquivo inline não é servido por esta rota" });
+      return;
+    }
+
+    let publicPath = "";
+    if (raw.startsWith("http://") || raw.startsWith("https://")) {
+      try {
+        publicPath = new URL(raw).pathname;
+      } catch {
+        res.status(400).json({ error: "URL inválida" });
+        return;
+      }
+    } else {
+      publicPath = raw.startsWith("/") ? raw : `/${raw}`;
+    }
+
+    const expectedPrefix = `/uploads/portal/${user.tenantId}/`;
+    if (!publicPath.startsWith(expectedPrefix)) {
+      res.status(403).json({ error: "Arquivo fora do armazenamento do portal" });
+      return;
+    }
+
+    const abs = resolveUploadsPublicPath(publicPath);
+    if (!abs || !isPathUnderPortalTenant(user.tenantId, abs)) {
+      res.status(403).json({ error: "Acesso negado" });
+      return;
+    }
+    if (!existsSync(abs)) {
+      res.status(404).json({ error: "Arquivo não encontrado no servidor" });
+      return;
+    }
+
+    res.sendFile(abs, (err) => {
+      if (err && !res.headersSent) {
+        res.status(500).json({ error: "Erro ao enviar arquivo" });
+      }
+    });
+  } catch (e) {
+    console.error("GET /api/portal/items/:id/file", e);
+    if (!res.headersSent) res.status(500).json({ error: "Erro ao ler arquivo" });
+  }
+});
 
 function extractPortalPdfUrl(metadata: unknown): string {
   if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return "";

@@ -2,7 +2,7 @@ import { Request, Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { authMiddleware } from "../lib/auth.js";
 import { writeFile, mkdir, unlink } from "fs/promises";
-import { join } from "path";
+import { join, normalize, sep } from "path";
 import { existsSync } from "fs";
 import { getUploadsRoot, resolveUploadsPublicPath } from "../lib/uploadsRoot.js";
 
@@ -91,6 +91,50 @@ ticketAttachmentsRouter.get("/", async (req, res) => {
   } catch (error) {
     console.error("Erro ao buscar anexos:", error);
     res.status(500).json({ error: "Erro ao buscar anexos" });
+  }
+});
+
+// GET /api/ticket-attachments/:id/file — download autenticado (evita depender de /uploads público)
+ticketAttachmentsRouter.get("/:id/file", async (req, res) => {
+  try {
+    const user = (req as Request & { user: { id: string; role: string; tenantId: string } }).user;
+    const { id } = req.params;
+
+    const attachment = await prisma.ticketAttachment.findFirst({
+      where: {
+        id,
+        ticket: { project: { client: { tenantId: user.tenantId } } },
+      },
+      select: { id: true, ticketId: true, fileUrl: true },
+    });
+    if (!attachment) {
+      res.status(404).json({ error: "Anexo não encontrado" });
+      return;
+    }
+    if (!(await canAccessTicket(user, attachment.ticketId))) {
+      res.status(403).json({ error: "Sem permissão para acessar este anexo" });
+      return;
+    }
+
+    const abs = resolveUploadsPublicPath(attachment.fileUrl);
+    const ticketsRoot = normalize(join(getUploadsRoot(), "tickets")) + sep;
+    if (!abs || !(normalize(abs) + sep).startsWith(ticketsRoot)) {
+      res.status(403).json({ error: "Caminho de arquivo inválido" });
+      return;
+    }
+    if (!existsSync(abs)) {
+      res.status(404).json({ error: "Arquivo não encontrado no servidor" });
+      return;
+    }
+
+    res.sendFile(abs, (err) => {
+      if (err && !res.headersSent) {
+        res.status(500).json({ error: "Erro ao enviar arquivo" });
+      }
+    });
+  } catch (error) {
+    console.error("Erro ao servir anexo:", error);
+    if (!res.headersSent) res.status(500).json({ error: "Erro ao servir anexo" });
   }
 });
 

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { FileText, Plus, Trash2, Upload } from "lucide-react";
-import { apiFetch, publicFileUrl } from "@/lib/api";
+import { apiFetch, apiFetchBlob, publicFileUrl } from "@/lib/api";
 import { ConfirmModal } from "@/components/ConfirmModal";
 
 export type PortalPdfItem = {
@@ -36,31 +36,66 @@ function clickOpenInNewTab(href: string) {
   a.remove();
 }
 
-export function openPdfUrlInNewTab(rawUrl: string): boolean {
-  const href = publicFileUrl(rawUrl);
-  if (!href) return false;
+function openPdfDataUrlInNewTab(href: string): boolean {
+  if (!href.startsWith("data:application/pdf") && !href.startsWith("data:application/octet-stream")) return false;
+  try {
+    const comma = href.indexOf(",");
+    if (comma === -1) return false;
+    const meta = href.slice(0, comma);
+    const base64 = href.slice(comma + 1);
+    const mime = meta.match(/^data:([^;]+);base64$/i)?.[1] || "application/pdf";
+    const bin = atob(base64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const blobUrl = URL.createObjectURL(new Blob([bytes], { type: mime }));
+    clickOpenInNewTab(blobUrl);
+    window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
-  if (href.startsWith("data:application/pdf") || href.startsWith("data:application/octet-stream")) {
+function isPortalTenantDiskPath(raw: string): boolean {
+  const s = String(raw || "").trim();
+  if (s.startsWith("/uploads/portal/")) return true;
+  if (s.startsWith("http://") || s.startsWith("https://")) {
     try {
-      const comma = href.indexOf(",");
-      if (comma === -1) return false;
-      const meta = href.slice(0, comma);
-      const base64 = href.slice(comma + 1);
-      const mime = meta.match(/^data:([^;]+);base64$/i)?.[1] || "application/pdf";
-      const bin = atob(base64);
-      const bytes = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-      const blobUrl = URL.createObjectURL(new Blob([bytes], { type: mime }));
-      clickOpenInNewTab(blobUrl);
-      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
-      return true;
+      return new URL(s).pathname.startsWith("/uploads/portal/");
     } catch {
       return false;
     }
   }
+  return false;
+}
 
-  clickOpenInNewTab(href);
-  return true;
+/** Abre PDF do portal: ficheiros em disco via API autenticada; `data:` ou links externos mantêm o fluxo anterior. */
+export async function openPortalPdfItemInNewTab(item: PortalPdfItem): Promise<boolean> {
+  const raw = String(item.content || "").trim();
+  if (!raw) return false;
+
+  if (raw.startsWith("data:application/pdf") || raw.startsWith("data:application/octet-stream")) {
+    return openPdfDataUrlInNewTab(raw);
+  }
+
+  if (!isPortalTenantDiskPath(raw)) {
+    const href = publicFileUrl(raw);
+    if (!href) return false;
+    clickOpenInNewTab(href);
+    return true;
+  }
+
+  try {
+    const res = await apiFetchBlob(`/api/portal/items/${item.id}/file`);
+    if (!res.ok) return false;
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    clickOpenInNewTab(blobUrl);
+    window.setTimeout(() => URL.revokeObjectURL(blobUrl), 120_000);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function uploadPortalMedia(file: File): Promise<string> {
@@ -304,7 +339,7 @@ export function PortalPdfLibrary({ title, description, sectionId, items, canEdit
                   ) : (
                     <button
                       type="button"
-                      onClick={() => openPdfUrlInNewTab(it.content)}
+                      onClick={() => void openPortalPdfItemInNewTab(it)}
                       className="w-full text-left text-sm font-medium text-sky-200 underline-offset-2 hover:text-white hover:underline"
                     >
                       {it.title || "Documento"}
@@ -313,6 +348,14 @@ export function PortalPdfLibrary({ title, description, sectionId, items, canEdit
                 </div>
                 {canEdit && (
                   <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      disabled={saving}
+                      onClick={() => void openPortalPdfItemInNewTab(it)}
+                      className="rounded-lg border border-sky-500/40 bg-sky-500/15 px-2.5 py-1 text-[11px] font-semibold text-sky-100 hover:bg-sky-500/25 disabled:opacity-50"
+                    >
+                      Abrir
+                    </button>
                     <button
                       type="button"
                       disabled={saving}
