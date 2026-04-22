@@ -69,6 +69,31 @@ const allowedOrigins = [...new Set([...productionOrigins, ...envOrigins])];
 const CORS_FALLBACK_ORIGIN =
   process.env.CORS_FALLBACK_ORIGIN || "https://wps-one-frontend.web.app";
 
+/**
+ * URLs de preview do Firebase Hosting usam o padrão PROJECT--channel-....web.app
+ * (não estão na lista fixa). Sem isto, o browser bloqueia o fetch (parece "Failed to fetch").
+ */
+function isFirebaseHostingWpsOneFrontends(originStr: string): boolean {
+  if (!originStr.startsWith("https://")) return false;
+  let host: string;
+  try {
+    host = new URL(originStr).hostname;
+  } catch {
+    return false;
+  }
+  if (!host.endsWith(".web.app") && !host.endsWith(".firebaseapp.com")) return false;
+  const exactHosts = new Set([
+    "wps-one-frontend.web.app",
+    "wps-one-frontend.firebaseapp.com",
+    "wps-one-frontend-qa.web.app",
+    "wps-one-frontend-qa.firebaseapp.com",
+  ]);
+  if (exactHosts.has(host)) return true;
+  if (host.startsWith("wps-one-frontend--") && host.endsWith(".web.app")) return true;
+  if (host.startsWith("wps-one-frontend-qa--") && host.endsWith(".web.app")) return true;
+  return false;
+}
+
 // CORS: primeiro handler da app — headers em toda resposta e OPTIONS respondido aqui
 app.use((req, res, next) => {
   const origin = req.headers.origin;
@@ -80,9 +105,10 @@ app.use((req, res, next) => {
     (originStr === "https://wpsone.com.br" ||
       originStr === "https://www.wpsone.com.br" ||
       originStr.endsWith(".wpsone.com.br"));
+  const isAllowedFirebaseHosting = isFirebaseHostingWpsOneFrontends(originStr);
 
   const allowOrigin =
-    isAllowedExact || isAllowedWpsoneDomain
+    isAllowedExact || isAllowedWpsoneDomain || isAllowedFirebaseHosting
       ? originStr
       : CORS_FALLBACK_ORIGIN;
 
