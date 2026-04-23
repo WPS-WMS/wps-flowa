@@ -85,6 +85,11 @@ export function Sidebar({
   });
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>(initialOpenSubmenus);
 
+  const closeOnMobileNavigate = () => {
+    if (typeof window === "undefined") return;
+    if (window.innerWidth < 1024) setCollapsed(true);
+  };
+
   // Atualiza submenus abertos quando pathname muda
   useEffect(() => {
     const newOpenSubmenus: Record<string, boolean> = {};
@@ -217,6 +222,7 @@ export function Sidebar({
                           <Link
                             key={child.href}
                             href={child.href}
+                            onClick={closeOnMobileNavigate}
                             className={`block rounded-lg px-3 py-2 text-sm transition ${
                               isChildActive
                                 ? "text-[color:var(--primary-foreground)] shadow-sm"
@@ -238,6 +244,7 @@ export function Sidebar({
               <Link
                 key={href}
                 href={href!}
+                onClick={closeOnMobileNavigate}
                 title={collapsed ? label : undefined}
                 className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
                   isActive
