@@ -487,8 +487,14 @@ export default function ListaTarefasPage() {
                           key={t.id}
                           className="border-t hover:opacity-95 cursor-pointer"
                           style={{ borderColor: "var(--border)" }}
-                          onClick={() => router.push(`${basePath}/projetos/${t.projectId}`)}
-                          title="Abrir projeto"
+                          onClick={() =>
+                            router.push(
+                              `${basePath}/projetos/_/tarefas/_?projectId=${encodeURIComponent(
+                                t.projectId,
+                              )}&ticketId=${encodeURIComponent(t.id)}&from=lista-tarefas`,
+                            )
+                          }
+                          title="Abrir tarefa"
                         >
                           <td className="px-4 py-3 font-mono text-[color:var(--foreground)] whitespace-nowrap">
                             #{t.code}
