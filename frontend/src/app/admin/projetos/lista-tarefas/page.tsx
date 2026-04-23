@@ -177,14 +177,26 @@ export default function ListaTarefasPage() {
       .map((c) => ({ id: c.id, label: c.label }));
     custom.sort((a, b) => a.label.localeCompare(b.label, "pt-BR"));
 
+    // Garante que status existentes nas tarefas apareçam mesmo sem localStorage (ex.: cache limpo)
+    const inferredFromRows = Array.from(
+      new Set(
+        rows
+          .map((r) => String(r.status ?? "").trim())
+          .filter((s) => s && s.startsWith("CUSTOM_")),
+      ),
+    ).map((id) => {
+      const st = getTicketStatusDisplay({ status: id, projectId: rows.find((x) => x.status === id)?.projectId });
+      return { id, label: st.label || id };
+    });
+
     // Dedup por id (base tem prioridade) e mantém "Todos" no topo
     const byId = new Map<string, { id: string; label: string }>();
-    for (const o of [...base, ...custom]) {
+    for (const o of [...base, ...custom, ...inferredFromRows]) {
       if (!o.id) continue;
       if (!byId.has(o.id)) byId.set(o.id, o);
     }
     return [{ id: "", label: "Todos" }, ...Array.from(byId.values()).filter((o) => o.id !== "")];
-  }, [projectIdsInRows]);
+  }, [projectIdsInRows, rows]);
 
   const selectedStatusLabels = useMemo(() => {
     if (statusIds.length === 0) return "Todos";

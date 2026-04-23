@@ -387,6 +387,20 @@ export function KanbanBoard({
     return Array.from(inferred.values());
   }, [tickets, customColumns, projectId]);
 
+  // Se existirem tarefas em colunas custom que não estão persistidas no localStorage,
+  // "re-hidrata" essas colunas para evitar que sumam quando ficarem vazias.
+  useEffect(() => {
+    if (kanbanAggregateMode) return;
+    if (!projectId) return;
+    if (inferredCustomColumns.length === 0) return;
+    const known = new Set(customColumns.map((c) => c.id));
+    const toPersist = inferredCustomColumns.filter((c) => c && c.id && !known.has(c.id));
+    if (toPersist.length === 0) return;
+    // Mantém label inferido; cor default (não temos a cor original sem o storage)
+    saveCustomColumns([...customColumns, ...toPersist]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inferredCustomColumns, kanbanAggregateMode, projectId]);
+
   // Combina colunas padrão com customizadas (incluindo inferidas) e aplica a ordem salva
   const allColumns: Column[] = useMemo(() => {
     const cols = [...DEFAULT_COLUMNS, ...customColumns, ...inferredCustomColumns];
