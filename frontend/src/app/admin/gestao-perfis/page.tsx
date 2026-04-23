@@ -28,6 +28,7 @@ const FEATURES: Feature[] = [
   { id: "projeto", label: "Projeto", section: "Projetos" },
   { id: "projeto.lista", label: "Projeto \u003e Lista de projetos", section: "Projetos" },
   { id: "projeto.dashboardDaily", label: "Projeto \u003e Dashboard Daily", section: "Projetos" },
+  { id: "projeto.listaTarefas", label: "Projeto \u003e Lista de Tarefas", section: "Projetos" },
   { id: "projeto.novo", label: "Projetos \u003e Novo projeto", section: "Projetos" },
   { id: "projeto.editar", label: "Projetos \u003e Editar projeto", section: "Projetos" },
   { id: "projeto.arquivar", label: "Projetos \u003e Arquivar projetos", section: "Projetos" },
@@ -73,6 +74,7 @@ function buildDefaultPermissions(): Permissions {
       case "projeto":
       case "projeto.lista":
       case "projeto.dashboardDaily":
+      case "projeto.listaTarefas":
       case "projeto.novo":
       case "projeto.editar":
       case "projeto.arquivar":

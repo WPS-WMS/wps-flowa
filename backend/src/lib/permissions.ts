@@ -8,6 +8,7 @@ export const FEATURES = [
   "projeto",
   "projeto.lista",
   "projeto.dashboardDaily",
+  "projeto.listaTarefas",
   "projeto.novo",
   "projeto.editar",
   "projeto.arquivar",
@@ -52,6 +53,7 @@ export function buildDefaultPermissions(): PermissionsMatrix {
       case "projeto":
       case "projeto.lista":
       case "projeto.dashboardDaily":
+      case "projeto.listaTarefas":
       case "projeto.novo":
       case "projeto.editar":
       case "projeto.arquivar":
