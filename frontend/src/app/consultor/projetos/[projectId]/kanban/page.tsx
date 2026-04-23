@@ -138,21 +138,13 @@ export default function ProjetoKanbanConsultorPage({ params }: PageProps) {
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-slate-50">
       <header className="relative z-10 flex-shrink-0 bg-white border-b border-slate-200 px-6 py-4">
-        <div className="max-w-6xl mx-auto">
-          <h1 className="text-xl md:text-2xl font-semibold text-slate-900">{project.name}</h1>
-          <p className="text-xs md:text-sm text-slate-500 mt-1">
-            Visualize e gerencie tarefas do projeto em formato Kanban.
-          </p>
-        </div>
-      </header>
-      <main className="relative z-0 flex-1 px-4 md:px-6 py-4 min-h-0 overflow-auto">
-        <div className="max-w-6xl mx-auto space-y-4">
+        <div className="max-w-6xl mx-auto relative pr-14">
           <button
             type="button"
             onClick={() => router.push(`/consultor/projetos?tab=${fromTab}`)}
             aria-label="Voltar"
             title="Voltar"
-            className="fixed right-14 top-4 z-[10001] inline-flex h-10 w-10 items-center justify-center rounded-xl border transition hover:opacity-90"
+            className="absolute right-0 top-0 inline-flex h-10 w-10 items-center justify-center rounded-xl border transition hover:opacity-90"
             style={{
               borderColor: "var(--border)",
               background: "rgba(0,0,0,0.06)",
@@ -162,6 +154,14 @@ export default function ProjetoKanbanConsultorPage({ params }: PageProps) {
             <ArrowLeft className="h-4 w-4" />
           </button>
 
+          <h1 className="text-xl md:text-2xl font-semibold text-slate-900">{project.name}</h1>
+          <p className="text-xs md:text-sm text-slate-500 mt-1">
+            Visualize e gerencie tarefas do projeto em formato Kanban.
+          </p>
+        </div>
+      </header>
+      <main className="relative z-0 flex-1 px-4 md:px-6 py-4 min-h-0 overflow-auto">
+        <div className="max-w-6xl mx-auto space-y-4">
           {/* Barra de busca */}
           <div className="relative z-10 flex items-center justify-between gap-4">
             <div className="relative w-full md:w-64">
