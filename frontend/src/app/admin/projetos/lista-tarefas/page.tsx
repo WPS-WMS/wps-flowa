@@ -72,9 +72,10 @@ export default function ListaTarefasPage() {
   const [dueFrom, setDueFrom] = useState("");
   const [dueTo, setDueTo] = useState("");
   const [memberId, setMemberId] = useState("");
-  const [status, setStatus] = useState("");
+  const [statusIds, setStatusIds] = useState<string[]>([]);
   const [q, setQ] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [statusOpen, setStatusOpen] = useState(false);
 
   const [users, setUsers] = useState<UserOption[]>([]);
   const [rows, setRows] = useState<TicketRow[]>([]);
@@ -109,7 +110,7 @@ export default function ListaTarefasPage() {
       if (dueFrom) params.set("dueFrom", dueFrom);
       if (dueTo) params.set("dueTo", dueTo);
       if (memberId) params.set("memberId", memberId);
-      if (status) params.set("status", status);
+      if (statusIds.length > 0) params.set("status", statusIds.join(","));
       const res = await apiFetch(`/api/tickets/tasks-list?${params.toString()}`);
       if (!res.ok) {
         const body = await res.json().catch(() => null);
@@ -148,7 +149,7 @@ export default function ListaTarefasPage() {
   }, [rows, q]);
 
   const hasAdvancedFilters = Boolean(createdFrom || createdTo || dueFrom || dueTo);
-  const hasAnyFilters = Boolean(q.trim() || status || memberId || hasAdvancedFilters);
+  const hasAnyFilters = Boolean(q.trim() || statusIds.length > 0 || memberId || hasAdvancedFilters);
 
   const projectIdsInRows = useMemo(() => {
     const ids = new Set<string>();
@@ -167,9 +168,18 @@ export default function ListaTarefasPage() {
     return [...BASE_STATUS_FILTERS, ...customOptions];
   }, [projectIdsInRows]);
 
+  const selectedStatusLabels = useMemo(() => {
+    if (statusIds.length === 0) return "Todos";
+    const map = new Map(statusOptions.map((o) => [o.id, o.label] as const));
+    const labels = statusIds.map((id) => map.get(id) ?? id).filter(Boolean);
+    if (labels.length === 0) return "Todos";
+    if (labels.length <= 2) return labels.join(", ");
+    return `${labels.slice(0, 2).join(", ")} +${labels.length - 2}`;
+  }, [statusIds, statusOptions]);
+
   function clearFilters() {
     setQ("");
-    setStatus("");
+    setStatusIds([]);
     setMemberId("");
     setCreatedFrom("");
     setCreatedTo("");
@@ -231,17 +241,62 @@ export default function ListaTarefasPage() {
                       <label className="block text-[11px] font-semibold uppercase tracking-wide text-[color:var(--muted-foreground)] mb-1">
                         Status
                       </label>
-                      <select
-                        value={status}
-                        onChange={(e) => setStatus(e.target.value)}
-                        className="w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] py-2.5 px-3 text-sm text-[color:var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/30"
-                      >
-                        {statusOptions.map((o) => (
-                          <option key={o.id} value={o.id}>
-                            {o.label}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setStatusOpen((v) => !v)}
+                          className="w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] py-2.5 px-3 text-sm text-[color:var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/30 text-left inline-flex items-center justify-between gap-2"
+                          aria-expanded={statusOpen}
+                        >
+                          <span className="truncate">{selectedStatusLabels}</span>
+                          <ChevronDown className={`h-4 w-4 transition-transform ${statusOpen ? \"rotate-180\" : \"\"}`} />
+                        </button>
+
+                        {statusOpen && (
+                          <div
+                            className="absolute z-30 mt-2 w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] shadow-lg p-2 max-h-64 overflow-auto"
+                            role="listbox"
+                          >
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setStatusIds([]);
+                                setStatusOpen(false);
+                              }}
+                              className="w-full text-left px-3 py-2 rounded-lg text-sm font-semibold hover:bg-[color:var(--background)]/60 transition"
+                            >
+                              Todos
+                            </button>
+                            <div className="my-1 border-t" style={{ borderColor: "var(--border)" }} />
+                            {statusOptions
+                              .filter((o) => o.id !== "")
+                              .map((o) => {
+                                const checked = statusIds.includes(o.id);
+                                return (
+                                  <button
+                                    key={o.id}
+                                    type="button"
+                                    onClick={() => {
+                                      setStatusIds((prev) => {
+                                        const has = prev.includes(o.id);
+                                        return has ? prev.filter((x) => x !== o.id) : [...prev, o.id];
+                                      });
+                                    }}
+                                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-[color:var(--background)]/60 transition"
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={checked}
+                                      readOnly
+                                      className="h-4 w-4"
+                                    />
+                                    <span className="truncate">{o.label}</span>
+                                  </button>
+                                );
+                              })}
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     <div className="min-w-[220px]">

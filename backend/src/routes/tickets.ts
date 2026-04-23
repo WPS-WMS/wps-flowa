@@ -352,8 +352,12 @@ ticketsRouter.get("/tasks-list", requireFeature("projeto.listaTarefas"), async (
   const dueRange = parseDateRangeInclusive({ from: req.query.dueFrom, to: req.query.dueTo });
 
   const memberId = String(req.query.memberId ?? "").trim();
-  const status = String(req.query.status ?? "").trim();
-  const statusUpper = status.toUpperCase();
+  const statusRaw = String(req.query.status ?? "").trim();
+  const statusList = statusRaw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const statusUpperList = statusList.map((s) => s.toUpperCase());
 
   const rawLimit = req.query.limit;
   const rawOffset = req.query.offset;
@@ -388,25 +392,37 @@ ticketsRouter.get("/tasks-list", requireFeature("projeto.listaTarefas"), async (
   // - enum legado (ABERTO/EXECUCAO/ENCERRADO/...)
   // - id de coluna customizada do Kanban (CUSTOM_...)
   // - grupos da UI da Lista de Tarefas (__OPEN__/__EXEC__/__DONE__/__OVERDUE__)
-  if (statusUpper) {
-    if (statusUpper === "__OPEN__") {
-      where.status = { in: ["ABERTO", "EM_ANALISE", "APROVADO"] };
-    } else if (statusUpper === "__EXEC__") {
-      where.status = { in: ["EXECUCAO", "TESTE"] };
-    } else if (statusUpper === "__DONE__") {
-      where.status = "ENCERRADO";
-    } else if (statusUpper === "__OVERDUE__") {
-      // Atrasado: tem dataFimPrevista no passado e não está encerrado.
-      const today = new Date();
-      const todayStr = today.toISOString().slice(0, 10);
-      const startOfTodayUtc = new Date(`${todayStr}T00:00:00.000Z`);
-      where.status = { notIn: ["ENCERRADO"] };
-      where.dataFimPrevista = {
-        ...(where.dataFimPrevista ?? {}),
-        lt: startOfTodayUtc,
-      };
-    } else {
-      where.status = status;
+  if (statusUpperList.length > 0) {
+    const clauses: any[] = [];
+
+    const today = new Date();
+    const todayStr = today.toISOString().slice(0, 10);
+    const startOfTodayUtc = new Date(`${todayStr}T00:00:00.000Z`);
+
+    for (let i = 0; i < statusUpperList.length; i += 1) {
+      const up = statusUpperList[i];
+      const original = statusList[i] ?? "";
+      if (!up) continue;
+
+      if (up === "__OPEN__") {
+        clauses.push({ status: { in: ["ABERTO", "EM_ANALISE", "APROVADO"] } });
+      } else if (up === "__EXEC__") {
+        clauses.push({ status: { in: ["EXECUCAO", "TESTE"] } });
+      } else if (up === "__DONE__") {
+        clauses.push({ status: "ENCERRADO" });
+      } else if (up === "__OVERDUE__") {
+        // Atrasado: tem dataFimPrevista no passado e não está encerrado.
+        clauses.push({
+          status: { notIn: ["ENCERRADO"] },
+          dataFimPrevista: { lt: startOfTodayUtc },
+        });
+      } else {
+        clauses.push({ status: original });
+      }
+    }
+
+    if (clauses.length > 0) {
+      where.AND = [...(where.AND ?? []), { OR: clauses }];
     }
   }
 
