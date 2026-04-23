@@ -21,6 +21,18 @@ export function loadAllMergedKanbanCustomColumns(): KanbanColumn[] {
   if (typeof window === "undefined") return [];
   const byId = new Map<string, KanbanColumn>();
   try {
+    // Prefer cache do backend (preenchido ao abrir Kanban)
+    const w = window as any;
+    const cache: Record<string, KanbanColumn[]> | undefined = w.__WPS_KANBAN_COLUMNS_CACHE__;
+    if (cache && typeof cache === "object") {
+      for (const cols of Object.values(cache)) {
+        if (!Array.isArray(cols)) continue;
+        for (const col of cols) {
+          if (col && col.id && !byId.has(col.id)) byId.set(col.id, col);
+        }
+      }
+    }
+
     for (let i = 0; i < window.localStorage.length; i += 1) {
       const key = window.localStorage.key(i);
       if (!key || !key.startsWith("kanban_columns_")) continue;

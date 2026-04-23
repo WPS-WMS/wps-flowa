@@ -179,19 +179,62 @@ export function KanbanBoard({
       setCustomColumnsLoaded(true);
       return;
     }
-    const storageKey = `kanban_columns_${projectId}`;
-    const saved = localStorage.getItem(storageKey);
-    if (saved) {
+    let cancelled = false;
+    (async () => {
       try {
-        const parsed = JSON.parse(saved);
-        setCustomColumns(Array.isArray(parsed) ? parsed : []);
+        // 1) Tenta carregar do backend (fonte de verdade)
+        const r = await apiFetch(`/api/projects/${projectId}/kanban-columns`);
+        if (r.ok) {
+          const cols = (await r.json().catch(() => [])) as Column[];
+          const normalized = Array.isArray(cols) ? cols : [];
+          if (!cancelled) {
+            setCustomColumns(normalized);
+            const w = window as any;
+            w.__WPS_KANBAN_COLUMNS_CACHE__ = w.__WPS_KANBAN_COLUMNS_CACHE__ || {};
+            w.__WPS_KANBAN_COLUMNS_CACHE__[projectId] = normalized;
+          }
+        } else {
+          if (!cancelled) setCustomColumns([]);
+        }
+
+        // 2) Compat/migração: se existir colunas no localStorage, tenta importar para o backend
+        try {
+          const storageKey = `kanban_columns_${projectId}`;
+          const saved = localStorage.getItem(storageKey);
+          if (saved) {
+            const parsed = JSON.parse(saved) as unknown;
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              await apiFetch(`/api/projects/${projectId}/kanban-columns/import`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ columns: parsed }),
+              });
+              // Recarrega do backend após importar
+              const r2 = await apiFetch(`/api/projects/${projectId}/kanban-columns`);
+              if (r2.ok) {
+                const cols2 = (await r2.json().catch(() => [])) as Column[];
+                const normalized2 = Array.isArray(cols2) ? cols2 : [];
+                if (!cancelled) {
+                  setCustomColumns(normalized2);
+                  const w = window as any;
+                  w.__WPS_KANBAN_COLUMNS_CACHE__ = w.__WPS_KANBAN_COLUMNS_CACHE__ || {};
+                  w.__WPS_KANBAN_COLUMNS_CACHE__[projectId] = normalized2;
+                }
+              }
+            }
+          }
+        } catch {
+          /* ignore */
+        }
       } catch {
-        setCustomColumns([]);
+        if (!cancelled) setCustomColumns([]);
+      } finally {
+        if (!cancelled) setCustomColumnsLoaded(true);
       }
-    } else {
-      setCustomColumns([]);
-    }
-    setCustomColumnsLoaded(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [projectId, kanbanAggregateMode, aggregateProjectIds]);
 
   // Carrega ordem das colunas (padrão + custom) do localStorage
@@ -452,16 +495,47 @@ export function KanbanBoard({
   // Salva colunas customizadas no localStorage
   const saveCustomColumns = (columns: Column[]) => {
     if (kanbanAggregateMode) return;
-    const storageKey = `kanban_columns_${projectId}`;
-    localStorage.setItem(storageKey, JSON.stringify(columns));
+    // Mantém cache global para `getTicketStatusDisplay` e outras telas
+    const w = window as any;
+    w.__WPS_KANBAN_COLUMNS_CACHE__ = w.__WPS_KANBAN_COLUMNS_CACHE__ || {};
+    w.__WPS_KANBAN_COLUMNS_CACHE__[projectId] = columns;
     setCustomColumns(columns);
     window.dispatchEvent(new CustomEvent("wps_kanban_columns_changed", { detail: { projectId } }));
   };
 
+  const readStoredCustomColumns = (): Column[] => {
+    if (kanbanAggregateMode) return [];
+    try {
+      const raw = localStorage.getItem(`kanban_columns_${projectId}`);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw) as unknown;
+      return Array.isArray(parsed) ? (parsed as Column[]) : [];
+    } catch {
+      return [];
+    }
+  };
+
   // Adiciona uma nova coluna customizada
   const handleColumnCreated = (newColumn: Column) => {
-    const updated = [...customColumns, newColumn];
-    saveCustomColumns(updated);
+    void (async () => {
+      try {
+        const r = await apiFetch(`/api/projects/${projectId}/kanban-columns`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: newColumn.id, label: newColumn.label, color: newColumn.color }),
+        });
+        if (r.ok) {
+          const saved = (await r.json().catch(() => null)) as Column | null;
+          const col = saved ?? newColumn;
+          saveCustomColumns([...customColumns.filter((c) => c.id !== col.id), col]);
+          return;
+        }
+      } catch {
+        /* ignore */
+      }
+      // Fallback local (não ideal, mas evita perder no fluxo offline)
+      saveCustomColumns([...customColumns.filter((c) => c.id !== newColumn.id), newColumn]);
+    })();
   };
 
   // Remove uma coluna customizada
@@ -472,6 +546,12 @@ export function KanbanBoard({
   const confirmDeleteColumn = async () => {
     if (!deleteColumnTarget) return;
     
+    // Remove no backend (soft delete) e atualiza a UI
+    try {
+      await apiFetch(`/api/projects/${projectId}/kanban-columns/${deleteColumnTarget}`, { method: "DELETE" });
+    } catch {
+      /* ignore */
+    }
     const updated = customColumns.filter((c) => c.id !== deleteColumnTarget);
     saveCustomColumns(updated);
     

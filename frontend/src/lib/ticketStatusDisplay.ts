@@ -37,6 +37,12 @@ const DEFAULT_COLUMN_COLOR: Record<string, string> = {
 export function loadKanbanCustomColumns(projectId: string): KanbanColumn[] {
   if (!projectId) return [];
   if (typeof window === "undefined") return [];
+  // Cache global preenchido pelo Kanban (colunas vindas do backend).
+  const w = window as any;
+  const cache: Record<string, KanbanColumn[]> | undefined = w.__WPS_KANBAN_COLUMNS_CACHE__;
+  if (cache && Array.isArray(cache[projectId]) && cache[projectId].length > 0) {
+    return cache[projectId];
+  }
   try {
     const raw = window.localStorage.getItem(`kanban_columns_${projectId}`);
     if (!raw) return [];

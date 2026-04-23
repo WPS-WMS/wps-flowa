@@ -224,6 +224,8 @@ model Project {
   
   // Tipo e configurações do projeto
   tipoProjeto TipoProjeto? @default(INTERNO)
+
+  kanbanColumns KanbanColumn[]
   
   // Configurações Fixed Price
   valorContrato Float?
@@ -266,6 +268,27 @@ model Project {
   responsibles          ProjectResponsible[]
   timeEntryPermissionRequests TimeEntryPermissionRequest[]
   @@index([clientId, arquivado, createdAt])
+}
+
+/// Colunas customizadas do Kanban persistidas por projeto (visível para todos os usuários do tenant).
+model KanbanColumn {
+  /// ID público usado como status nos tickets (ex.: CUSTOM_EM_QA_1712345678901)
+  id        String   @id
+  tenantId  String
+  projectId String
+  label     String
+  color     String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, id], map: "kanban_columns_project_id_uq")
+  @@index([tenantId, projectId, deletedAt, order], map: "kanban_columns_tenant_project_idx")
+  @@map("kanban_columns")
 }
 
 model ProjectResponsible {

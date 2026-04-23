@@ -23,6 +23,191 @@ export const projectsRouter = Router();
 projectsRouter.use(authMiddleware);
 projectsRouter.use(requireFeature("projeto"));
 
+async function assertCanAccessProject(params: {
+  user: { id: string; role: string; tenantId: string };
+  projectId: string;
+}) {
+  const { user, projectId } = params;
+  const canSeeAll = user.role === "SUPER_ADMIN" || user.role === "GESTOR_PROJETOS";
+  const tenantFilter = { client: { tenantId: user.tenantId } };
+  const project = await prisma.project.findFirst({
+    where: {
+      id: projectId,
+      ...tenantFilter,
+      ...(!canSeeAll && {
+        OR: [
+          { createdById: user.id },
+          { client: { users: { some: { userId: user.id } } } },
+          ...(isConsultantLikeRole(user.role)
+            ? [
+                {
+                  tickets: {
+                    some: {
+                      OR: [
+                        { assignedToId: user.id },
+                        { createdById: user.id },
+                        { responsibles: { some: { userId: user.id } } },
+                      ],
+                    },
+                  },
+                },
+                { responsibles: { some: { userId: user.id } } },
+              ]
+            : []),
+        ],
+      }),
+    },
+    select: { id: true },
+  });
+  return Boolean(project);
+}
+
+function parseColumnId(raw: unknown): string {
+  return String(raw ?? "").trim();
+}
+
+function normalizeColumnLabel(raw: unknown): string {
+  return String(raw ?? "").trim().slice(0, 60);
+}
+
+function normalizeColumnColor(raw: unknown): string {
+  // Tailwind class (ex.: bg-cyan-500) - mantém simples e segura
+  const c = String(raw ?? "").trim();
+  if (!c) return "bg-slate-400";
+  if (!/^bg-[a-z]+-\d{2,3}$/i.test(c)) return "bg-slate-400";
+  return c;
+}
+
+projectsRouter.get("/:id/kanban-columns", async (req, res) => {
+  const user = (req as Request & { user: { id: string; role: string; tenantId: string } }).user;
+  const projectId = String(req.params.id || "").trim();
+  if (!projectId) {
+    res.status(400).json({ error: "Projeto inválido" });
+    return;
+  }
+  const canAccess = await assertCanAccessProject({ user, projectId });
+  if (!canAccess) {
+    res.status(404).json({ error: "Projeto não encontrado" });
+    return;
+  }
+  const cols = await prisma.kanbanColumn.findMany({
+    where: { tenantId: user.tenantId, projectId, deletedAt: null },
+    orderBy: [{ order: "asc" }, { createdAt: "asc" }],
+    select: { id: true, label: true, color: true, order: true, createdAt: true, updatedAt: true },
+  });
+  res.json(cols);
+});
+
+projectsRouter.post("/:id/kanban-columns/import", async (req, res) => {
+  const user = (req as Request & { user: { id: string; role: string; tenantId: string } }).user;
+  const projectId = String(req.params.id || "").trim();
+  if (!projectId) {
+    res.status(400).json({ error: "Projeto inválido" });
+    return;
+  }
+  const canAccess = await assertCanAccessProject({ user, projectId });
+  if (!canAccess) {
+    res.status(404).json({ error: "Projeto não encontrado" });
+    return;
+  }
+  const rawCols = (req.body as any)?.columns;
+  if (!Array.isArray(rawCols)) {
+    res.status(400).json({ error: "columns deve ser um array" });
+    return;
+  }
+  const safe = rawCols
+    .map((c: any) => ({
+      id: parseColumnId(c?.id),
+      label: normalizeColumnLabel(c?.label),
+      color: normalizeColumnColor(c?.color),
+      order: Number.isFinite(Number(c?.order)) ? Number(c?.order) : 0,
+    }))
+    .filter((c) => c.id && c.id.startsWith("CUSTOM_") && c.label);
+
+  if (safe.length === 0) {
+    res.json({ imported: 0 });
+    return;
+  }
+
+  const result = await prisma.$transaction(
+    safe.map((c) =>
+      prisma.kanbanColumn.upsert({
+        where: { id: c.id },
+        create: {
+          id: c.id,
+          tenantId: user.tenantId,
+          projectId,
+          label: c.label,
+          color: c.color,
+          order: c.order,
+        },
+        update: {
+          // não sobrescreve label/cor se já existir; apenas garante tenant/projeto e "des-deleta"
+          tenantId: user.tenantId,
+          projectId,
+          deletedAt: null,
+        },
+      }),
+    ),
+  );
+  res.json({ imported: result.length });
+});
+
+projectsRouter.post("/:id/kanban-columns", async (req, res) => {
+  const user = (req as Request & { user: { id: string; role: string; tenantId: string } }).user;
+  const projectId = String(req.params.id || "").trim();
+  if (!projectId) {
+    res.status(400).json({ error: "Projeto inválido" });
+    return;
+  }
+  const canAccess = await assertCanAccessProject({ user, projectId });
+  if (!canAccess) {
+    res.status(404).json({ error: "Projeto não encontrado" });
+    return;
+  }
+  const id = parseColumnId((req.body as any)?.id);
+  const label = normalizeColumnLabel((req.body as any)?.label);
+  const color = normalizeColumnColor((req.body as any)?.color);
+  if (!id || !id.startsWith("CUSTOM_") || !label) {
+    res.status(400).json({ error: "Dados inválidos" });
+    return;
+  }
+  const max = await prisma.kanbanColumn.aggregate({
+    where: { tenantId: user.tenantId, projectId, deletedAt: null },
+    _max: { order: true },
+  });
+  const nextOrder = (max._max.order ?? 0) + 1;
+
+  const col = await prisma.kanbanColumn.upsert({
+    where: { id },
+    create: { id, tenantId: user.tenantId, projectId, label, color, order: nextOrder },
+    update: { tenantId: user.tenantId, projectId, label, color, deletedAt: null },
+    select: { id: true, label: true, color: true, order: true, createdAt: true, updatedAt: true },
+  });
+  res.json(col);
+});
+
+projectsRouter.delete("/:id/kanban-columns/:columnId", async (req, res) => {
+  const user = (req as Request & { user: { id: string; role: string; tenantId: string } }).user;
+  const projectId = String(req.params.id || "").trim();
+  const columnId = String(req.params.columnId || "").trim();
+  if (!projectId || !columnId) {
+    res.status(400).json({ error: "Parâmetros inválidos" });
+    return;
+  }
+  const canAccess = await assertCanAccessProject({ user, projectId });
+  if (!canAccess) {
+    res.status(404).json({ error: "Projeto não encontrado" });
+    return;
+  }
+  // Soft delete
+  await prisma.kanbanColumn.updateMany({
+    where: { tenantId: user.tenantId, projectId, id: columnId, deletedAt: null },
+    data: { deletedAt: new Date() },
+  });
+  res.status(204).send();
+});
+
 type ProjectsCacheEntry = {
   expiresAt: number;
   payload: unknown;
