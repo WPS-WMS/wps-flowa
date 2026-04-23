@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowLeft, Search, Filter, ChevronDown, X } from "lucide-react";
 import { apiFetch } from "@/lib/api";
@@ -74,6 +75,11 @@ export default function ListaTarefasPage() {
   const [q, setQ] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
+  const [memberOpen, setMemberOpen] = useState(false);
+  const statusAnchorRef = useRef<HTMLButtonElement | null>(null);
+  const memberAnchorRef = useRef<HTMLButtonElement | null>(null);
+  const [statusMenuRect, setStatusMenuRect] = useState<{ left: number; top: number; width: number } | null>(null);
+  const [memberMenuRect, setMemberMenuRect] = useState<{ left: number; top: number; width: number } | null>(null);
 
   const [users, setUsers] = useState<UserOption[]>([]);
   const [rows, setRows] = useState<TicketRow[]>([]);
@@ -189,6 +195,81 @@ export default function ListaTarefasPage() {
     return `${labels.slice(0, 2).join(", ")} +${labels.length - 2}`;
   }, [statusIds, statusOptions]);
 
+  const selectedMemberLabel = useMemo(() => {
+    if (!memberId) return "Todos";
+    return users.find((u) => u.id === memberId)?.name ?? "Todos";
+  }, [memberId, users]);
+
+  // Mantém o dropdown fora de qualquer overflow (com position: fixed)
+  useEffect(() => {
+    if (!statusOpen) return;
+    const update = () => {
+      const el = statusAnchorRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      setStatusMenuRect({ left: r.left, top: r.bottom + 8, width: r.width });
+    };
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [statusOpen]);
+
+  useEffect(() => {
+    if (!memberOpen) return;
+    const update = () => {
+      const el = memberAnchorRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      setMemberMenuRect({ left: r.left, top: r.bottom + 8, width: r.width });
+    };
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [memberOpen]);
+
+  useEffect(() => {
+    if (!statusOpen && !memberOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setStatusOpen(false);
+        setMemberOpen(false);
+      }
+    };
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as Node | null;
+      const statusAnchor = statusAnchorRef.current;
+      const memberAnchor = memberAnchorRef.current;
+      const statusMenu = document.getElementById("status-menu-portal");
+      const memberMenu = document.getElementById("member-menu-portal");
+      if (statusOpen) {
+        const inside =
+          (statusAnchor && target && statusAnchor.contains(target)) ||
+          (statusMenu && target && statusMenu.contains(target));
+        if (!inside) setStatusOpen(false);
+      }
+      if (memberOpen) {
+        const inside =
+          (memberAnchor && target && memberAnchor.contains(target)) ||
+          (memberMenu && target && memberMenu.contains(target));
+        if (!inside) setMemberOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("pointerdown", onPointerDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("pointerdown", onPointerDown);
+    };
+  }, [statusOpen, memberOpen]);
+
   function clearFilters() {
     setQ("");
     setStatusIds([]);
@@ -222,6 +303,111 @@ export default function ListaTarefasPage() {
       </header>
 
       <main className="flex-1 px-4 md:px-6 py-4 min-h-0 overflow-auto">
+        {typeof document !== "undefined" && statusOpen && statusMenuRect
+          ? createPortal(
+              <div
+                id="status-menu-portal"
+                style={{
+                  position: "fixed",
+                  left: statusMenuRect.left,
+                  top: statusMenuRect.top,
+                  width: statusMenuRect.width,
+                  zIndex: 10000,
+                }}
+              >
+                <div
+                  className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] shadow-lg p-2 max-h-64 overflow-auto"
+                  role="listbox"
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStatusIds([]);
+                      setStatusOpen(false);
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-lg text-sm font-semibold hover:bg-[color:var(--background)]/60 transition"
+                  >
+                    Todos
+                  </button>
+                  <div className="my-1 border-t" style={{ borderColor: "var(--border)" }} />
+                  {statusOptions
+                    .filter((o) => o.id !== "")
+                    .map((o) => {
+                      const checked = statusIds.includes(o.id);
+                      return (
+                        <button
+                          key={o.id}
+                          type="button"
+                          onClick={() => {
+                            setStatusIds((prev) => {
+                              const has = prev.includes(o.id);
+                              return has ? prev.filter((x) => x !== o.id) : [...prev, o.id];
+                            });
+                          }}
+                          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-[color:var(--background)]/60 transition"
+                        >
+                          <input type="checkbox" checked={checked} readOnly className="h-4 w-4" />
+                          <span className="truncate">{o.label}</span>
+                        </button>
+                      );
+                    })}
+                </div>
+              </div>,
+              document.body,
+            )
+          : null}
+
+        {typeof document !== "undefined" && memberOpen && memberMenuRect
+          ? createPortal(
+              <div
+                id="member-menu-portal"
+                style={{
+                  position: "fixed",
+                  left: memberMenuRect.left,
+                  top: memberMenuRect.top,
+                  width: memberMenuRect.width,
+                  zIndex: 10000,
+                }}
+              >
+                <div
+                  className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] shadow-lg p-2 max-h-64 overflow-auto"
+                  role="listbox"
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMemberId("");
+                      setMemberOpen(false);
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-lg text-sm font-semibold hover:bg-[color:var(--background)]/60 transition"
+                  >
+                    Todos
+                  </button>
+                  <div className="my-1 border-t" style={{ borderColor: "var(--border)" }} />
+                  {users.map((u) => {
+                    const active = memberId === u.id;
+                    return (
+                      <button
+                        key={u.id}
+                        type="button"
+                        onClick={() => {
+                          setMemberId(u.id);
+                          setMemberOpen(false);
+                        }}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-[color:var(--background)]/60 transition ${
+                          active ? "font-semibold" : ""
+                        }`}
+                      >
+                        {u.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>,
+              document.body,
+            )
+          : null}
+
         <div className="max-w-7xl mx-auto space-y-4">
           <div
             className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] shadow-sm overflow-visible"
@@ -256,7 +442,11 @@ export default function ListaTarefasPage() {
                       <div className="relative">
                         <button
                           type="button"
-                          onClick={() => setStatusOpen((v) => !v)}
+                          ref={statusAnchorRef}
+                          onClick={() => {
+                            setMemberOpen(false);
+                            setStatusOpen((v) => !v);
+                          }}
                           className="w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] py-2.5 px-3 text-sm text-[color:var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/30 text-left inline-flex items-center justify-between gap-2"
                           aria-expanded={statusOpen}
                         >
@@ -265,51 +455,6 @@ export default function ListaTarefasPage() {
                             className={`h-4 w-4 transition-transform ${statusOpen ? "rotate-180" : ""}`}
                           />
                         </button>
-
-                        {statusOpen && (
-                          <div
-                            className="absolute z-30 mt-2 w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] shadow-lg p-2 max-h-64 overflow-auto"
-                            role="listbox"
-                          >
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setStatusIds([]);
-                                setStatusOpen(false);
-                              }}
-                              className="w-full text-left px-3 py-2 rounded-lg text-sm font-semibold hover:bg-[color:var(--background)]/60 transition"
-                            >
-                              Todos
-                            </button>
-                            <div className="my-1 border-t" style={{ borderColor: "var(--border)" }} />
-                            {statusOptions
-                              .filter((o) => o.id !== "")
-                              .map((o) => {
-                                const checked = statusIds.includes(o.id);
-                                return (
-                                  <button
-                                    key={o.id}
-                                    type="button"
-                                    onClick={() => {
-                                      setStatusIds((prev) => {
-                                        const has = prev.includes(o.id);
-                                        return has ? prev.filter((x) => x !== o.id) : [...prev, o.id];
-                                      });
-                                    }}
-                                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-[color:var(--background)]/60 transition"
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={checked}
-                                      readOnly
-                                      className="h-4 w-4"
-                                    />
-                                    <span className="truncate">{o.label}</span>
-                                  </button>
-                                );
-                              })}
-                          </div>
-                        )}
                       </div>
                     </div>
 
@@ -317,18 +462,23 @@ export default function ListaTarefasPage() {
                       <label className="block text-[11px] font-semibold uppercase tracking-wide text-[color:var(--muted-foreground)] mb-1">
                         Membro
                       </label>
-                      <select
-                        value={memberId}
-                        onChange={(e) => setMemberId(e.target.value)}
-                        className="w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] py-2.5 px-3 text-sm text-[color:var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/30"
-                      >
-                        <option value="">Todos</option>
-                        {users.map((u) => (
-                          <option key={u.id} value={u.id}>
-                            {u.name}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          ref={memberAnchorRef}
+                          onClick={() => {
+                            setStatusOpen(false);
+                            setMemberOpen((v) => !v);
+                          }}
+                          className="w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] py-2.5 px-3 text-sm text-[color:var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/30 text-left inline-flex items-center justify-between gap-2"
+                          aria-expanded={memberOpen}
+                        >
+                          <span className="truncate">{selectedMemberLabel}</span>
+                          <ChevronDown
+                            className={`h-4 w-4 transition-transform ${memberOpen ? "rotate-180" : ""}`}
+                          />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
