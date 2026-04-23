@@ -148,6 +148,7 @@ export function KanbanBoard({
   const [createModalStatus, setCreateModalStatus] = useState<string | null>(null);
   const [showCreateColumnModal, setShowCreateColumnModal] = useState(false);
   const [customColumns, setCustomColumns] = useState<Column[]>([]);
+  const [customColumnsLoaded, setCustomColumnsLoaded] = useState(false);
   const [columnOrder, setColumnOrder] = useState<string[]>([]);
   const [deleteTicketTarget, setDeleteTicketTarget] = useState<PackageTicket | null>(null);
   const [deleteColumnTarget, setDeleteColumnTarget] = useState<string | null>(null);
@@ -175,6 +176,7 @@ export function KanbanBoard({
       setCustomColumns(
         aggregateProjectIds.length > 0 ? loadMergedKanbanCustomColumns(aggregateProjectIds) : [],
       );
+      setCustomColumnsLoaded(true);
       return;
     }
     const storageKey = `kanban_columns_${projectId}`;
@@ -189,6 +191,7 @@ export function KanbanBoard({
     } else {
       setCustomColumns([]);
     }
+    setCustomColumnsLoaded(true);
   }, [projectId, kanbanAggregateMode, aggregateProjectIds]);
 
   // Carrega ordem das colunas (padrão + custom) do localStorage
@@ -392,14 +395,27 @@ export function KanbanBoard({
   useEffect(() => {
     if (kanbanAggregateMode) return;
     if (!projectId) return;
+    if (!customColumnsLoaded) return;
     if (inferredCustomColumns.length === 0) return;
-    const known = new Set(customColumns.map((c) => c.id));
+    // Lê também direto do localStorage para não sobrescrever cores/labels persistidos.
+    let storedCols: Column[] = [];
+    try {
+      const raw = localStorage.getItem(`kanban_columns_${projectId}`);
+      if (raw) {
+        const parsed = JSON.parse(raw) as unknown;
+        if (Array.isArray(parsed)) storedCols = parsed as Column[];
+      }
+    } catch {
+      storedCols = [];
+    }
+    const known = new Set([...customColumns, ...storedCols].map((c) => c?.id).filter(Boolean) as string[]);
     const toPersist = inferredCustomColumns.filter((c) => c && c.id && !known.has(c.id));
     if (toPersist.length === 0) return;
-    // Mantém label inferido; cor default (não temos a cor original sem o storage)
-    saveCustomColumns([...customColumns, ...toPersist]);
+    // Mantém label inferido; cor default apenas para as realmente ausentes.
+    // Não sobrescreve colunas existentes (e suas cores).
+    saveCustomColumns([...(storedCols.length > 0 ? storedCols : customColumns), ...toPersist]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inferredCustomColumns, kanbanAggregateMode, projectId]);
+  }, [inferredCustomColumns, kanbanAggregateMode, projectId, customColumnsLoaded]);
 
   // Combina colunas padrão com customizadas (incluindo inferidas) e aplica a ordem salva
   const allColumns: Column[] = useMemo(() => {
