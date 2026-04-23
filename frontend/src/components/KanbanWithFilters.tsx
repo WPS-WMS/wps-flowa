@@ -84,6 +84,66 @@ export function KanbanWithFilters({
   const prioridadeDropdownRef = useRef<HTMLDivElement>(null);
   const statusDropdownRef = useRef<HTMLDivElement>(null);
 
+  // Debug opcional: ajuda a descobrir quem está "comendo" os cliques na tela do Kanban.
+  // Ative com `?debugClicks=1` na URL.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const enabled = new URLSearchParams(window.location.search).get("debugClicks") === "1";
+    if (!enabled) return;
+
+    const fmtEl = (el: Element | null) => {
+      if (!el) return "<null>";
+      const h = el as HTMLElement;
+      const id = h.id ? `#${h.id}` : "";
+      const cls = h.className ? `.${String(h.className).trim().split(/\s+/).slice(0, 5).join(".")}` : "";
+      return `<${el.tagName.toLowerCase()}${id}${cls}>`;
+    };
+
+    const snapshot = (el: Element | null) => {
+      if (!el) return null;
+      const s = window.getComputedStyle(el);
+      return {
+        el: fmtEl(el),
+        position: s.position,
+        pointerEvents: s.pointerEvents,
+        zIndex: s.zIndex,
+        opacity: s.opacity,
+        transform: s.transform,
+      };
+    };
+
+    const onPointerDown = (e: PointerEvent) => {
+      const x = e.clientX;
+      const y = e.clientY;
+      const atPoint = document.elementFromPoint(x, y);
+      const target = e.target as Element | null;
+
+      const chain: Array<ReturnType<typeof snapshot>> = [];
+      let cur: Element | null = atPoint;
+      let depth = 0;
+      while (cur && depth < 10) {
+        chain.push(snapshot(cur));
+        cur = cur.parentElement;
+        depth += 1;
+      }
+
+      // eslint-disable-next-line no-console
+      console.log("[debugClicks] pointerdown", {
+        x,
+        y,
+        target: snapshot(target),
+        atPoint: snapshot(atPoint),
+        defaultPrevented: e.defaultPrevented,
+        chain,
+      });
+    };
+
+    document.addEventListener("pointerdown", onPointerDown, { capture: true });
+    // eslint-disable-next-line no-console
+    console.log("[debugClicks] enabled on KanbanWithFilters");
+    return () => document.removeEventListener("pointerdown", onPointerDown, { capture: true } as any);
+  }, []);
+
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (prioridadeDropdownRef.current && !prioridadeDropdownRef.current.contains(e.target as Node)) {
