@@ -24,6 +24,9 @@ export default function ConsultorLayout({ children }: { children: React.ReactNod
           ...(can("projeto.dashboardDaily")
             ? [{ href: "/consultor/projetos/dashboard-daily", label: "Dashboard Daily" }]
             : []),
+          ...(can("projeto.listaTarefas")
+            ? [{ href: "/consultor/projetos/lista-tarefas", label: "Lista de Tarefas" }]
+            : []),
         ],
       });
     }

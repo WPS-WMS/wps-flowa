@@ -24,6 +24,9 @@ export default function GestorLayout({ children }: { children: React.ReactNode }
           ...(can("projeto.dashboardDaily")
             ? [{ href: "/gestor/projetos/dashboard-daily", label: "Dashboard Daily" }]
             : []),
+          ...(can("projeto.listaTarefas")
+            ? [{ href: "/gestor/projetos/lista-tarefas", label: "Lista de Tarefas" }]
+            : []),
         ],
       });
     }

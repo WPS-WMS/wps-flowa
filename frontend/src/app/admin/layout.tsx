@@ -24,6 +24,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           ...(can("projeto.dashboardDaily")
             ? [{ href: "/admin/projetos/dashboard-daily", label: "Dashboard Daily" }]
             : []),
+          ...(can("projeto.listaTarefas")
+            ? [{ href: "/admin/projetos/lista-tarefas", label: "Lista de Tarefas" }]
+            : []),
         ],
       });
     }

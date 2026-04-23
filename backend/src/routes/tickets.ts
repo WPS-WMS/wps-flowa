@@ -3,6 +3,7 @@ import type { PrismaClient } from "@prisma/client";
 import { Request, Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { authMiddleware, isConsultantLikeRole } from "../lib/auth.js";
+import { requireFeature } from "../lib/authorizeFeature.js";
 import { filterTicketsForConsultant } from "../lib/ticketVisibility.js";
 import { notifyTicketMembers } from "../lib/ticketEmailNotifications.js";
 import {
@@ -309,6 +310,100 @@ ticketsRouter.get("/", async (req, res) => {
     });
     list = projectMember ? tickets : filterTicketsForConsultant(tickets, user.id);
   }
+  res.json(list);
+});
+
+function parseDateRangeInclusive(input: {
+  from?: unknown;
+  to?: unknown;
+}): { gte?: Date; lte?: Date } | null {
+  const fromRaw = String(input.from ?? "").trim();
+  const toRaw = String(input.to ?? "").trim();
+  const range: { gte?: Date; lte?: Date } = {};
+  if (fromRaw) {
+    // Aceita YYYY-MM-DD ou ISO. Se for date-only, considera início do dia.
+    const d = new Date(fromRaw.length === 10 ? `${fromRaw}T00:00:00.000Z` : fromRaw);
+    if (!Number.isNaN(d.getTime())) range.gte = d;
+  }
+  if (toRaw) {
+    // Aceita YYYY-MM-DD ou ISO. Se for date-only, considera fim do dia.
+    const d = new Date(toRaw.length === 10 ? `${toRaw}T23:59:59.999Z` : toRaw);
+    if (!Number.isNaN(d.getTime())) range.lte = d;
+  }
+  if (!range.gte && !range.lte) return null;
+  return range;
+}
+
+/**
+ * GET /api/tickets/tasks-list
+ * Lista todas as tarefas (exclui SUBPROJETO e SUBTAREFA) com filtros para a tela "Lista de Tarefas".
+ * Filtros:
+ * - createdFrom/createdTo (createdAt)
+ * - dueFrom/dueTo (dataFimPrevista)
+ * - memberId (assignedTo OR responsibles OR createdBy)
+ * - status (status exato)
+ * - limit/offset (paginação)
+ */
+ticketsRouter.get("/tasks-list", requireFeature("projeto.listaTarefas"), async (req, res) => {
+  const user = (req as Request & { user: { id: string; role: string; tenantId: string } }).user;
+
+  const tenantFilter = { project: { client: { tenantId: user.tenantId } } };
+  const createdRange = parseDateRangeInclusive({ from: req.query.createdFrom, to: req.query.createdTo });
+  const dueRange = parseDateRangeInclusive({ from: req.query.dueFrom, to: req.query.dueTo });
+
+  const memberId = String(req.query.memberId ?? "").trim();
+  const status = String(req.query.status ?? "").trim();
+
+  const rawLimit = req.query.limit;
+  const rawOffset = req.query.offset;
+  let take: number | undefined;
+  let skip: number | undefined;
+  if (rawLimit !== undefined && String(rawLimit) !== "") {
+    const n = parseInt(String(rawLimit), 10);
+    if (!Number.isNaN(n) && n > 0) {
+      take = Math.min(500, n);
+      const off = parseInt(String(rawOffset ?? "0"), 10);
+      skip = Number.isNaN(off) || off < 0 ? 0 : off;
+    }
+  }
+
+  const where: any = {
+    ...tenantFilter,
+    type: { notIn: ["SUBPROJETO", "SUBTAREFA"] },
+    ...(status ? { status } : {}),
+    ...(createdRange ? { createdAt: createdRange } : {}),
+    ...(dueRange ? { dataFimPrevista: dueRange } : {}),
+    ...(memberId
+      ? {
+          OR: [
+            { assignedToId: memberId },
+            { createdById: memberId },
+            { responsibles: { some: { userId: memberId } } },
+          ],
+        }
+      : {}),
+  };
+
+  // Consultor: mantém a mesma regra de visibilidade (membro direto ou via tópico),
+  // mas como aqui buscamos "todas as tarefas", filtramos em memória com a mesma função usada em GET /.
+  const isConsultant = isConsultantLikeRole(user.role);
+
+  const orderBy = [{ createdAt: "desc" as const }];
+  const pagination = take !== undefined ? { take, ...(skip !== undefined && skip > 0 ? { skip } : {}) } : {};
+
+  const rows = await prisma.ticket.findMany({
+    where,
+    select: {
+      ...TICKET_LIST_LIGHT_SELECT,
+      // garantimos os campos usados na tela
+      dataFimPrevista: true,
+      createdAt: true,
+    } as any,
+    orderBy,
+    ...pagination,
+  });
+
+  const list = isConsultant ? filterTicketsForConsultant(rows as any, user.id) : rows;
   res.json(list);
 });
 
