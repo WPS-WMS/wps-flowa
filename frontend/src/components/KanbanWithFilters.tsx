@@ -5,7 +5,7 @@ import { X, Filter, ChevronDown, ChevronLeft } from "lucide-react";
 import { KanbanBoard } from "./KanbanBoard";
 import { PackageTicket } from "./PackageCard";
 import { apiFetch } from "@/lib/api";
-import { loadMergedKanbanCustomColumns } from "@/lib/kanbanMergedStorage";
+import { setKanbanCustomColumnsCache } from "@/lib/ticketStatusDisplay";
 
 // Prioridades fixas para o filtro (com bolinha colorida)
 const PRIORIDADES_FILTRO = ["Baixa", "Média", "Alta", "Urgente"] as const;
@@ -116,49 +116,77 @@ export function KanbanWithFilters({
     [subprojects],
   );
 
-  // Carrega colunas customizadas do localStorage (igual ao KanbanBoard); no modo agregado, une vários projetos.
+  // Carrega colunas customizadas do backend; no modo agregado, une vários projetos.
   useEffect(() => {
-    const storageKey = `kanban_columns_${projectId}`;
-    const load = () => {
-      if (kanbanAggregateMode) {
-        setCustomColumns(
-          aggregateProjectIds.length > 0 ? loadMergedKanbanCustomColumns(aggregateProjectIds) : [],
-        );
-        return;
-      }
-      const saved = localStorage.getItem(storageKey);
-      if (!saved) {
-        setCustomColumns([]);
-        return;
-      }
+    let cancelled = false;
+    const ac = new AbortController();
+
+    const load = async () => {
       try {
-        const parsed = JSON.parse(saved);
-        setCustomColumns(Array.isArray(parsed) ? parsed : []);
+        if (kanbanAggregateMode) {
+          if (aggregateProjectIds.length === 0) {
+            if (!cancelled) setCustomColumns([]);
+            return;
+          }
+          const results = await Promise.all(
+            aggregateProjectIds.map(async (pid) => {
+              try {
+                const r = await apiFetch(`/api/projects/${encodeURIComponent(pid)}/kanban-columns`, {
+                  signal: ac.signal,
+                });
+                if (!r.ok) return { pid, cols: [] as Array<{ id: string; label: string; color: string }> };
+                const data = (await r.json().catch(() => [])) as unknown;
+                const cols = Array.isArray(data) ? (data as Array<{ id: string; label: string; color: string }>) : [];
+                // alimenta cache global por projeto (para labels em outras telas)
+                setKanbanCustomColumnsCache(pid, cols);
+                return { pid, cols };
+              } catch {
+                return { pid, cols: [] as Array<{ id: string; label: string; color: string }> };
+              }
+            }),
+          );
+          const byId = new Map<string, { id: string; label: string; color: string }>();
+          for (const r of results) {
+            for (const c of r.cols) {
+              if (c && typeof c.id === "string" && !byId.has(c.id)) byId.set(c.id, c);
+            }
+          }
+          if (!cancelled) setCustomColumns(Array.from(byId.values()));
+          return;
+        }
+
+        if (!projectId) {
+          if (!cancelled) setCustomColumns([]);
+          return;
+        }
+        const r = await apiFetch(`/api/projects/${encodeURIComponent(projectId)}/kanban-columns`, { signal: ac.signal });
+        if (!r.ok) {
+          if (!cancelled) setCustomColumns([]);
+          return;
+        }
+        const data = (await r.json().catch(() => [])) as unknown;
+        const cols = Array.isArray(data) ? (data as Array<{ id: string; label: string; color: string }>) : [];
+        setKanbanCustomColumnsCache(projectId, cols);
+        if (!cancelled) setCustomColumns(cols);
       } catch {
-        setCustomColumns([]);
+        if (!cancelled) setCustomColumns([]);
       }
     };
-    load();
-    const onStorage = (e: StorageEvent) => {
-      if (kanbanAggregateMode && aggregateProjectIds.length > 0) {
-        if (e.key && aggregateProjectIds.some((id) => e.key === `kanban_columns_${id}`)) load();
-        return;
-      }
-      if (e.key === storageKey) load();
-    };
+
+    void load();
     const onColumnsChanged = (e: Event) => {
       const ce = e as CustomEvent<{ projectId?: string }>;
       const pid = ce?.detail?.projectId;
       if (kanbanAggregateMode && aggregateProjectIds.length > 0) {
-        if (pid && aggregateProjectIds.includes(pid)) load();
+        if (pid && aggregateProjectIds.includes(pid)) void load();
         return;
       }
-      if (pid === projectId) load();
+      if (pid === projectId) void load();
     };
-    window.addEventListener("storage", onStorage);
     window.addEventListener("wps_kanban_columns_changed", onColumnsChanged as EventListener);
     return () => {
-      window.removeEventListener("storage", onStorage);
+      cancelled = true;
+      ac.abort();
       window.removeEventListener("wps_kanban_columns_changed", onColumnsChanged as EventListener);
     };
   }, [projectId, kanbanAggregateMode, aggregateProjectIds]);

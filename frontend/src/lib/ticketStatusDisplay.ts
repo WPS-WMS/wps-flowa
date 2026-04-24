@@ -43,27 +43,15 @@ export function loadKanbanCustomColumns(projectId: string): KanbanColumn[] {
   if (cache && Array.isArray(cache[projectId]) && cache[projectId].length > 0) {
     return cache[projectId];
   }
-  try {
-    const raw = window.localStorage.getItem(`kanban_columns_${projectId}`);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return [];
-    return parsed
-      .filter(
-        (c) =>
-          c &&
-          typeof c === "object" &&
-          "id" in c &&
-          "label" in c &&
-          "color" in c &&
-          typeof (c as any).id === "string" &&
-          typeof (c as any).label === "string" &&
-          typeof (c as any).color === "string",
-      )
-      .map((c) => ({ id: (c as any).id, label: (c as any).label, color: (c as any).color }));
-  } catch {
-    return [];
-  }
+  return [];
+}
+
+export function setKanbanCustomColumnsCache(projectId: string, cols: KanbanColumn[]) {
+  if (!projectId) return;
+  if (typeof window === "undefined") return;
+  const w = window as any;
+  w.__WPS_KANBAN_COLUMNS_CACHE__ = w.__WPS_KANBAN_COLUMNS_CACHE__ || {};
+  w.__WPS_KANBAN_COLUMNS_CACHE__[projectId] = Array.isArray(cols) ? cols : [];
 }
 
 function decodeCustomColumnLabelFromId(statusRaw: string): string | null {

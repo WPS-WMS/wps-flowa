@@ -125,40 +125,44 @@ export function CreateTaskModalFull({
 
   type StatusOption = { value: string; label: string };
 
-  function loadCustomStatusOptions(pid: string): StatusOption[] {
-    if (!pid) return [];
-    try {
-      const raw = localStorage.getItem(`kanban_columns_${pid}`);
-      if (!raw) return [];
-      const parsed = JSON.parse(raw) as Array<{ id: string; label: string }>;
-      if (!Array.isArray(parsed)) return [];
-      return parsed
-        .filter((c) => c && typeof c.id === "string" && typeof c.label === "string")
-        .map((c) => ({ value: c.id, label: c.label }));
-    } catch {
-      return [];
-    }
-  }
-
   const [customStatusOptions, setCustomStatusOptions] = useState<StatusOption[]>([]);
 
   useEffect(() => {
-    setCustomStatusOptions(loadCustomStatusOptions(projectId));
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === `kanban_columns_${projectId}`) {
-        setCustomStatusOptions(loadCustomStatusOptions(projectId));
+    let cancelled = false;
+    const ac = new AbortController();
+
+    const load = async () => {
+      if (!projectId) {
+        if (!cancelled) setCustomStatusOptions([]);
+        return;
+      }
+      try {
+        const r = await apiFetch(`/api/projects/${encodeURIComponent(projectId)}/kanban-columns`, { signal: ac.signal });
+        if (!r.ok) {
+          if (!cancelled) setCustomStatusOptions([]);
+          return;
+        }
+        const data = (await r.json().catch(() => [])) as unknown;
+        const cols = Array.isArray(data) ? (data as Array<{ id: string; label: string }>) : [];
+        if (!cancelled) {
+          setCustomStatusOptions(cols.map((c) => ({ value: c.id, label: c.label })));
+        }
+      } catch {
+        if (!cancelled) setCustomStatusOptions([]);
       }
     };
+
+    void load();
     const onColumnsChanged = (e: Event) => {
       const ce = e as CustomEvent<{ projectId?: string }>;
       if (ce?.detail?.projectId === projectId) {
-        setCustomStatusOptions(loadCustomStatusOptions(projectId));
+        void load();
       }
     };
-    window.addEventListener("storage", onStorage);
     window.addEventListener("wps_kanban_columns_changed", onColumnsChanged as EventListener);
     return () => {
-      window.removeEventListener("storage", onStorage);
+      cancelled = true;
+      ac.abort();
       window.removeEventListener("wps_kanban_columns_changed", onColumnsChanged as EventListener);
     };
   }, [projectId]);

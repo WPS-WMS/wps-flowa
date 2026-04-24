@@ -9,7 +9,8 @@ import { ConfirmModal } from "./ConfirmModal";
 import { EditTaskModalFull } from "./EditTaskModalFull";
 import { FinalizeTaskModal } from "./FinalizeTaskModal";
 import { apiFetch } from "@/lib/api";
-import { loadMergedKanbanColumnOrder, loadMergedKanbanCustomColumns } from "@/lib/kanbanMergedStorage";
+import { loadMergedKanbanColumnOrder } from "@/lib/kanbanMergedStorage";
+import { setKanbanCustomColumnsCache } from "@/lib/ticketStatusDisplay";
 import { isTopicTicket } from "@/lib/ticketCodeDisplay";
 import { collectTicketMemberNames, formatMemberNamesChip } from "@/lib/ticketMemberNames";
 import { useAuth } from "@/contexts/AuthContext";
@@ -173,11 +174,43 @@ export function KanbanBoard({
   // Carrega colunas customizadas do localStorage (ou merge multi-projeto)
   useEffect(() => {
     if (kanbanAggregateMode) {
-      setCustomColumns(
-        aggregateProjectIds.length > 0 ? loadMergedKanbanCustomColumns(aggregateProjectIds) : [],
-      );
-      setCustomColumnsLoaded(true);
-      return;
+      let cancelled = false;
+      const ac = new AbortController();
+      (async () => {
+        try {
+          if (aggregateProjectIds.length === 0) {
+            if (!cancelled) setCustomColumns([]);
+            return;
+          }
+          const results = await Promise.all(
+            aggregateProjectIds.map(async (pid) => {
+              try {
+                const r = await apiFetch(`/api/projects/${encodeURIComponent(pid)}/kanban-columns`, { signal: ac.signal });
+                if (!r.ok) return { pid, cols: [] as Column[] };
+                const data = (await r.json().catch(() => [])) as unknown;
+                const cols = Array.isArray(data) ? (data as Column[]) : [];
+                setKanbanCustomColumnsCache(pid, cols);
+                return { pid, cols };
+              } catch {
+                return { pid, cols: [] as Column[] };
+              }
+            }),
+          );
+          const byId = new Map<string, Column>();
+          for (const r of results) {
+            for (const c of r.cols) {
+              if (c && typeof c.id === "string" && !byId.has(c.id)) byId.set(c.id, c);
+            }
+          }
+          if (!cancelled) setCustomColumns(Array.from(byId.values()));
+        } finally {
+          if (!cancelled) setCustomColumnsLoaded(true);
+        }
+      })();
+      return () => {
+        cancelled = true;
+        ac.abort();
+      };
     }
     let cancelled = false;
     const ac = new AbortController();
@@ -196,37 +229,6 @@ export function KanbanBoard({
           }
         } else {
           if (!cancelled) setCustomColumns([]);
-        }
-
-        // 2) Compat/migração: se existir colunas no localStorage, tenta importar para o backend
-        try {
-          const storageKey = `kanban_columns_${projectId}`;
-          const saved = localStorage.getItem(storageKey);
-          if (saved) {
-            const parsed = JSON.parse(saved) as unknown;
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              await apiFetch(`/api/projects/${projectId}/kanban-columns/import`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ columns: parsed }),
-                signal: ac.signal,
-              });
-              // Recarrega do backend após importar
-              const r2 = await apiFetch(`/api/projects/${projectId}/kanban-columns`, { signal: ac.signal });
-              if (r2.ok) {
-                const cols2 = (await r2.json().catch(() => [])) as Column[];
-                const normalized2 = Array.isArray(cols2) ? cols2 : [];
-                if (!cancelled) {
-                  setCustomColumns(normalized2);
-                  const w = window as any;
-                  w.__WPS_KANBAN_COLUMNS_CACHE__ = w.__WPS_KANBAN_COLUMNS_CACHE__ || {};
-                  w.__WPS_KANBAN_COLUMNS_CACHE__[projectId] = normalized2;
-                }
-              }
-            }
-          }
-        } catch {
-          /* ignore */
         }
       } catch {
         if (!cancelled) setCustomColumns([]);
@@ -320,17 +322,49 @@ export function KanbanBoard({
 
   useEffect(() => {
     if (!kanbanAggregateMode || aggregateProjectIds.length === 0) return;
-    const reloadMerge = () => {
-      setCustomColumns(loadMergedKanbanCustomColumns(aggregateProjectIds));
-      setColumnOrder(loadMergedKanbanColumnOrder(aggregateProjectIds));
+    let cancelled = false;
+    const ac = new AbortController();
+    const reloadMerge = async () => {
+      try {
+        const results = await Promise.all(
+          aggregateProjectIds.map(async (pid) => {
+            try {
+              const r = await apiFetch(`/api/projects/${encodeURIComponent(pid)}/kanban-columns`, { signal: ac.signal });
+              if (!r.ok) return [] as Column[];
+              const data = (await r.json().catch(() => [])) as unknown;
+              const cols = Array.isArray(data) ? (data as Column[]) : [];
+              setKanbanCustomColumnsCache(pid, cols);
+              return cols;
+            } catch {
+              return [] as Column[];
+            }
+          }),
+        );
+        const byId = new Map<string, Column>();
+        for (const cols of results) {
+          for (const c of cols) {
+            if (c && typeof c.id === "string" && !byId.has(c.id)) byId.set(c.id, c);
+          }
+        }
+        if (!cancelled) {
+          setCustomColumns(Array.from(byId.values()));
+          setColumnOrder(loadMergedKanbanColumnOrder(aggregateProjectIds));
+        }
+      } catch {
+        /* ignore */
+      }
     };
     const onColumnsChanged = (e: Event) => {
       const ce = e as CustomEvent<{ projectId?: string }>;
       const pid = ce?.detail?.projectId;
-      if (pid && aggregateProjectIds.includes(pid)) reloadMerge();
+      if (pid && aggregateProjectIds.includes(pid)) void reloadMerge();
     };
     window.addEventListener("wps_kanban_columns_changed", onColumnsChanged as EventListener);
-    return () => window.removeEventListener("wps_kanban_columns_changed", onColumnsChanged as EventListener);
+    return () => {
+      cancelled = true;
+      ac.abort();
+      window.removeEventListener("wps_kanban_columns_changed", onColumnsChanged as EventListener);
+    };
   }, [kanbanAggregateMode, aggregateProjectIds]);
 
   useEffect(() => {
@@ -450,25 +484,37 @@ export function KanbanBoard({
     if (!projectId) return;
     if (!customColumnsLoaded) return;
     if (inferredCustomColumns.length === 0) return;
-    // Lê também direto do localStorage para não sobrescrever cores/labels persistidos.
-    let storedCols: Column[] = [];
-    try {
-      const raw = localStorage.getItem(`kanban_columns_${projectId}`);
-      if (raw) {
-        const parsed = JSON.parse(raw) as unknown;
-        if (Array.isArray(parsed)) storedCols = parsed as Column[];
+    const known = new Set(customColumns.map((c) => c?.id).filter(Boolean) as string[]);
+    const toImport = inferredCustomColumns.filter((c) => c && c.id && !known.has(c.id));
+    if (toImport.length === 0) return;
+    let cancelled = false;
+    const ac = new AbortController();
+    void (async () => {
+      try {
+        await apiFetch(`/api/projects/${projectId}/kanban-columns/import`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ columns: toImport }),
+          signal: ac.signal,
+        });
+        const r = await apiFetch(`/api/projects/${projectId}/kanban-columns`, { signal: ac.signal });
+        if (!r.ok) return;
+        const cols = (await r.json().catch(() => [])) as Column[];
+        const normalized = Array.isArray(cols) ? cols : [];
+        if (!cancelled) {
+          setCustomColumns(normalized);
+          setKanbanCustomColumnsCache(projectId, normalized);
+          window.dispatchEvent(new CustomEvent("wps_kanban_columns_changed", { detail: { projectId } }));
+        }
+      } catch {
+        /* ignore */
       }
-    } catch {
-      storedCols = [];
-    }
-    const known = new Set([...customColumns, ...storedCols].map((c) => c?.id).filter(Boolean) as string[]);
-    const toPersist = inferredCustomColumns.filter((c) => c && c.id && !known.has(c.id));
-    if (toPersist.length === 0) return;
-    // Mantém label inferido; cor default apenas para as realmente ausentes.
-    // Não sobrescreve colunas existentes (e suas cores).
-    saveCustomColumns([...(storedCols.length > 0 ? storedCols : customColumns), ...toPersist]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inferredCustomColumns, kanbanAggregateMode, projectId, customColumnsLoaded]);
+    })();
+    return () => {
+      cancelled = true;
+      ac.abort();
+    };
+  }, [inferredCustomColumns, kanbanAggregateMode, projectId, customColumnsLoaded, customColumns]);
 
   // Combina colunas padrão com customizadas (incluindo inferidas) e aplica a ordem salva
   const allColumns: Column[] = useMemo(() => {
@@ -506,23 +552,9 @@ export function KanbanBoard({
   const saveCustomColumns = (columns: Column[]) => {
     if (kanbanAggregateMode) return;
     // Mantém cache global para `getTicketStatusDisplay` e outras telas
-    const w = window as any;
-    w.__WPS_KANBAN_COLUMNS_CACHE__ = w.__WPS_KANBAN_COLUMNS_CACHE__ || {};
-    w.__WPS_KANBAN_COLUMNS_CACHE__[projectId] = columns;
+    setKanbanCustomColumnsCache(projectId, columns);
     setCustomColumns(columns);
     window.dispatchEvent(new CustomEvent("wps_kanban_columns_changed", { detail: { projectId } }));
-  };
-
-  const readStoredCustomColumns = (): Column[] => {
-    if (kanbanAggregateMode) return [];
-    try {
-      const raw = localStorage.getItem(`kanban_columns_${projectId}`);
-      if (!raw) return [];
-      const parsed = JSON.parse(raw) as unknown;
-      return Array.isArray(parsed) ? (parsed as Column[]) : [];
-    } catch {
-      return [];
-    }
   };
 
   // Adiciona uma nova coluna customizada

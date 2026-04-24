@@ -1,6 +1,6 @@
 import { loadKanbanCustomColumns, type KanbanColumn } from "./ticketStatusDisplay";
 
-/** Une colunas customizadas salvas no `localStorage` de vários projetos (primeiro rótulo/cor vence por id). */
+/** Une colunas customizadas carregadas do backend (cache global) de vários projetos (primeiro rótulo/cor vence por id). */
 export function loadMergedKanbanCustomColumns(projectIds: string[]): KanbanColumn[] {
   const byId = new Map<string, KanbanColumn>();
   for (const pid of projectIds) {
@@ -13,9 +13,8 @@ export function loadMergedKanbanCustomColumns(projectIds: string[]): KanbanColum
 }
 
 /**
- * Une colunas customizadas do Kanban varrendo o `localStorage` (keys `kanban_columns_<projectId>`).
- * Útil em telas "globais" (ex.: Lista de Tarefas) onde não queremos depender das tarefas carregadas
- * para descobrir todos os status/colunas existentes no Kanban.
+ * Une colunas customizadas conhecidas no runtime (cache global preenchido ao abrir Kanban/editar tarefas).
+ * Útil em telas "globais" (ex.: Lista de Tarefas) para mapear ids CUSTOM_ -> label/cor quando disponível.
  */
 export function loadAllMergedKanbanCustomColumns(): KanbanColumn[] {
   if (typeof window === "undefined") return [];
@@ -30,16 +29,6 @@ export function loadAllMergedKanbanCustomColumns(): KanbanColumn[] {
         for (const col of cols) {
           if (col && col.id && !byId.has(col.id)) byId.set(col.id, col);
         }
-      }
-    }
-
-    for (let i = 0; i < window.localStorage.length; i += 1) {
-      const key = window.localStorage.key(i);
-      if (!key || !key.startsWith("kanban_columns_")) continue;
-      const projectId = key.slice("kanban_columns_".length);
-      if (!projectId) continue;
-      for (const col of loadKanbanCustomColumns(projectId)) {
-        if (!byId.has(col.id)) byId.set(col.id, col);
       }
     }
   } catch {
