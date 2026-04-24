@@ -566,8 +566,9 @@ export default function ListaTarefasPage() {
                     const role = String(user?.role ?? "").toUpperCase();
                     const canEditQueue = role === "GESTOR_PROJETOS" || role === "SUPER_ADMIN";
                     if (!canEditQueue) return null;
+                    if (dirtyCount === 0) return null;
                     return (
-                      <>
+                      <div className="inline-flex items-center gap-2">
                         <button
                           type="button"
                           onClick={() => {
@@ -582,7 +583,7 @@ export default function ListaTarefasPage() {
                             });
                             setQueueDirtyById({});
                           }}
-                          disabled={dirtyCount === 0 || savingQueue}
+                          disabled={savingQueue}
                           className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold border transition hover:opacity-90 disabled:opacity-50"
                           style={{
                             borderColor: "var(--border)",
@@ -595,9 +596,8 @@ export default function ListaTarefasPage() {
                         </button>
                         <button
                           type="button"
-                          disabled={dirtyCount === 0 || savingQueue}
+                          disabled={savingQueue}
                           onClick={async () => {
-                            if (dirtyCount === 0) return;
                             setSavingQueue(true);
                             try {
                               const changes = Object.entries(queueDirtyById)
@@ -639,11 +639,11 @@ export default function ListaTarefasPage() {
                             }
                           }}
                           className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold bg-[color:var(--primary)] text-[color:var(--primary-foreground)] transition hover:opacity-95 disabled:opacity-50"
-                          title={dirtyCount > 0 ? `Salvar ${dirtyCount} alteração(ões)` : "Nenhuma alteração"}
+                          title={`Salvar ${dirtyCount} alteração(ões)`}
                         >
-                          {savingQueue ? "Salvando..." : dirtyCount > 0 ? `Salvar (${dirtyCount})` : "Salvar"}
+                          {savingQueue ? "Salvando..." : `Salvar (${dirtyCount})`}
                         </button>
-                      </>
+                      </div>
                     );
                   })()}
                 </div>
