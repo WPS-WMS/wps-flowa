@@ -124,6 +124,7 @@ export function ProjetosArquivadosContent({ basePath }: ProjetosArquivadosConten
                   key={p.id}
                   project={p}
                   listRevision={listRevision}
+                  canViewDetails={can("projeto")}
                   canArchiveProject={canArchiveProjects}
                   onDelete={async (proj) => {
                     const res = await apiFetch(`/api/projects/${proj.id}`, { method: "DELETE" });

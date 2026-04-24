@@ -230,6 +230,7 @@ export default function AdminProjetosPage() {
                     key={p.id}
                     project={p}
                     listRevision={listRevision}
+                    canViewDetails={can("projeto")}
                     canEditProject={can("projeto.editar")}
                     canDeleteProject={can("projeto.excluir")}
                     canArchiveProject={canArchiveProjects}
