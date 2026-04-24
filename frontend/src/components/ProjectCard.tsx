@@ -155,6 +155,8 @@ type ProjectCardProps = {
   project: ProjectForCard;
   /** Se informado, ao clicar no card navega (não expande). Usado na Opção 2. */
   onNavigate?: (project: ProjectForCard) => void;
+  /** Controla exibição do menu e do item "Ver detalhes". */
+  canViewDetails?: boolean;
   /** Se informado, exibe botão de excluir no card (usado na Opção 2 e Opção 1). */
   onDelete?: (project: ProjectForCard) => void;
   /** Função para excluir tópico (usado na Opção 1). */
@@ -172,6 +174,7 @@ type ProjectCardProps = {
 export function ProjectCard({
   project,
   onNavigate,
+  canViewDetails = true,
   onDelete,
   onDeleteSubproject,
   onSubprojectCreated,
@@ -302,6 +305,8 @@ export function ProjectCard({
   const canEdit = !!canEditProject;
   const canDelete = !!canDeleteProject && !!onDelete;
   const canArchive = !!canArchiveProject;
+  const canView = !!canViewDetails;
+  const showMenuButton = canView || canEdit || canDelete || canArchive;
 
   // Determina se está na Opção 1 (sem onNavigate)
   const isOpcao1 = !onNavigate;
@@ -563,7 +568,7 @@ export function ProjectCard({
             {cardContent}
           </button>
         )}
-        {(canEdit || canDelete) && (
+        {showMenuButton && (
           <div className="relative shrink-0">
             <button
               ref={menuButtonRef}
@@ -587,7 +592,7 @@ export function ProjectCard({
       </div>
       
       {/* Menu de ações posicionado fixo fora do card */}
-      {(canEdit || canDelete || canArchive) && showActionsMenu && menuPosition && (
+      {showMenuButton && showActionsMenu && menuPosition && (
         <div
           className="fixed z-[100] w-44 rounded-xl border shadow-lg py-1 text-sm backdrop-blur-xl bg-[color:var(--surface)]/92"
           style={{
@@ -601,28 +606,30 @@ export function ProjectCard({
           }}
           onClick={(e) => e.stopPropagation()}
         >
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowActionsMenu(false);
-                    setMenuPosition(null);
-                    handleViewDetails();
-                  }}
-                  className="flex w-full items-center gap-2 px-3 py-2 rounded-lg transition"
-                  style={{
-                    color: "var(--foreground)",
-                    background: "transparent",
-                  }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.background = "rgba(92, 0, 225, 0.12)";
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.background = "transparent";
-                  }}
-                >
-                  <Eye className="h-4 w-4" style={{ color: "var(--primary)" }} />
-                  Ver detalhes
-                </button>
+                {canView && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowActionsMenu(false);
+                      setMenuPosition(null);
+                      handleViewDetails();
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-2 rounded-lg transition"
+                    style={{
+                      color: "var(--foreground)",
+                      background: "transparent",
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background = "rgba(92, 0, 225, 0.12)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+                    }}
+                  >
+                    <Eye className="h-4 w-4" style={{ color: "var(--primary)" }} />
+                    Ver detalhes
+                  </button>
+                )}
                 {canEdit && (
                   <button
                     type="button"
