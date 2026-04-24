@@ -1401,7 +1401,11 @@ ticketsRouter.get("/:id", async (req, res) => {
       return;
     }
   }
-  res.json(ticket);
+  const ui = await attachCustomKanbanStatusUi({
+    tenantId: user.tenantId,
+    tickets: [{ status: String(ticket.status ?? ""), projectId: (ticket as any).projectId ?? null }],
+  });
+  res.json({ ...ticket, ...(ui[0] ?? {}) });
 });
 
 ticketsRouter.patch("/:id", async (req, res) => {
@@ -1875,7 +1879,11 @@ ticketsRouter.patch("/:id", async (req, res) => {
     }).catch(() => {});
   }
 
-  res.json(updated);
+  const ui = await attachCustomKanbanStatusUi({
+    tenantId: user.tenantId,
+    tickets: [{ status: String(updated.status ?? ""), projectId: (updated as any).projectId ?? null }],
+  });
+  res.json({ ...updated, ...(ui[0] ?? {}) });
 });
 
 ticketsRouter.delete("/:id", async (req, res) => {
