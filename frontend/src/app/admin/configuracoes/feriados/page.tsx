@@ -8,6 +8,14 @@ import { Trash2, Plus } from "lucide-react";
 
 type HolidayRow = { id: string; date: string; name: string; isActive: boolean };
 
+function fmtDatePtBR(ymd: string): string {
+  // ymd vem como YYYY-MM-DD. Formatamos em pt-BR sem risco de offset de fuso usando UTC.
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return ymd;
+  const [y, m, d] = ymd.split("-").map((x) => parseInt(x, 10));
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(dt);
+}
+
 export default function AdminFeriadosPage() {
   const { user, loading, can, permissionsReady } = useAuth();
   const [year, setYear] = useState<number>(new Date().getFullYear());
@@ -192,7 +200,7 @@ export default function AdminFeriadosPage() {
                   ) : (
                     rows.map((r) => (
                       <tr key={r.id} className="border-t border-slate-200/60 hover:bg-slate-50">
-                        <td className="px-4 py-3 text-sm text-slate-900 font-mono tabular-nums">{r.date}</td>
+                        <td className="px-4 py-3 text-sm text-slate-900 font-mono tabular-nums">{fmtDatePtBR(r.date)}</td>
                         <td className="px-4 py-3 text-sm text-slate-900">{r.name}</td>
                         <td className="px-4 py-3 text-right">
                           <button
