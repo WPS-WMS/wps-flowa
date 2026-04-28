@@ -64,9 +64,9 @@ export function RichTextEditor({
       return;
     }
 
-    // Limita tamanho da imagem (5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      alert("A imagem deve ter no máximo 5MB.");
+    // Limita tamanho da imagem (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      alert("A imagem deve ter no máximo 10MB.");
       return;
     }
 
@@ -118,9 +118,9 @@ export function RichTextEditor({
         if (!file) return;
         e.preventDefault();
 
-        // Limita tamanho da imagem (5MB)
-        if (file.size > 5 * 1024 * 1024) {
-          alert("A imagem deve ter no máximo 5MB.");
+        // Limita tamanho da imagem (10MB)
+        if (file.size > 10 * 1024 * 1024) {
+          alert("A imagem deve ter no máximo 10MB.");
           return;
         }
 

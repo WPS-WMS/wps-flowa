@@ -114,18 +114,18 @@ uploadsRouter.post("/user-avatar", async (req, res) => {
       return;
     }
 
-    const allowedExtensions = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif"]);
+    const allowedExtensions = new Set([".png", ".jpg", ".jpeg", ".heic", ".webp", ".gif"]);
     const ext = String(fileName).toLowerCase().substring(String(fileName).lastIndexOf("."));
     if (!allowedExtensions.has(ext)) {
-      res.status(400).json({ error: "Apenas imagens são permitidas para foto de perfil." });
+      res.status(400).json({ error: "Apenas imagens PNG, JPG/JPEG, HEIC, WEBP ou GIF são permitidas para foto de perfil." });
       return;
     }
 
     const base64Data = String(fileData).replace(/^data:.*,/, "");
     const buffer = Buffer.from(base64Data, "base64");
-    const maxSize = 5 * 1024 * 1024; // 5MB
+    const maxSize = 10 * 1024 * 1024; // 10MB
     if (buffer.length > maxSize) {
-      res.status(400).json({ error: "Imagem muito grande. Tamanho máximo: 5MB" });
+      res.status(400).json({ error: "Imagem muito grande. Tamanho máximo: 10MB" });
       return;
     }
 
