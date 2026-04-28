@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { ArrowLeft, Search, Filter, ChevronDown, X } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { EditTaskModalFull } from "@/components/EditTaskModalFull";
 import { getTicketStatusDisplay } from "@/lib/ticketStatusDisplay";
 import { loadAllMergedKanbanCustomColumns } from "@/lib/kanbanMergedStorage";
 
@@ -28,6 +29,8 @@ type TicketRow = {
   createdBy?: { id: string; name: string } | null;
   responsibles?: Array<{ user: { id: string; name: string } }>;
 };
+
+type FullTicket = any;
 
 const FIXED_KANBAN_COLUMNS = [
   { id: "BACKLOG", label: "Em aberto" },
@@ -86,12 +89,31 @@ export default function ListaTarefasPage() {
 
   const [users, setUsers] = useState<UserOption[]>([]);
   const [rows, setRows] = useState<TicketRow[]>([]);
+  const [selectedTicket, setSelectedTicket] = useState<FullTicket | null>(null);
+  const [selectedTicketProjectName, setSelectedTicketProjectName] = useState<string>("");
   const [queueInputById, setQueueInputById] = useState<Record<string, string>>({});
   const [queueDirtyById, setQueueDirtyById] = useState<Record<string, boolean>>({});
   const [savingQueue, setSavingQueue] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const dirtyCount = useMemo(() => Object.values(queueDirtyById).filter(Boolean).length, [queueDirtyById]);
+
+  const canEditFromModal = can("tarefa.editar") || can("projeto.editar");
+
+  async function openTaskModal(row: TicketRow) {
+    try {
+      const res = await apiFetch(`/api/tickets/${row.id}`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error ?? "Erro ao carregar tarefa");
+      }
+      const full = await res.json();
+      setSelectedTicket(full);
+      setSelectedTicketProjectName(row.project?.name ?? "");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Erro ao carregar tarefa");
+    }
+  }
 
   useEffect(() => {
     if (loading) return;
@@ -786,13 +808,7 @@ export default function ListaTarefasPage() {
                           key={t.id}
                           className="border-t hover:opacity-95 cursor-pointer"
                           style={{ borderColor: "var(--border)" }}
-                          onClick={() =>
-                            router.push(
-                              `${basePath}/projetos/_/tarefas/_?projectId=${encodeURIComponent(
-                                t.projectId,
-                              )}&ticketId=${encodeURIComponent(t.id)}&from=lista-tarefas`,
-                            )
-                          }
+                          onClick={() => void openTaskModal(t)}
                           title="Abrir tarefa"
                         >
                           <td className="px-4 py-3 font-mono text-[color:var(--foreground)] whitespace-nowrap">
@@ -859,6 +875,21 @@ export default function ListaTarefasPage() {
           </div>
         </div>
       </main>
+
+      {selectedTicket && (
+        <EditTaskModalFull
+          ticket={selectedTicket}
+          projectId={selectedTicket.projectId ?? undefined}
+          projectName={selectedTicketProjectName}
+          readOnly={!canEditFromModal}
+          allowTimeEntryInReadOnly
+          onClose={() => setSelectedTicket(null)}
+          onSaved={() => {
+            setSelectedTicket(null);
+            void load();
+          }}
+        />
+      )}
     </div>
   );
 }

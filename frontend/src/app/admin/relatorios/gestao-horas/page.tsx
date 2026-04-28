@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 import { apiFetch } from "@/lib/api";
-import { Download, FileText, Calendar as CalendarIcon } from "lucide-react";
+import { Download, FileText, Calendar as CalendarIcon, ChevronDown } from "lucide-react";
 import {
   ReportsCard,
   ReportsEmpty,
@@ -73,6 +74,12 @@ export default function RelatorioGestaoHorasPage() {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [hasFiltered, setHasFiltered] = useState(false);
+  const [userOpen, setUserOpen] = useState(false);
+  const [projectOpen, setProjectOpen] = useState(false);
+  const userAnchorRef = useRef<HTMLButtonElement | null>(null);
+  const projectAnchorRef = useRef<HTMLButtonElement | null>(null);
+  const [userMenuRect, setUserMenuRect] = useState<{ left: number; top: number; width: number } | null>(null);
+  const [projectMenuRect, setProjectMenuRect] = useState<{ left: number; top: number; width: number } | null>(null);
 
   async function fetchAllEntriesForExport(): Promise<EntryRow[]> {
     const all: EntryRow[] = [];
@@ -108,6 +115,86 @@ export default function RelatorioGestaoHorasPage() {
       .then((data: ProjectOption[]) => setProjects(Array.isArray(data) ? data : []))
       .catch(() => setProjects([]));
   }, []);
+
+  const selectedUserLabel = useMemo(() => {
+    if (!userId) return "Todos";
+    return users.find((u) => u.id === userId)?.name ?? "Todos";
+  }, [userId, users]);
+
+  const selectedProjectLabel = useMemo(() => {
+    if (!projectId) return "Todos";
+    const p = projects.find((x) => x.id === projectId);
+    if (!p) return "Todos";
+    return `${p.client?.name ? `${p.client.name} – ` : ""}${p.name}`.trim() || "Todos";
+  }, [projectId, projects]);
+
+  useEffect(() => {
+    if (!userOpen) return;
+    const update = () => {
+      const el = userAnchorRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      setUserMenuRect({ left: r.left, top: r.bottom + 8, width: r.width });
+    };
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [userOpen]);
+
+  useEffect(() => {
+    if (!projectOpen) return;
+    const update = () => {
+      const el = projectAnchorRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      setProjectMenuRect({ left: r.left, top: r.bottom + 8, width: r.width });
+    };
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [projectOpen]);
+
+  useEffect(() => {
+    if (!userOpen && !projectOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setUserOpen(false);
+        setProjectOpen(false);
+      }
+    };
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as Node | null;
+      const userAnchor = userAnchorRef.current;
+      const projectAnchor = projectAnchorRef.current;
+      const userMenu = document.getElementById("gestao-horas-user-menu");
+      const projectMenu = document.getElementById("gestao-horas-project-menu");
+      if (userOpen) {
+        const inside =
+          (userAnchor && target && userAnchor.contains(target)) || (userMenu && target && userMenu.contains(target));
+        if (!inside) setUserOpen(false);
+      }
+      if (projectOpen) {
+        const inside =
+          (projectAnchor && target && projectAnchor.contains(target)) ||
+          (projectMenu && target && projectMenu.contains(target));
+        if (!inside) setProjectOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("pointerdown", onPointerDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("pointerdown", onPointerDown);
+    };
+  }, [userOpen, projectOpen]);
 
   function buildTimeEntriesParams(extra?: Record<string, string>) {
     const params = new URLSearchParams({
@@ -461,22 +548,120 @@ export default function RelatorioGestaoHorasPage() {
       title="Gestão de horas"
       subtitle="Lista de apontamentos com filtros por usuário, período e projeto. Exportar CSV ou PDF."
     >
+      {typeof document !== "undefined" && userOpen && userMenuRect
+        ? createPortal(
+            <div
+              id="gestao-horas-user-menu"
+              style={{
+                position: "fixed",
+                left: userMenuRect.left,
+                top: userMenuRect.top,
+                width: userMenuRect.width,
+                zIndex: 10000,
+              }}
+            >
+              <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] shadow-lg p-2 max-h-64 overflow-auto">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUserId("");
+                    setUserOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-lg text-sm font-semibold hover:bg-[color:var(--background)]/60 transition"
+                >
+                  Todos
+                </button>
+                <div className="my-1 border-t" style={{ borderColor: "var(--border)" }} />
+                {users.map((u) => (
+                  <button
+                    key={u.id}
+                    type="button"
+                    onClick={() => {
+                      setUserId(u.id);
+                      setUserOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-[color:var(--background)]/60 transition ${
+                      userId === u.id ? "font-semibold" : ""
+                    }`}
+                  >
+                    {u.name}
+                  </button>
+                ))}
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
+
+      {typeof document !== "undefined" && projectOpen && projectMenuRect
+        ? createPortal(
+            <div
+              id="gestao-horas-project-menu"
+              style={{
+                position: "fixed",
+                left: projectMenuRect.left,
+                top: projectMenuRect.top,
+                width: projectMenuRect.width,
+                zIndex: 10000,
+              }}
+            >
+              <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] shadow-lg p-2 max-h-64 overflow-auto">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProjectId("");
+                    setProjectOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-lg text-sm font-semibold hover:bg-[color:var(--background)]/60 transition"
+                >
+                  Todos
+                </button>
+                <div className="my-1 border-t" style={{ borderColor: "var(--border)" }} />
+                {projects.map((p) => {
+                  const label = `${p.client?.name ? `${p.client.name} – ` : ""}${p.name}`.trim();
+                  const active = projectId === p.id;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => {
+                        setProjectId(p.id);
+                        setProjectOpen(false);
+                      }}
+                      className={`w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-[color:var(--background)]/60 transition ${
+                        active ? "font-semibold" : ""
+                      }`}
+                      title={label}
+                    >
+                      <span className="truncate block">{label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
+
       <div className="space-y-4">
           {/* Filtros */}
           <ReportsCard>
             <div className="p-4 flex flex-wrap items-end gap-4">
             <div>
               <label className="block text-xs font-semibold text-[color:var(--muted-foreground)] mb-1">Usuário</label>
-              <select
-                value={userId}
-                onChange={(e) => setUserId(e.target.value)}
-                className={reportsSelectClass + " min-w-[180px]"}
+              <button
+                type="button"
+                ref={userAnchorRef}
+                onClick={() => {
+                  setProjectOpen(false);
+                  setUserOpen((v) => !v);
+                }}
+                className={reportsSelectClass + " min-w-[220px] text-left inline-flex items-center justify-between gap-2"}
+                aria-expanded={userOpen}
               >
-                <option value="">Todos</option>
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>{u.name}</option>
-                ))}
-              </select>
+                <span className="truncate">{selectedUserLabel}</span>
+                <ChevronDown className={`h-4 w-4 transition-transform ${userOpen ? "rotate-180" : ""}`} />
+              </button>
             </div>
             <div className="flex flex-col gap-1">
               <label className="block text-xs font-semibold text-[color:var(--muted-foreground)]">Período</label>
@@ -508,18 +693,19 @@ export default function RelatorioGestaoHorasPage() {
             </div>
             <div>
               <label className="block text-xs font-semibold text-[color:var(--muted-foreground)] mb-1">Projeto</label>
-              <select
-                value={projectId}
-                onChange={(e) => setProjectId(e.target.value)}
-                className={reportsSelectClass + " min-w-[200px]"}
+              <button
+                type="button"
+                ref={projectAnchorRef}
+                onClick={() => {
+                  setUserOpen(false);
+                  setProjectOpen((v) => !v);
+                }}
+                className={reportsSelectClass + " min-w-[260px] text-left inline-flex items-center justify-between gap-2"}
+                aria-expanded={projectOpen}
               >
-                <option value="">Todos os projetos</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.client?.name ? `${p.client.name} – ` : ""}{p.name}
-                  </option>
-                ))}
-              </select>
+                <span className="truncate">{selectedProjectLabel}</span>
+                <ChevronDown className={`h-4 w-4 transition-transform ${projectOpen ? "rotate-180" : ""}`} />
+              </button>
             </div>
             <button
               type="button"
