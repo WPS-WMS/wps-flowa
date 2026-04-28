@@ -112,12 +112,14 @@ export default function PerfilPage() {
 
   async function setAvatarFilePreview(file: File | null) {
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setError("Selecione uma imagem válida.");
+    const allowedByExt = /\.(png|jpe?g|heic)$/i.test(file.name);
+    const allowedByMime = /^image\/(png|jpeg|heic)$/i.test(file.type);
+    if (!(allowedByExt || allowedByMime)) {
+      setError("Selecione uma imagem PNG, JPG ou HEIC.");
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      setError("Imagem muito grande. Tamanho máximo: 5MB.");
+    if (file.size > 10 * 1024 * 1024) {
+      setError("Imagem muito grande. Tamanho máximo: 10MB.");
       return;
     }
     try {
@@ -436,7 +438,7 @@ export default function PerfilPage() {
                 <div>
                   <h2 className="text-base font-semibold text-[color:var(--foreground)]">Alterar foto do perfil</h2>
                   <p className="text-xs text-[color:var(--muted-foreground)]">
-                    Escolha uma imagem e clique em Salvar. Até 5MB.
+                    Escolha uma imagem (PNG, JPG ou HEIC) e clique em Salvar. Até 10MB.
                   </p>
                 </div>
                 <button
@@ -541,7 +543,7 @@ export default function PerfilPage() {
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="image/png,image/jpeg,image/heic,.heic"
           className="hidden"
           onChange={handleAvatarChange}
         />

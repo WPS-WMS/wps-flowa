@@ -388,7 +388,7 @@ export function ImportProjectCsvModal({ projectId, projectName, onClose, onImpor
                   {file ? file.name : "Arraste o CSV aqui ou clique para selecionar"}
                 </p>
                 <p className="mt-1 text-xs text-[color:var(--muted-foreground)]">
-                  {file ? `${(file.size / 1024).toFixed(1)} KB` : "Máximo recomendado: 5 MB"}
+                  {file ? `${(file.size / 1024).toFixed(1)} KB` : "Máximo recomendado: 10 MB"}
                 </p>
               </button>
               {file && (
