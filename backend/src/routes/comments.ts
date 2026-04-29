@@ -85,20 +85,16 @@ commentsRouter.get("/", async (req, res) => {
       return;
     }
 
-    // Verifica se o usuário tem acesso ao ticket
+    // Verifica se o usuário tem acesso ao ticket (payload mínimo — evita joins caros).
     const ticket = await prisma.ticket.findFirst({
       where: {
         id: ticketId,
-        project: {
-          client: { tenantId: user.tenantId },
-        },
+        project: { client: { tenantId: user.tenantId } },
       },
-      include: {
-        project: {
-          include: {
-            client: true,
-          },
-        },
+      select: {
+        id: true,
+        createdById: true,
+        project: { select: { clientId: true } },
       },
     });
 
@@ -114,6 +110,21 @@ commentsRouter.get("/", async (req, res) => {
       }
       res.status(404).json({ error: "Ticket não encontrado" });
       return;
+    }
+
+    // Cliente: só pode ver comentários do(s) seu(s) cliente(s) ou de tickets que ele criou.
+    if (user.role === "CLIENTE") {
+      const clientId = ticket.project?.clientId ? String(ticket.project.clientId) : "";
+      const hasLink = clientId
+        ? await prisma.clientUser
+            .findFirst({ where: { userId: user.id, clientId }, select: { id: true } })
+            .then(Boolean)
+        : false;
+      const hasAccess = hasLink || ticket.createdById === user.id;
+      if (!hasAccess) {
+        res.status(403).json({ error: "Você não tem permissão para acessar este ticket" });
+        return;
+      }
     }
 
     const comments = await prisma.ticketComment.findMany({

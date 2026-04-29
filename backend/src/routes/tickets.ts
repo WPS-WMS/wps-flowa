@@ -316,6 +316,9 @@ ticketsRouter.get("/", async (req, res) => {
     String(req.query.light || "") === "true" || String(req.query.light || "") === "1";
   const noAvatar =
     String((req.query as any).noAvatar ?? "") === "true" || String((req.query as any).noAvatar ?? "") === "1";
+  const purpose = String((req.query as any).purpose ?? "").trim().toLowerCase();
+  const skipUi =
+    String((req.query as any).skipUi ?? "") === "true" || String((req.query as any).skipUi ?? "") === "1";
   const tenantFilter = { project: { client: { tenantId: user.tenantId } } };
   const consultantWithProject = isConsultantLikeRole(user.role) && projectId;
 
@@ -377,8 +380,22 @@ ticketsRouter.get("/", async (req, res) => {
   const orderBy = { createdAt: "desc" as const };
   const pagination = take !== undefined ? { take, ...(skip !== undefined && skip > 0 ? { skip } : {}) } : {};
 
+  // Payload mínimo para dropdown de tópicos (modal de tarefa).
+  // Evita retornar dezenas de campos e evita lookup de UI de status.
+  const topicSelect =
+    light && projectId && purpose === "topic-select"
+      ? ({
+          id: true,
+          code: true,
+          title: true,
+          type: true,
+        } as const)
+      : null;
+
   const lightSelect =
-    light && projectId
+    topicSelect
+      ? topicSelect
+      : light && projectId
       ? noAvatar
         ? TICKET_LIST_LIGHT_IN_PROJECT_NO_AVATAR
         : TICKET_LIST_LIGHT_IN_PROJECT
@@ -409,6 +426,10 @@ ticketsRouter.get("/", async (req, res) => {
       select: { id: true },
     });
     list = projectMember ? tickets : filterTicketsForConsultant(tickets, user.id);
+  }
+  if (skipUi) {
+    res.json(list);
+    return;
   }
   const ui = await attachCustomKanbanStatusUi({
     tenantId: user.tenantId,
