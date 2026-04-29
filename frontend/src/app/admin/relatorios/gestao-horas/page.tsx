@@ -87,6 +87,58 @@ export default function RelatorioGestaoHorasPage() {
   const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
   const [selectedTicketProjectName, setSelectedTicketProjectName] = useState<string>("");
 
+  const ticketCacheRef = useRef<
+    Map<
+      string,
+      {
+        ts: number;
+        value?: any;
+        promise?: Promise<any>;
+      }
+    >
+  >(new Map());
+  const TICKET_CACHE_TTL_MS = 2 * 60 * 1000; // 2 min
+
+  function getCachedTicket(ticketId: string): any | null {
+    const hit = ticketCacheRef.current.get(ticketId);
+    if (!hit) return null;
+    if (Date.now() - hit.ts > TICKET_CACHE_TTL_MS) {
+      ticketCacheRef.current.delete(ticketId);
+      return null;
+    }
+    return hit.value ?? null;
+  }
+
+  async function fetchTicketWithCache(ticketId: string): Promise<any | null> {
+    const cached = getCachedTicket(ticketId);
+    if (cached) return cached;
+
+    const existing = ticketCacheRef.current.get(ticketId);
+    if (existing?.promise) return existing.promise;
+
+    const p = apiFetch(`/api/tickets/${ticketId}?light=true&noAvatar=true`)
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => null)
+      .then((full) => {
+        if (full) {
+          ticketCacheRef.current.set(ticketId, { ts: Date.now(), value: full });
+        } else {
+          ticketCacheRef.current.delete(ticketId);
+        }
+        return full;
+      });
+
+    ticketCacheRef.current.set(ticketId, { ts: Date.now(), promise: p });
+    return p;
+  }
+
+  function prefetchTicket(ticketId: string | null | undefined) {
+    const id = String(ticketId ?? "").trim();
+    if (!id) return;
+    // fire-and-forget
+    void fetchTicketWithCache(id);
+  }
+
   async function fetchAllEntriesForExport(): Promise<EntryRow[]> {
     const all: EntryRow[] = [];
     let cursor: string | null = null;
@@ -273,26 +325,29 @@ export default function RelatorioGestaoHorasPage() {
     const t = row.ticket;
     if (!t?.id) return;
     setSelectedTicketProjectName(row.project?.name ?? "");
+    const cached = getCachedTicket(t.id);
+    if (cached) {
+      setSelectedTicket(cached);
+      return;
+    }
+
+    // Abre imediatamente com payload mínimo.
     setSelectedTicket({
       id: t.id,
       projectId: row.project?.id,
       code: t.code,
       title: t.title,
+      // Mantém descrição vazia para a UI não "piscar" com texto errado.
+      description: null,
     } as any);
 
-    // Prefetch em background para a modal abrir sem travar o clique.
-    try {
-      const res = await apiFetch(`/api/tickets/${t.id}`);
-      if (!res.ok) return;
-      const full = await res.json().catch(() => null);
-      if (!full) return;
-      setSelectedTicket((prev: any | null) => {
-        if (!prev || prev?.id !== t.id) return prev;
-        return full;
-      });
-    } catch {
-      // Silencioso: a modal lida com falhas de fetch.
-    }
+    // Hidrata em background (preferencialmente já vindo do prefetch do hover).
+    const full = await fetchTicketWithCache(t.id);
+    if (!full) return;
+    setSelectedTicket((prev: any | null) => {
+      if (!prev || prev?.id !== t.id) return prev;
+      return full;
+    });
   }
 
   async function handleDownloadXlsx() {
@@ -842,6 +897,7 @@ export default function RelatorioGestaoHorasPage() {
                                 <button
                                   type="button"
                                   onClick={() => void openTaskModal(row)}
+                                  onMouseEnter={() => prefetchTicket(row.ticket?.id)}
                                   className="text-[color:var(--primary)] hover:underline"
                                   title="Abrir tarefa"
                                 >
