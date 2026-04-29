@@ -1456,48 +1456,51 @@ ticketsRouter.get("/:id", async (req, res) => {
   const noAvatar =
     String((req.query as any).noAvatar ?? "") === "true" || String((req.query as any).noAvatar ?? "") === "1";
 
-  const ticket = await prisma.ticket.findFirst({
-    where: {
-      id: ticketId,
-      project: { client: { tenantId: user.tenantId } },
-    },
-    ...(light
-      ? {
-          select: {
-            id: true,
-            code: true,
-            title: true,
-            description: true,
-            type: true,
-            criticidade: true,
-            status: true,
-            parentTicketId: true,
-            dataInicio: true,
-            dataFimPrevista: true,
-            estimativaHoras: true,
-            progresso: true,
-            finalizacaoMotivo: true,
-            finalizacaoObservacao: true,
-            createdAt: true,
-            updatedAt: true,
-            assignedToId: true,
-            createdById: true,
-            projectId: true,
-            project: { select: { id: true, clientId: true, tipoProjeto: true } },
-            assignedTo: { select: noAvatar ? USER_SELECT_LIGHT : USER_SELECT_UI },
-            createdBy: { select: noAvatar ? USER_SELECT_LIGHT : USER_SELECT_UI },
-            responsibles: { select: { user: { select: noAvatar ? USER_SELECT_LIGHT : USER_SELECT_UI } } },
-          },
-        }
-      : {
-          include: {
-            project: { include: { client: { include: { users: { select: { userId: true } } } } } },
-            assignedTo: { select: USER_SELECT_UI },
-            createdBy: { select: USER_SELECT_UI },
-            responsibles: { include: { user: { select: USER_SELECT_UI } } },
-          },
-        }),
-  });
+  // Importante: evitamos "spread condicional" (light ? select : include) porque isso vira uma união de tipos
+  // e pode quebrar a inferência do Prisma/TS no build.
+  const where = {
+    id: ticketId,
+    project: { client: { tenantId: user.tenantId } },
+  };
+
+  const ticket = light
+    ? await prisma.ticket.findFirst({
+        where,
+        select: {
+          id: true,
+          code: true,
+          title: true,
+          description: true,
+          type: true,
+          criticidade: true,
+          status: true,
+          parentTicketId: true,
+          dataInicio: true,
+          dataFimPrevista: true,
+          estimativaHoras: true,
+          progresso: true,
+          finalizacaoMotivo: true,
+          finalizacaoObservacao: true,
+          createdAt: true,
+          updatedAt: true,
+          assignedToId: true,
+          createdById: true,
+          projectId: true,
+          project: { select: { id: true, clientId: true, tipoProjeto: true } },
+          assignedTo: { select: noAvatar ? USER_SELECT_LIGHT : USER_SELECT_UI },
+          createdBy: { select: noAvatar ? USER_SELECT_LIGHT : USER_SELECT_UI },
+          responsibles: { select: { user: { select: noAvatar ? USER_SELECT_LIGHT : USER_SELECT_UI } } },
+        },
+      })
+    : await prisma.ticket.findFirst({
+        where,
+        include: {
+          project: { include: { client: { include: { users: { select: { userId: true } } } } } },
+          assignedTo: { select: USER_SELECT_UI },
+          createdBy: { select: USER_SELECT_UI },
+          responsibles: { include: { user: { select: USER_SELECT_UI } } },
+        },
+      });
   if (!ticket) {
     res.status(404).json({ error: "Tópico/tarefa não encontrado" });
     return;
