@@ -71,6 +71,18 @@ const USER_SELECT_LIGHT = {
   name: true,
 } as const;
 
+/**
+ * Seleção segura para listagens:
+ * - evita `avatarUrl` (pode ser grande e/ou conter dado incompatível no banco),
+ * - mantém apenas o necessário para montar cards/tabelas sem derrubar a API.
+ */
+const USER_SELECT_LIST_SAFE = {
+  id: true,
+  name: true,
+  email: true,
+  updatedAt: true,
+} as const;
+
 /** Listagem enxuta: menos colunas e relações (detalhe continua em GET /:id). */
 const TICKET_LIST_LIGHT_SELECT = {
   id: true,
@@ -99,9 +111,9 @@ const TICKET_LIST_LIGHT_SELECT = {
       client: { select: { name: true } },
     },
   },
-  assignedTo: { select: USER_SELECT_UI },
-  createdBy: { select: USER_SELECT_UI },
-  responsibles: { select: { user: { select: USER_SELECT_UI } } },
+  assignedTo: { select: USER_SELECT_LIST_SAFE },
+  createdBy: { select: USER_SELECT_LIST_SAFE },
+  responsibles: { select: { user: { select: USER_SELECT_LIST_SAFE } } },
   // Necessário para indicador "Aguardando aprovação" na home do cliente (light=true).
   budget: { select: { status: true } },
 } as const;
@@ -135,9 +147,9 @@ const TICKET_LIST_LIGHT_IN_PROJECT = {
   progresso: true,
   createdAt: true,
   updatedAt: true,
-  assignedTo: { select: USER_SELECT_UI },
-  createdBy: { select: USER_SELECT_UI },
-  responsibles: { select: { user: { select: USER_SELECT_UI } } },
+  assignedTo: { select: USER_SELECT_LIST_SAFE },
+  createdBy: { select: USER_SELECT_LIST_SAFE },
+  responsibles: { select: { user: { select: USER_SELECT_LIST_SAFE } } },
   budget: { select: { status: true } },
 } as const;
 
@@ -314,8 +326,13 @@ ticketsRouter.get("/", async (req, res) => {
   const { projectId, assignedTo, status, parentTicketId, createdBy, type: typeQuery, memberId } = req.query;
   const light =
     String(req.query.light || "") === "true" || String(req.query.light || "") === "1";
+  // Segurança/estabilidade: em listagens light, por padrão não trazemos avatarUrl
+  // (mesmo se o frontend não mandar o parâmetro explicitamente).
+  const noAvatarRaw = String((req.query as any).noAvatar ?? "").trim();
   const noAvatar =
-    String((req.query as any).noAvatar ?? "") === "true" || String((req.query as any).noAvatar ?? "") === "1";
+    noAvatarRaw === "true" ||
+    noAvatarRaw === "1" ||
+    (light && (noAvatarRaw === "" || noAvatarRaw.toLowerCase() === "default"));
   const purpose = String((req.query as any).purpose ?? "").trim().toLowerCase();
   const skipUi =
     String((req.query as any).skipUi ?? "") === "true" || String((req.query as any).skipUi ?? "") === "1";
@@ -405,19 +422,55 @@ ticketsRouter.get("/", async (req, res) => {
           : TICKET_LIST_LIGHT_SELECT
         : null;
 
-  const tickets = light
-    ? await prisma.ticket.findMany({
-        where,
-        select: lightSelect!,
-        orderBy,
-        ...pagination,
-      })
-    : await prisma.ticket.findMany({
-        where,
-        include: TICKET_LIST_FULL_INCLUDE,
-        orderBy,
-        ...pagination,
-      });
+  let tickets: any[];
+  try {
+    tickets = light
+      ? await prisma.ticket.findMany({
+          where,
+          select: lightSelect!,
+          orderBy,
+          ...pagination,
+        })
+      : await prisma.ticket.findMany({
+          where,
+          include: TICKET_LIST_FULL_INCLUDE,
+          orderBy,
+          ...pagination,
+        });
+  } catch (err) {
+    // Correção fixa: não derrubar o processo por erro de conversão do Prisma em listagem.
+    // Retorna payload mínimo, suficiente para a UI não quebrar e evita loop de crash/502.
+    console.error("[tickets][list] prisma.ticket.findMany failed", {
+      light,
+      noAvatar,
+      purpose,
+      skipUi,
+      projectId: projectId ? String(projectId) : undefined,
+      userRole: user.role,
+      userId: user.id,
+      err,
+    });
+    tickets = await prisma.ticket.findMany({
+      where,
+      select: {
+        id: true,
+        code: true,
+        title: true,
+        type: true,
+        status: true,
+        projectId: true,
+        parentTicketId: true,
+        assignedToId: true,
+        createdById: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+      orderBy,
+      ...pagination,
+    });
+    res.status(200).json(tickets);
+    return;
+  }
 
   let list = tickets;
   if (consultantWithProject) {
@@ -1474,8 +1527,13 @@ ticketsRouter.get("/:id", async (req, res) => {
   const ticketId = req.params.id;
   const light =
     String((req.query as any).light ?? "") === "true" || String((req.query as any).light ?? "") === "1";
+  // Em detail light, por padrão evitamos avatarUrl (robustez/performance),
+  // mesmo que o frontend não mande `noAvatar=true`.
+  const noAvatarRaw = String((req.query as any).noAvatar ?? "").trim();
   const noAvatar =
-    String((req.query as any).noAvatar ?? "") === "true" || String((req.query as any).noAvatar ?? "") === "1";
+    noAvatarRaw === "true" ||
+    noAvatarRaw === "1" ||
+    (light && (noAvatarRaw === "" || noAvatarRaw.toLowerCase() === "default"));
 
   // Importante: evitamos "spread condicional" (light ? select : include) porque isso vira uma união de tipos
   // e pode quebrar a inferência do Prisma/TS no build.
@@ -1484,44 +1542,58 @@ ticketsRouter.get("/:id", async (req, res) => {
     project: { client: { tenantId: user.tenantId } },
   };
 
-  const ticket = light
-    ? await prisma.ticket.findFirst({
-        where,
-        select: {
-          id: true,
-          code: true,
-          title: true,
-          description: true,
-          type: true,
-          criticidade: true,
-          status: true,
-          parentTicketId: true,
-          dataInicio: true,
-          dataFimPrevista: true,
-          estimativaHoras: true,
-          progresso: true,
-          finalizacaoMotivo: true,
-          finalizacaoObservacao: true,
-          createdAt: true,
-          updatedAt: true,
-          assignedToId: true,
-          createdById: true,
-          projectId: true,
-          project: { select: { id: true, clientId: true, tipoProjeto: true } },
-          assignedTo: { select: noAvatar ? USER_SELECT_LIGHT : USER_SELECT_UI },
-          createdBy: { select: noAvatar ? USER_SELECT_LIGHT : USER_SELECT_UI },
-          responsibles: { select: { user: { select: noAvatar ? USER_SELECT_LIGHT : USER_SELECT_UI } } },
-        },
-      })
-    : await prisma.ticket.findFirst({
-        where,
-        include: {
-          project: { include: { client: { include: { users: { select: { userId: true } } } } } },
-          assignedTo: { select: USER_SELECT_UI },
-          createdBy: { select: USER_SELECT_UI },
-          responsibles: { include: { user: { select: USER_SELECT_UI } } },
-        },
-      });
+  let ticket: any;
+  try {
+    ticket = light
+      ? await prisma.ticket.findFirst({
+          where,
+          select: {
+            id: true,
+            code: true,
+            title: true,
+            description: true,
+            type: true,
+            criticidade: true,
+            status: true,
+            parentTicketId: true,
+            dataInicio: true,
+            dataFimPrevista: true,
+            estimativaHoras: true,
+            progresso: true,
+            finalizacaoMotivo: true,
+            finalizacaoObservacao: true,
+            createdAt: true,
+            updatedAt: true,
+            assignedToId: true,
+            createdById: true,
+            projectId: true,
+            project: { select: { id: true, clientId: true, tipoProjeto: true } },
+            assignedTo: { select: noAvatar ? USER_SELECT_LIGHT : USER_SELECT_UI },
+            createdBy: { select: noAvatar ? USER_SELECT_LIGHT : USER_SELECT_UI },
+            responsibles: { select: { user: { select: noAvatar ? USER_SELECT_LIGHT : USER_SELECT_UI } } },
+          },
+        })
+      : await prisma.ticket.findFirst({
+          where,
+          include: {
+            project: { include: { client: { include: { users: { select: { userId: true } } } } } },
+            assignedTo: { select: USER_SELECT_UI },
+            createdBy: { select: USER_SELECT_UI },
+            responsibles: { include: { user: { select: USER_SELECT_UI } } },
+          },
+        });
+  } catch (err) {
+    console.error("[tickets][detail] prisma.ticket.findFirst failed", {
+      ticketId,
+      light,
+      noAvatar,
+      userRole: user.role,
+      userId: user.id,
+      err,
+    });
+    res.status(500).json({ error: "Falha ao carregar a tarefa. Tente novamente em instantes." });
+    return;
+  }
   if (!ticket) {
     res.status(404).json({ error: "Tópico/tarefa não encontrado" });
     return;
