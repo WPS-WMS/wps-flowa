@@ -469,16 +469,10 @@ export function EditTaskModalFull({
     // Buscar informações do projeto para verificar campos obrigatórios
     // Cliente: não pode acessar /api/projects/:id nem listar tópicos (evita 403 e ruído)
     if (projectId && !isClienteProfile) {
-      // Backend pode não ter /rules em versões antigas; fazemos fallback para light=true.
-      apiFetch(`/api/projects/${projectId}/rules`)
-        .then(async (r) => {
-          if (r.ok) return r.json();
-          if (r.status === 404) {
-            const fb = await apiFetch(`/api/projects/${projectId}?light=true`);
-            return fb.ok ? fb.json() : null;
-          }
-          return null;
-        })
+      // Performance + compatibilidade: evita chamar rotas que podem não existir (ex.: /rules).
+      // `light=true` já é suficiente para obter as flags usadas no formulário.
+      apiFetch(`/api/projects/${projectId}?light=true`)
+        .then((r) => (r.ok ? r.json() : null))
         .then((project) => {
           if (project) {
             setObrigatoriosHoras(project.obrigatoriosHoras || false);
