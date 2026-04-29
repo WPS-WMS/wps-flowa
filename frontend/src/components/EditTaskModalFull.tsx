@@ -485,8 +485,10 @@ export function EditTaskModalFull({
           // Ignora erro silenciosamente
         });
 
-      // Buscar tópicos do projeto através da API de tickets
-      apiFetch(`/api/tickets?projectId=${projectId}&light=true`)
+      // Buscar tópicos do projeto (payload mínimo para o dropdown)
+      apiFetch(
+        `/api/tickets?projectId=${projectId}&type=SUBPROJETO&light=true&noAvatar=true&purpose=topic-select&skipUi=true&limit=2000`,
+      )
         .then((r) => (r.ok ? r.json() : []))
         .then((tickets: unknown) => {
           const list: LightTicket[] = Array.isArray(tickets) ? (tickets as LightTicket[]) : [];
