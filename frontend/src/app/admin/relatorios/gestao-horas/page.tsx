@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { Download, FileText, Calendar as CalendarIcon, ChevronDown } from "lucide-react";
 import {
@@ -60,6 +62,7 @@ function formatMonthLabel(dateStr: string): string {
 }
 
 export default function RelatorioGestaoHorasPage() {
+  const pathname = usePathname();
   const [userId, setUserId] = useState("");
   const [start, setStart] = useState(() => {
     const d = new Date();
@@ -81,13 +84,42 @@ export default function RelatorioGestaoHorasPage() {
   const [userMenuRect, setUserMenuRect] = useState<{ left: number; top: number; width: number } | null>(null);
   const [projectMenuRect, setProjectMenuRect] = useState<{ left: number; top: number; width: number } | null>(null);
 
+  function downloadCsv(rows: EntryRow[]) {
+    const headers = ["Data", "Colaborador", "Cliente", "Projeto", "ID", "Tarefa", "Horas", "Descrição"];
+    const escape = (v: unknown) => {
+      const s = String(v ?? "");
+      if (s.includes(",") || s.includes('"') || s.includes("\n") || s.includes("\r")) return `"${s.replace(/"/g, '""')}"`;
+      return s;
+    };
+    const line = (row: EntryRow) => {
+      const data = (row.date || "").slice(0, 10);
+      const colaborador = row.user?.name ?? "";
+      const cliente = row.project?.client?.name ?? "";
+      const projeto = row.project?.name ?? "";
+      const id = row.ticket?.code ?? "";
+      const tarefa = row.ticket?.title ?? "";
+      const horas = fmtHours(row.totalHoras ?? 0);
+      const descricao = row.description ?? "";
+      return [data, colaborador, cliente, projeto, id, tarefa, horas, descricao].map(escape).join(",");
+    };
+    const csv = [headers.join(","), ...rows.map(line)].join("\r\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `gestao-horas-${start}-a-${end}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function fetchAllEntriesForExport(): Promise<EntryRow[]> {
     const all: EntryRow[] = [];
     let cursor: string | null = null;
     // Guard rail: evita loop infinito por bug/instabilidade.
     const MAX_PAGES = 120; // 120 * 200 = 24k linhas
     for (let i = 0; i < MAX_PAGES; i++) {
-      const params = buildTimeEntriesParams(cursor ? { cursorId: cursor } : undefined);
+      // Exportação precisa da descrição completa sempre (mesmo quando a listagem usa preview).
+      const params = buildTimeEntriesParams({ ...(cursor ? { cursorId: cursor } : {}), includeDescription: "true" });
       const res = await apiFetch(`/api/time-entries?${params.toString()}`);
       const data = (await res.json().catch(() => null)) as PaginatedEntries | EntryRow[] | null;
       if (Array.isArray(data)) {
@@ -259,6 +291,25 @@ export default function RelatorioGestaoHorasPage() {
   }
 
   const totalHoras = entries.reduce((s, e) => s + e.totalHoras, 0);
+
+  const rolePrefix = useMemo(() => {
+    // Esta página é reutilizada por /admin, /consultor e /gestor.
+    // Extraímos o prefixo do path para montar o link correto da tarefa.
+    const first = String(pathname || "")
+      .split("?")[0]
+      .split("#")[0]
+      .split("/")
+      .filter(Boolean)[0];
+    if (first === "admin" || first === "consultor" || first === "gestor") return first;
+    return "admin";
+  }, [pathname]);
+
+  const makeTicketHref = (row: EntryRow) => {
+    const ticketId = row.ticket?.id;
+    const projectId = row.project?.id;
+    if (!ticketId || !projectId) return null;
+    return `/${rolePrefix}/projetos/${projectId}/tarefas/${ticketId}`;
+  };
 
   async function handleDownloadXlsx() {
     if (entries.length === 0) {
@@ -546,7 +597,7 @@ export default function RelatorioGestaoHorasPage() {
   return (
     <ReportsPageShell
       title="Gestão de horas"
-      subtitle="Lista de apontamentos com filtros por usuário, período e projeto. Exportar CSV ou PDF."
+      subtitle="Lista de apontamentos com filtros por usuário, período e projeto. Exportar CSV, Excel ou PDF."
     >
       {typeof document !== "undefined" && userOpen && userMenuRect
         ? createPortal(
@@ -724,6 +775,31 @@ export default function RelatorioGestaoHorasPage() {
             <div className="flex flex-wrap items-center gap-3">
               <button
                 type="button"
+                onClick={() => {
+                  if (entries.length === 0) {
+                    alert("Não há dados para exportar. Aplique os filtros primeiro.");
+                    return;
+                  }
+                  setLoading(true);
+                  fetchAllEntriesForExport()
+                    .then((exportEntries) => {
+                      if (exportEntries.length === 0) {
+                        alert("Não há dados para exportar para este filtro.");
+                        return;
+                      }
+                      downloadCsv(exportEntries);
+                    })
+                    .finally(() => setLoading(false));
+                }}
+                disabled={entries.length === 0}
+                className={reportsSecondaryBtnClass + " gap-2"}
+                style={{ borderColor: "var(--border)", background: "transparent", color: "var(--foreground)" }}
+              >
+                <Download className="h-4 w-4" />
+                Baixar CSV
+              </button>
+              <button
+                type="button"
                 onClick={handleDownloadPdf}
                 disabled={entries.length === 0}
                 className={reportsSecondaryBtnClass + " gap-2"}
@@ -794,7 +870,24 @@ export default function RelatorioGestaoHorasPage() {
                           <td className="px-4 py-3 text-sm whitespace-nowrap text-[color:var(--foreground)]">{formatDateOnly(row.date)}</td>
                           <td className="px-4 py-3 text-sm text-[color:var(--foreground)]">{row.user?.name ?? "—"}</td>
                           <td className="px-4 py-3 text-sm text-[color:var(--foreground)]">{row.project?.name ?? "—"}</td>
-                          <td className="px-4 py-3 text-sm font-mono text-[color:var(--muted-foreground)]">{row.ticket?.code ?? "—"}</td>
+                          <td className="px-4 py-3 text-sm font-mono">
+                            {(() => {
+                              const href = makeTicketHref(row);
+                              const code = row.ticket?.code ?? "—";
+                              if (!href || !row.ticket?.code) {
+                                return <span className="text-[color:var(--muted-foreground)]">{code}</span>;
+                              }
+                              return (
+                                <Link
+                                  href={href}
+                                  className="text-[color:var(--primary)] hover:underline"
+                                  title="Abrir tarefa"
+                                >
+                                  {code}
+                                </Link>
+                              );
+                            })()}
+                          </td>
                           <td className="px-4 py-3 text-sm text-[color:var(--foreground)] max-w-[200px] truncate" title={row.ticket?.title}>{row.ticket?.title ?? "—"}</td>
                           <td className="px-4 py-3 text-sm text-[color:var(--muted-foreground)]">{row.horaInicio}</td>
                           <td className="px-4 py-3 text-sm text-[color:var(--muted-foreground)]">{row.horaFim}</td>

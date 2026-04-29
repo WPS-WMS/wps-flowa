@@ -247,7 +247,9 @@ timeEntriesRouter.get("/", async (req, res) => {
         intervaloInicio: true,
         intervaloFim: true,
         totalHoras: true,
-        ...(omitDescriptionForReport ? {} : { description: true }),
+        // Em Gestão de Horas, evitamos enviar descrições completas por padrão (payload grande).
+        // Ainda assim, enviamos um preview truncado para visualização rápida na tabela.
+        description: true,
         project: {
           select: {
             id: true,
@@ -281,6 +283,22 @@ timeEntriesRouter.get("/", async (req, res) => {
     }
 
     const entries = await prisma.timeEntry.findMany(baseQuery);
+
+    // Para o relatório de Gestão de Horas (modo light), se o cliente não pediu explicitamente,
+    // devolvemos somente um preview truncado no campo `description` (para manter compatibilidade do payload).
+    if (isLight && omitDescriptionForReport && Array.isArray(entries)) {
+      const PREVIEW_LEN = 120;
+      for (const e of entries as any[]) {
+        const raw = typeof e?.description === "string" ? e.description : "";
+        const trimmed = raw.trim();
+        if (!trimmed) {
+          e.description = null;
+          continue;
+        }
+        e.description =
+          trimmed.length > PREVIEW_LEN ? `${trimmed.slice(0, PREVIEW_LEN).trimEnd()}…` : trimmed;
+      }
+    }
     
     console.log(`Encontrados ${entries.length} apontamentos`);
     if (take > 0) {
