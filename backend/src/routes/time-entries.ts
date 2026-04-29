@@ -69,6 +69,82 @@ function parseHours(h: string): number {
   return (hh || 0) + (mm || 0) / 60;
 }
 
+function startOfUtcDay(d: Date): Date {
+  const x = new Date(d);
+  x.setUTCHours(0, 0, 0, 0);
+  return x;
+}
+
+function endOfUtcDay(d: Date): Date {
+  const x = new Date(d);
+  x.setUTCHours(23, 59, 59, 999);
+  return x;
+}
+
+function startOfUtcMonth(d: Date): Date {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1, 0, 0, 0, 0));
+}
+
+function startOfUtcWeekMonday(d: Date): Date {
+  const x = startOfUtcDay(d);
+  const day = x.getUTCDay(); // 0=dom,1=seg...
+  const diffToMonday = (day + 6) % 7; // seg ->0, dom->6
+  x.setUTCDate(x.getUTCDate() - diffToMonday);
+  return x;
+}
+
+/** GET /api/time-entries/summary/home - resumo Hoje/Semana/Mês para Home */
+timeEntriesRouter.get("/summary/home", async (req, res) => {
+  try {
+    const user = (req as Request & { user: { id: string; role: string; tenantId: string } }).user;
+    const qUserId = String(req.query.userId ?? "").trim();
+    const isAdminViewer = user.role === "SUPER_ADMIN" || user.role === "GESTOR_PROJETOS";
+    const effectiveUserId = isAdminViewer && qUserId ? qUserId : user.id;
+
+    const now = new Date();
+    const todayStart = startOfUtcDay(now);
+    const todayEnd = endOfUtcDay(now);
+    const weekStart = startOfUtcWeekMonday(now);
+    const weekEnd = endOfUtcDay(new Date(Date.UTC(weekStart.getUTCFullYear(), weekStart.getUTCMonth(), weekStart.getUTCDate() + 6)));
+    const monthStart = startOfUtcMonth(now);
+    const monthEnd = todayEnd;
+
+    const tenantFilter = { project: { client: { tenantId: user.tenantId } } };
+    const baseWhere: any = { ...tenantFilter, userId: effectiveUserId };
+
+    const [todayAgg, weekAgg, monthAgg] = await Promise.all([
+      prisma.timeEntry.aggregate({
+        where: { ...baseWhere, date: { gte: todayStart, lte: todayEnd } },
+        _sum: { totalHoras: true },
+      }),
+      prisma.timeEntry.aggregate({
+        where: { ...baseWhere, date: { gte: weekStart, lte: weekEnd } },
+        _sum: { totalHoras: true },
+      }),
+      prisma.timeEntry.aggregate({
+        where: { ...baseWhere, date: { gte: monthStart, lte: monthEnd } },
+        _sum: { totalHoras: true },
+      }),
+    ]);
+
+    res.json({
+      hoje: todayAgg._sum.totalHoras ?? 0,
+      semana: weekAgg._sum.totalHoras ?? 0,
+      mes: monthAgg._sum.totalHoras ?? 0,
+      // extras úteis para debug
+      meta: {
+        userId: effectiveUserId,
+        todayStart,
+        weekStart,
+        monthStart,
+      },
+    });
+  } catch (err) {
+    console.error("GET /api/time-entries/summary/home error:", err);
+    res.status(500).json({ error: "Erro ao calcular resumo de horas" });
+  }
+});
+
 timeEntriesRouter.get("/", async (req, res) => {
   try {
     const user = (req as Request & { user: { id: string; role: string; tenantId: string } }).user;

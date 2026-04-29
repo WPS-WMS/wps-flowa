@@ -112,32 +112,14 @@ export function HomeDashboard({ basePath }: HomeDashboardProps) {
 
   useEffect(() => {
     if (!user?.id) return;
-    const now = new Date();
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
-    // Segurança/performance: sempre filtra por userId para evitar SUPER_ADMIN/gestor puxar o tenant inteiro.
-    apiFetch(
-      `/api/time-entries?start=${firstDayOfMonth.toISOString()}&end=${endOfToday.toISOString()}&userId=${encodeURIComponent(
-        user.id,
-      )}&light=true`,
-    )
-      .then((r) => r.json())
-      .then((entries: Array<{ totalHoras: number; date: string }>) => {
-        const todayStr = now.toISOString().slice(0, 10);
-        const seg = new Date(now);
-        seg.setDate(seg.getDate() - seg.getDay() + 1);
-        const dom = new Date(seg);
-        dom.setDate(dom.getDate() + 6);
-        const weekStartStr = seg.toISOString().slice(0, 10);
-        const weekEndStr = dom.toISOString().slice(0, 10);
-        let hojeH = 0, semH = 0, mesH = 0;
-        for (const e of entries) {
-          const d = String(e.date).slice(0, 10);
-          mesH += e.totalHoras;
-          if (d === todayStr) hojeH += e.totalHoras;
-          if (d >= weekStartStr && d <= weekEndStr) semH += e.totalHoras;
-        }
-        setHours({ hoje: hojeH, semana: semH, mes: mesH });
+    apiFetch(`/api/time-entries/summary/home?userId=${encodeURIComponent(user.id)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((body: { hoje?: number; semana?: number; mes?: number } | null) => {
+        setHours({
+          hoje: Number(body?.hoje ?? 0),
+          semana: Number(body?.semana ?? 0),
+          mes: Number(body?.mes ?? 0),
+        });
       })
       .catch(() => setHours({ hoje: 0, semana: 0, mes: 0 }));
   }, [user?.id]);
