@@ -1451,17 +1451,50 @@ ticketsRouter.post("/:id/budget/reject", async (req, res) => {
 ticketsRouter.get("/:id", async (req, res) => {
   const user = (req as Request & { user: { id: string; role: string; tenantId: string } }).user;
   const ticketId = req.params.id;
+  const light =
+    String((req.query as any).light ?? "") === "true" || String((req.query as any).light ?? "") === "1";
+
   const ticket = await prisma.ticket.findFirst({
     where: {
       id: ticketId,
       project: { client: { tenantId: user.tenantId } },
     },
-    include: {
-      project: { include: { client: { include: { users: { select: { userId: true } } } } } },
-      assignedTo: { select: USER_SELECT_UI },
-      createdBy: { select: USER_SELECT_UI },
-      responsibles: { include: { user: { select: USER_SELECT_UI } } },
-    },
+    ...(light
+      ? {
+          select: {
+            id: true,
+            code: true,
+            title: true,
+            description: true,
+            type: true,
+            criticidade: true,
+            status: true,
+            parentTicketId: true,
+            dataInicio: true,
+            dataFimPrevista: true,
+            estimativaHoras: true,
+            progresso: true,
+            finalizacaoMotivo: true,
+            finalizacaoObservacao: true,
+            createdAt: true,
+            updatedAt: true,
+            assignedToId: true,
+            createdById: true,
+            projectId: true,
+            project: { select: { id: true, clientId: true, tipoProjeto: true } },
+            assignedTo: { select: USER_SELECT_UI },
+            createdBy: { select: USER_SELECT_UI },
+            responsibles: { select: { user: { select: USER_SELECT_UI } } },
+          },
+        }
+      : {
+          include: {
+            project: { include: { client: { include: { users: { select: { userId: true } } } } } },
+            assignedTo: { select: USER_SELECT_UI },
+            createdBy: { select: USER_SELECT_UI },
+            responsibles: { include: { user: { select: USER_SELECT_UI } } },
+          },
+        }),
   });
   if (!ticket) {
     res.status(404).json({ error: "Tópico/tarefa não encontrado" });
@@ -1480,8 +1513,13 @@ ticketsRouter.get("/:id", async (req, res) => {
     }
   }
   if (!canSeeAll && user.role === "CLIENTE") {
-    const clientUsers = ticket.project?.client?.users ?? [];
-    const hasAccess = clientUsers.some((u) => u.userId === user.id) || ticket.createdById === user.id;
+    const clientId = (ticket as any)?.project?.clientId ?? null;
+    const hasLink = clientId
+      ? await prisma.clientUser
+          .findFirst({ where: { userId: user.id, clientId: String(clientId) }, select: { id: true } })
+          .then(Boolean)
+      : false;
+    const hasAccess = hasLink || (ticket as any).createdById === user.id;
     if (!hasAccess) {
       res.status(403).json({ error: "Sem permissão para visualizar este item" });
       return;
