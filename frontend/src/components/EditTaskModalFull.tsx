@@ -469,7 +469,7 @@ export function EditTaskModalFull({
     // Buscar informações do projeto para verificar campos obrigatórios
     // Cliente: não pode acessar /api/projects/:id nem listar tópicos (evita 403 e ruído)
     if (projectId && !isClienteProfile) {
-      apiFetch(`/api/projects/${projectId}`)
+      apiFetch(`/api/projects/${projectId}/rules`)
         .then((r) => (r.ok ? r.json() : null))
         .then((project) => {
           if (project) {
@@ -596,7 +596,7 @@ export function EditTaskModalFull({
     let cancelled = false;
     // Não depender só de tipoProjeto no estado: cliente não chama /api/projects/:id e tipo fica vazio.
     // Uma única leitura do ticket traz project.tipoProjeto + finalizacaoMotivo para qualquer perfil.
-    apiFetch(`/api/tickets/${ticket.id}`)
+    apiFetch(`/api/tickets/${ticket.id}?light=true`)
       .then((r) => (r.ok ? r.json() : null))
       .then((t) => {
         if (cancelled || !t) return;
@@ -621,7 +621,7 @@ export function EditTaskModalFull({
     if (!shouldHydrate) return;
 
     let cancelled = false;
-    apiFetch(`/api/tickets/${ticket.id}`)
+    apiFetch(`/api/tickets/${ticket.id}?light=true`)
       .then(async (r) => {
         if (!r.ok) return null;
         return r.json().catch(() => null);

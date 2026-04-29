@@ -109,6 +109,36 @@ projectsRouter.get("/:id/kanban-columns", async (req, res) => {
   res.json(cols);
 });
 
+// Rota enxuta para regras/flags usadas em modais (evita carregar projeto full).
+projectsRouter.get("/:id/rules", async (req, res) => {
+  const user = (req as Request & { user: { id: string; role: string; tenantId: string } }).user;
+  const projectId = String(req.params.id || "").trim();
+  if (!projectId) {
+    res.status(400).json({ error: "Projeto inválido" });
+    return;
+  }
+  const canAccess = await assertCanAccessProject({ user, projectId });
+  if (!canAccess) {
+    res.status(404).json({ error: "Projeto não encontrado" });
+    return;
+  }
+  const row = await prisma.project.findFirst({
+    where: { id: projectId, client: { tenantId: user.tenantId } },
+    select: {
+      id: true,
+      tipoProjeto: true,
+      statusInicial: true,
+      obrigatoriosHoras: true,
+      obrigatoriosDataEntrega: true,
+    },
+  });
+  if (!row) {
+    res.status(404).json({ error: "Projeto não encontrado" });
+    return;
+  }
+  res.json(row);
+});
+
 projectsRouter.post("/:id/kanban-columns/import", async (req, res) => {
   const user = (req as Request & { user: { id: string; role: string; tenantId: string } }).user;
   const projectId = String(req.params.id || "").trim();
