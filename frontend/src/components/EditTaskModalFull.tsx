@@ -469,8 +469,16 @@ export function EditTaskModalFull({
     // Buscar informações do projeto para verificar campos obrigatórios
     // Cliente: não pode acessar /api/projects/:id nem listar tópicos (evita 403 e ruído)
     if (projectId && !isClienteProfile) {
+      // Backend pode não ter /rules em versões antigas; fazemos fallback para light=true.
       apiFetch(`/api/projects/${projectId}/rules`)
-        .then((r) => (r.ok ? r.json() : null))
+        .then(async (r) => {
+          if (r.ok) return r.json();
+          if (r.status === 404) {
+            const fb = await apiFetch(`/api/projects/${projectId}?light=true`);
+            return fb.ok ? fb.json() : null;
+          }
+          return null;
+        })
         .then((project) => {
           if (project) {
             setObrigatoriosHoras(project.obrigatoriosHoras || false);
@@ -596,7 +604,7 @@ export function EditTaskModalFull({
     let cancelled = false;
     // Não depender só de tipoProjeto no estado: cliente não chama /api/projects/:id e tipo fica vazio.
     // Uma única leitura do ticket traz project.tipoProjeto + finalizacaoMotivo para qualquer perfil.
-    apiFetch(`/api/tickets/${ticket.id}?light=true`)
+    apiFetch(`/api/tickets/${ticket.id}?light=true&noAvatar=true`)
       .then((r) => (r.ok ? r.json() : null))
       .then((t) => {
         if (cancelled || !t) return;
@@ -621,7 +629,7 @@ export function EditTaskModalFull({
     if (!shouldHydrate) return;
 
     let cancelled = false;
-    apiFetch(`/api/tickets/${ticket.id}?light=true`)
+    apiFetch(`/api/tickets/${ticket.id}?light=true&noAvatar=true`)
       .then(async (r) => {
         if (!r.ok) return null;
         return r.json().catch(() => null);
