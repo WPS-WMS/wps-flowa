@@ -1453,6 +1453,8 @@ ticketsRouter.get("/:id", async (req, res) => {
   const ticketId = req.params.id;
   const light =
     String((req.query as any).light ?? "") === "true" || String((req.query as any).light ?? "") === "1";
+  const noAvatar =
+    String((req.query as any).noAvatar ?? "") === "true" || String((req.query as any).noAvatar ?? "") === "1";
 
   const ticket = await prisma.ticket.findFirst({
     where: {
@@ -1482,9 +1484,9 @@ ticketsRouter.get("/:id", async (req, res) => {
             createdById: true,
             projectId: true,
             project: { select: { id: true, clientId: true, tipoProjeto: true } },
-            assignedTo: { select: USER_SELECT_UI },
-            createdBy: { select: USER_SELECT_UI },
-            responsibles: { select: { user: { select: USER_SELECT_UI } } },
+            assignedTo: { select: noAvatar ? USER_SELECT_LIGHT : USER_SELECT_UI },
+            createdBy: { select: noAvatar ? USER_SELECT_LIGHT : USER_SELECT_UI },
+            responsibles: { select: { user: { select: noAvatar ? USER_SELECT_LIGHT : USER_SELECT_UI } } },
           },
         }
       : {
