@@ -239,40 +239,58 @@ timeEntriesRouter.get("/", async (req, res) => {
     }
 
     if (isLight) {
-      baseQuery.select = {
-        id: true,
-        date: true,
-        horaInicio: true,
-        horaFim: true,
-        intervaloInicio: true,
-        intervaloFim: true,
-        totalHoras: true,
-        // Em Gestão de Horas, evitamos enviar descrições completas por padrão (payload grande).
-        // Ainda assim, enviamos um preview truncado para visualização rápida na tabela.
-        description: true,
-        project: {
-          select: {
-            id: true,
-            name: true,
-            statusInicial: true,
-            client: { select: { id: true, name: true } },
+      // Payload mínimo para aba "Apontamentos" dentro da modal de tarefa:
+      // evita trazer project/ticket completos quando já estamos no contexto do ticket.
+      const isTaskApontamentos = reportStr === "task-apontamentos";
+      if (isTaskApontamentos) {
+        baseQuery.select = {
+          id: true,
+          date: true,
+          horaInicio: true,
+          horaFim: true,
+          intervaloInicio: true,
+          intervaloFim: true,
+          totalHoras: true,
+          description: true,
+          activity: { select: { id: true, name: true } },
+          user: { select: { id: true, name: true } },
+        };
+      } else {
+        baseQuery.select = {
+          id: true,
+          date: true,
+          horaInicio: true,
+          horaFim: true,
+          intervaloInicio: true,
+          intervaloFim: true,
+          totalHoras: true,
+          // Em Gestão de Horas, evitamos enviar descrições completas por padrão (payload grande).
+          // Ainda assim, enviamos um preview truncado para visualização rápida na tabela.
+          description: true,
+          project: {
+            select: {
+              id: true,
+              name: true,
+              statusInicial: true,
+              client: { select: { id: true, name: true } },
+            },
           },
-        },
-        ticket: {
-          select: {
-            id: true,
-            code: true,
-            title: true,
-            type: true,
-            parentTicketId: true,
+          ticket: {
+            select: {
+              id: true,
+              code: true,
+              title: true,
+              type: true,
+              parentTicketId: true,
+            },
           },
-        },
-        activity: { select: { id: true, name: true } },
-        // Relatórios não precisam de avatar; isso pode vir como data URL (base64) e explodir o payload.
-        user: isGestaoHorasReport
-          ? { select: { id: true, name: true } }
-          : { select: { id: true, name: true, avatarUrl: true } },
-      };
+          activity: { select: { id: true, name: true } },
+          // Relatórios não precisam de avatar; isso pode vir como data URL (base64) e explodir o payload.
+          user: isGestaoHorasReport
+            ? { select: { id: true, name: true } }
+            : { select: { id: true, name: true, avatarUrl: true } },
+        };
+      }
     } else {
       baseQuery.include = {
         project: { include: { client: true } },
