@@ -107,6 +107,8 @@ function downloadModeloCsv() {
 export function ImportProjectCsvModal({ projectId, projectName, onClose, onImported }: ImportProjectCsvModalProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
+  const [fileBuf, setFileBuf] = useState<ArrayBuffer | null>(null);
+  const [readingFile, setReadingFile] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [dragOver, setDragOver] = useState(false);
@@ -115,11 +117,29 @@ export function ImportProjectCsvModal({ projectId, projectName, onClose, onImpor
     downloadModeloCsv();
   }, []);
 
-  const pickFiles = (list: FileList | null) => {
+  const pickFiles = async (list: FileList | null) => {
     const f = list?.[0];
     if (f && (f.name.toLowerCase().endsWith(".csv") || f.type === "text/csv" || f.type === "application/vnd.ms-excel")) {
       setFile(f);
+      setFileBuf(null);
       setError("");
+      setReadingFile(true);
+      try {
+        // Lê o arquivo imediatamente para evitar falhas de permissão/lock depois (Excel/OneDrive).
+        const buf = await f.arrayBuffer();
+        setFileBuf(buf);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err ?? "");
+        setFile(null);
+        setFileBuf(null);
+        setError(
+          msg
+            ? `Não foi possível ler o arquivo. Feche o Excel/OneDrive que estiver usando o CSV, mova o arquivo para uma pasta local (ex.: Desktop), selecione novamente e tente. Detalhe: ${msg}`
+            : "Não foi possível ler o arquivo. Feche o Excel e selecione novamente.",
+        );
+      } finally {
+        setReadingFile(false);
+      }
       return;
     }
     if (f) setError("Use um arquivo .csv.");
@@ -136,7 +156,7 @@ export function ImportProjectCsvModal({ projectId, projectName, onClose, onImpor
     try {
       // Lê o CSV para memória antes do POST. Evita `net::ERR_UPLOAD_FILE_CHANGED` no Chrome quando o
       // utilizador grava o ficheiro no Excel (o path muda no disco) e volta a clicar "Enviar" sem reescolher.
-      const buf = await file.arrayBuffer();
+      const buf = fileBuf ?? (await file.arrayBuffer());
       const uploadBlob = new Blob([buf], {
         type: file.type && file.type !== "application/octet-stream" ? file.type : "text/csv;charset=utf-8",
       });
@@ -172,6 +192,10 @@ export function ImportProjectCsvModal({ projectId, projectName, onClose, onImpor
       if (/UPLOAD_FILE_CHANGED|upload file changed|falha ao conectar/i.test(msg)) {
         setError(
           "O navegador bloqueou o envio porque o ficheiro mudou no disco depois de ser selecionado (comum ao gravar no Excel). Guarde o CSV, volte a escolher o ficheiro na modal e clique em Enviar.",
+        );
+      } else if (/requested file could not be read|permission problems/i.test(msg)) {
+        setError(
+          "O navegador não conseguiu ler o arquivo (permissão/lock). Feche o Excel, mova o CSV para uma pasta local (ex.: Desktop), selecione novamente e tente importar.",
         );
       } else {
         setError(msg ? `Erro ao enviar: ${msg}` : "Erro de conexão.");
@@ -350,7 +374,7 @@ export function ImportProjectCsvModal({ projectId, projectName, onClose, onImpor
                 type="file"
                 accept=".csv,text/csv"
                 className="sr-only"
-                onChange={(e) => pickFiles(e.target.files)}
+                onChange={(e) => void pickFiles(e.target.files)}
               />
               <label className={formModalLabelClass}>Arquivo selecionado</label>
               <button
@@ -368,7 +392,7 @@ export function ImportProjectCsvModal({ projectId, projectName, onClose, onImpor
                 onDrop={(e) => {
                   e.preventDefault();
                   setDragOver(false);
-                  pickFiles(e.dataTransfer.files);
+                    void pickFiles(e.dataTransfer.files);
                 }}
                 className={
                   "group w-full rounded-2xl border-2 border-dashed px-5 py-10 text-center transition-all " +
@@ -385,7 +409,7 @@ export function ImportProjectCsvModal({ projectId, projectName, onClose, onImpor
                   <Upload className="h-5 w-5" style={{ color: "var(--primary)" }} />
                 </div>
                 <p className="text-sm font-semibold text-[color:var(--foreground)]">
-                  {file ? file.name : "Arraste o CSV aqui ou clique para selecionar"}
+                  {readingFile ? "Lendo arquivo…" : file ? file.name : "Arraste o CSV aqui ou clique para selecionar"}
                 </p>
                 <p className="mt-1 text-xs text-[color:var(--muted-foreground)]">
                   {file ? `${(file.size / 1024).toFixed(1)} KB` : "Máximo recomendado: 10 MB"}
@@ -398,6 +422,7 @@ export function ImportProjectCsvModal({ projectId, projectName, onClose, onImpor
                     className="text-xs font-medium text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] underline-offset-2 hover:underline"
                     onClick={() => {
                       setFile(null);
+                      setFileBuf(null);
                       if (inputRef.current) inputRef.current.value = "";
                     }}
                   >
@@ -422,7 +447,7 @@ export function ImportProjectCsvModal({ projectId, projectName, onClose, onImpor
             </button>
             <button
               type="submit"
-              disabled={saving || !file}
+              disabled={saving || readingFile || !file || !fileBuf}
               className="w-full sm:w-auto px-5 py-2.5 rounded-xl text-sm font-semibold shadow-md transition hover:opacity-95 disabled:opacity-45 disabled:cursor-not-allowed"
               style={{
                 background: "linear-gradient(135deg, var(--primary), rgba(92, 0, 225, 0.92))",
