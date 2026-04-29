@@ -1024,26 +1024,23 @@ export function EditTaskModalFull({
 
   function loadTimeEntries() {
     if (!ticket.id) {
-      console.log("loadTimeEntries: ticket.id não disponível", { ticketId: ticket.id });
       setTimeEntries([]);
       setHorasApontadas(0);
       return;
     }
-    
-    console.log("Carregando apontamentos para ticket:", ticket.id);
-    apiFetch(`/api/time-entries?ticketId=${ticket.id}`)
-      .then((r) => {
-        console.log("Resposta da API de apontamentos:", { status: r.status, ok: r.ok });
-        if (r.ok) {
-          return r.json();
-        }
-        return r.json().then((data) => {
-          console.error("Erro na resposta da API:", data);
-          return [];
-        });
-      })
-      .then((entries) => {
-        console.log("Apontamentos carregados:", entries.length, entries);
+
+    const params = new URLSearchParams({
+      ticketId: ticket.id,
+      light: "true",
+      report: "task-apontamentos",
+      // evita payload acidentalmente enorme; se precisar mais, paginamos
+      limit: "500",
+    });
+
+    apiFetch(`/api/time-entries?${params.toString()}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => {
+        const entries = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : [];
         setTimeEntries(entries);
         const total = (entries as Array<{ totalHoras?: number | null }>).reduce(
           (sum, e) => sum + (e.totalHoras || 0),
