@@ -34,6 +34,13 @@ function maxNumericTaskCode(codes: Iterable<string>): number {
   return max;
 }
 
+/** Próximo código numérico de tarefa/chamado (mínimo 100000). */
+function nextNumericTaskCode(codes: Iterable<string>): string {
+  const max = maxNumericTaskCode(codes);
+  const base = max >= 100000 ? max : 99999;
+  return String(base + 1);
+}
+
 /**
  * Tópicos (SUBPROJETO) usam `code` alfanumérico interno (prefixo tp_), distinto dos números de chamado.
  * Não é sequência exibida ao usuário; só localização no banco / APIs.
@@ -963,7 +970,7 @@ ticketsRouter.post("/", async (req, res) => {
         where: { ...tenantTicketScope, type: { not: "SUBPROJETO" } },
         select: { code: true },
       });
-      const mainCode = String(maxNumericTaskCode(taskRows.map((r) => r.code)) + 1);
+      const mainCode = nextNumericTaskCode(taskRows.map((r) => r.code));
 
       const ticket = await tx.ticket.create({
         data: {
@@ -1059,7 +1066,7 @@ ticketsRouter.post("/", async (req, res) => {
       where: { ...tenantTicketScope, type: { not: "SUBPROJETO" } },
       select: { code: true },
     });
-    nextCode = String(maxNumericTaskCode(taskRows.map((r) => r.code)) + 1);
+    nextCode = nextNumericTaskCode(taskRows.map((r) => r.code));
   }
   if (parentTicketId) {
     const parentTicket = await prisma.ticket.findFirst({
