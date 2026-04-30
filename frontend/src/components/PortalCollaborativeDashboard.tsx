@@ -1037,12 +1037,18 @@ function PortalItemImage({
     setSavingEv(true);
     setEvError(null);
     try {
+      const chosenLocal = new Date(evDate + "T12:00:00");
+      // Garante que o evento recém-criado apareça: ajusta o calendário para o mês/ano do evento.
+      if (!Number.isNaN(chosenLocal.getTime())) {
+        setCalMonth(chosenLocal.getMonth() + 1);
+        setCalYear(chosenLocal.getFullYear());
+      }
       const res = await apiFetch("/api/portal/events", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: evTitle.trim(),
-          date: new Date(evDate + "T12:00:00").toISOString(),
+          date: chosenLocal.toISOString(),
           description: evDesc.trim() || null,
         }),
       });
@@ -1051,6 +1057,7 @@ function PortalItemImage({
       setEvTitle("");
       setEvDate("");
       setEvDesc("");
+      setManageEventsOpen(false);
       await refreshAll();
     } catch (e: unknown) {
       setEvError(e instanceof Error ? e.message : "Erro ao salvar evento.");
