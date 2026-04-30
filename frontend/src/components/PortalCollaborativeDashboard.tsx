@@ -325,6 +325,7 @@ export function PortalCollaborativeDashboard() {
   const [sections, setSections] = useState<PortalSection[]>([]);
   const [itemsBySlug, setItemsBySlug] = useState<Record<string, PortalItem[]>>({});
   const [events, setEvents] = useState<PortalEvent[]>([]);
+  const [upcomingEvents, setUpcomingEvents] = useState<PortalEvent[]>([]);
   const [birthdays, setBirthdays] = useState<Birthday[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -406,9 +407,10 @@ export function PortalCollaborativeDashboard() {
     setLoadError(null);
     setLoading(true);
     try {
-      const [secRes, metaRes] = await Promise.all([
+      const [secRes, metaRes, upcomingRes] = await Promise.all([
         apiFetch("/api/portal/sections"),
         apiFetch(`/api/portal/events?month=${calMonth}&year=${calYear}`),
+        apiFetch("/api/portal/events?upcoming=1&limit=3"),
       ]);
       if (!secRes.ok) throw new Error("Não foi possível carregar o portal.");
       const list = (await secRes.json()) as PortalSection[];
@@ -421,6 +423,13 @@ export function PortalCollaborativeDashboard() {
       } else {
         setEvents([]);
         setBirthdays([]);
+      }
+
+      if (upcomingRes.ok) {
+        const data = (await upcomingRes.json()) as { events: PortalEvent[] };
+        setUpcomingEvents(Array.isArray(data?.events) ? data.events : []);
+      } else {
+        setUpcomingEvents([]);
       }
 
       const next: Record<string, PortalItem[]> = {};
@@ -1611,6 +1620,35 @@ function PortalItemImage({
                   )}
                 </div>
               </div>
+
+              {upcomingEvents.length > 0 && (
+                <div className="mb-4 rounded-2xl border border-white/10 bg-black/20 p-3">
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-300/90">
+                    Próximos eventos
+                  </p>
+                  <ul className="space-y-2">
+                    {upcomingEvents.slice(0, 3).map((ev) => (
+                      <li key={ev.id} className="flex items-start gap-3 rounded-xl border border-white/5 bg-black/10 px-3 py-2">
+                        <div className="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-lg bg-gradient-to-br from-sky-500/25 to-violet-600/25 text-center">
+                          <span className="text-[9px] font-bold uppercase text-sky-200">
+                            {new Date(ev.date).toLocaleDateString("pt-BR", { month: "short" })}
+                          </span>
+                          <span className="text-base font-bold leading-none text-white">
+                            {new Date(ev.date).getDate()}
+                          </span>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold text-white">{ev.title}</p>
+                          <p className="mt-0.5 text-[10px] text-slate-400">
+                            {new Date(ev.date).toLocaleDateString("pt-BR", { weekday: "short", year: "numeric" })}
+                          </p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               {events.length === 0 ? (
                 <p className="text-xs text-slate-500">Nenhum evento neste mês.</p>
               ) : (
