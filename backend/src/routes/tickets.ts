@@ -526,6 +526,17 @@ ticketsRouter.get("/tasks-list", requireFeature("projeto.listaTarefas"), async (
   const user = (req as Request & { user: { id: string; role: string; tenantId: string } }).user;
 
   const tenantFilter = { project: { client: { tenantId: user.tenantId } } };
+  // Cliente: restringe às tarefas dos projetos/empresas onde o usuário tem vínculo (client.users),
+  // mantendo compatibilidade com legado (tickets criados pelo próprio cliente).
+  const clientVisibility =
+    String(user.role ?? "").toUpperCase() === "CLIENTE"
+      ? {
+          OR: [
+            { createdById: user.id },
+            { project: { client: { users: { some: { userId: user.id } } } } },
+          ],
+        }
+      : {};
   const createdRange = parseDateRangeInclusive({ from: req.query.createdFrom, to: req.query.createdTo });
   const dueRange = parseDateRangeInclusive({ from: req.query.dueFrom, to: req.query.dueTo });
 
@@ -552,6 +563,7 @@ ticketsRouter.get("/tasks-list", requireFeature("projeto.listaTarefas"), async (
 
   const where: any = {
     ...tenantFilter,
+    ...clientVisibility,
     type: { notIn: ["SUBPROJETO", "SUBTAREFA"] },
     ...(createdRange ? { createdAt: createdRange } : {}),
     ...(dueRange ? { dataFimPrevista: dueRange } : {}),

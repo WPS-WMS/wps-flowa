@@ -70,6 +70,8 @@ export default function ListaTarefasPage() {
     ? "/gestor"
     : pathname.startsWith("/consultor")
       ? "/consultor"
+      : pathname.startsWith("/cliente")
+        ? "/cliente"
       : "/admin";
 
   const [createdFrom, setCreatedFrom] = useState("");
@@ -98,7 +100,9 @@ export default function ListaTarefasPage() {
   const [error, setError] = useState<string | null>(null);
   const dirtyCount = useMemo(() => Object.values(queueDirtyById).filter(Boolean).length, [queueDirtyById]);
 
-  const canEditFromModal = can("tarefa.editar") || can("projeto.editar");
+  const roleUpper = String(user?.role ?? "").toUpperCase();
+  const isCliente = roleUpper === "CLIENTE";
+  const canEditFromModal = !isCliente && (can("tarefa.editar") || can("projeto.editar"));
 
   async function openTaskModal(row: TicketRow) {
     // UX: abre a modal imediatamente (sem bloquear no fetch).
@@ -149,6 +153,13 @@ export default function ListaTarefasPage() {
   }, [loading, user?.id, user?.role]);
 
   useEffect(() => {
+    // Cliente não deve ver/usar filtro de membro (e este endpoint exige feature "projeto").
+    if (roleUpper === "CLIENTE") {
+      setUsers([]);
+      setMemberId("");
+      setMemberOpen(false);
+      return;
+    }
     apiFetch("/api/users/for-select")
       .then((r) => (r.ok ? r.json() : []))
       .then((data: UserOption[]) => {
@@ -157,7 +168,7 @@ export default function ListaTarefasPage() {
         setUsers(list.filter((u) => !hiddenRoles.has(String(u?.role ?? "").toUpperCase())));
       })
       .catch(() => setUsers([]));
-  }, []);
+  }, [roleUpper]);
 
   async function load() {
     setFetching(true);
@@ -168,7 +179,7 @@ export default function ListaTarefasPage() {
       if (createdTo) params.set("createdTo", createdTo);
       if (dueFrom) params.set("dueFrom", dueFrom);
       if (dueTo) params.set("dueTo", dueTo);
-      if (memberId) params.set("memberId", memberId);
+      if (!isCliente && memberId) params.set("memberId", memberId);
       if (statusIds.length > 0) params.set("status", statusIds.join(","));
       const res = await apiFetch(`/api/tickets/tasks-list?${params.toString()}`);
       if (!res.ok) {
@@ -544,6 +555,7 @@ export default function ListaTarefasPage() {
                           type="button"
                           ref={memberAnchorRef}
                           onClick={() => {
+                            if (isCliente) return;
                             const role = String(user?.role ?? "").toUpperCase();
                             const isSelfOnly = role === "CONSULTOR" || role === "ADMIN_PORTAL";
                             if (isSelfOnly) return;
@@ -551,13 +563,14 @@ export default function ListaTarefasPage() {
                             setMemberOpen((v) => !v);
                           }}
                           disabled={(() => {
+                            if (isCliente) return true;
                             const role = String(user?.role ?? "").toUpperCase();
                             return role === "CONSULTOR" || role === "ADMIN_PORTAL";
                           })()}
                           className="w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] py-2.5 px-3 text-sm text-[color:var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/30 text-left inline-flex items-center justify-between gap-2"
                           aria-expanded={memberOpen}
                         >
-                          <span className="truncate">{selectedMemberLabel}</span>
+                          <span className="truncate">{isCliente ? "—" : selectedMemberLabel}</span>
                           <ChevronDown
                             className={`h-4 w-4 transition-transform ${memberOpen ? "rotate-180" : ""}`}
                           />
@@ -894,7 +907,7 @@ export default function ListaTarefasPage() {
           projectId={selectedTicket.projectId ?? undefined}
           projectName={selectedTicketProjectName}
           readOnly={!canEditFromModal}
-          allowTimeEntryInReadOnly
+          allowTimeEntryInReadOnly={!isCliente}
           onClose={() => setSelectedTicket(null)}
           onSaved={() => {
             setSelectedTicket(null);
