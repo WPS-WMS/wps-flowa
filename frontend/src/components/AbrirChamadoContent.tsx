@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   Info,
 } from "lucide-react";
+import { PopoverSelect } from "@/components/ui/PopoverSelect";
 
 const PRIORIDADES = ["Baixa", "Média", "Alta", "Urgente"];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB (alinhado ao backend)
@@ -182,6 +183,43 @@ export function AbrirChamadoContent({ afterCreateHref }: AbrirChamadoContentProp
     return list.filter((p) => (p.clientId || p.client?.id) === clientId);
   }, [projects, isCliente, clientId]);
 
+  const projectOptions = useMemo(
+    () => [
+      {
+        value: "",
+        label: filteredProjects.length === 0 ? "Nenhum projeto disponível" : "Selecione",
+        disabled: true,
+      },
+      ...filteredProjects.map((p) => ({
+        value: p.id,
+        label: `${(p.client as { name?: string } | undefined)?.name ? `${(p.client as { name?: string }).name} · ` : ""}${p.name}`,
+      })),
+    ],
+    [filteredProjects],
+  );
+
+  const tipoOptionsForSelect = useMemo(
+    () => [
+      {
+        value: "",
+        label: !projectId
+          ? "Selecione o projeto"
+          : tipoOptions.length === 0
+            ? "Nenhuma atividade configurada para este projeto"
+            : "Selecione",
+        disabled: true,
+      },
+      ...tipoOptions.map((t) => ({ value: t.name, label: t.name })),
+    ],
+    [projectId, tipoOptions],
+  );
+
+  const prioridadeOptionsForSelect = useMemo(
+    () => [{ value: "", label: "Selecione", disabled: true }, ...PRIORIDADES.map((p) => ({ value: p, label: p }))],
+    [],
+  );
+
+
   useEffect(() => {
     if (isCliente) {
       if (!clientId) {
@@ -311,6 +349,22 @@ export function AbrirChamadoContent({ afterCreateHref }: AbrirChamadoContentProp
       .filter((t) => t.status !== "CONCLUIDO")
       .sort((a, b) => a.title.localeCompare(b.title));
   }, [projectDetail?.tickets]);
+
+  const topicOptionsForSelect = useMemo(
+    () => [
+      {
+        value: "",
+        label: !projectId
+          ? "Selecione o projeto"
+          : topicsForSelect.length === 0
+            ? "Nenhum tópico disponível (será criado automaticamente)"
+            : "Selecione (ou deixe em branco para criar automaticamente)",
+        disabled: true,
+      },
+      ...topicsForSelect.map((t) => ({ value: t.id, label: t.title })),
+    ],
+    [projectId, topicsForSelect],
+  );
 
   const slaForPrioridade = useMemo(() => {
     if (!prioridade || projectDetail?.tipoProjeto !== "AMS") return null;
@@ -587,23 +641,15 @@ export function AbrirChamadoContent({ afterCreateHref }: AbrirChamadoContentProp
 
                     <div className={isCliente ? "" : "md:col-span-2"}>
                       <label className="block text-sm font-medium text-[color:var(--muted-foreground)] mb-1.5">Projeto</label>
-                      <select
+                      <PopoverSelect
+                        id="abrir-chamado-projeto"
                         value={projectId}
-                        onChange={(e) => setProjectId(e.target.value)}
-                        className={`w-full rounded-xl border px-4 py-3 text-sm bg-[color:var(--surface-2)] text-[color:var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/35 ${
-                          submitAttempted && !projectId ? "border-rose-400" : ""
-                        }`}
-                        style={{ borderColor: submitAttempted && !projectId ? "rgba(244,63,94,0.55)" : "var(--border)" }}
-                        required
+                        onChange={(v) => setProjectId(v)}
+                        options={projectOptions}
                         disabled={filteredProjects.length === 0}
-                      >
-                        <option value="">{filteredProjects.length === 0 ? "Nenhum projeto disponível" : "Selecione"}</option>
-                        {filteredProjects.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {(p.client as { name?: string } | undefined)?.name ? `${(p.client as { name?: string }).name} · ` : ""}{p.name}
-                          </option>
-                        ))}
-                      </select>
+                        placeholder={filteredProjects.length === 0 ? "Nenhum projeto disponível" : "Selecione"}
+                        buttonClassName={submitAttempted && !projectId ? "ring-2 ring-rose-400/60" : ""}
+                      />
                       {submitAttempted && !projectId && (
                         <p className="mt-2 text-xs text-rose-600">Projeto é obrigatório.</p>
                       )}
@@ -634,29 +680,15 @@ export function AbrirChamadoContent({ afterCreateHref }: AbrirChamadoContentProp
                       <label className="block text-sm font-medium text-[color:var(--muted-foreground)] mb-1.5">
                         Tipo <span className="text-rose-600">*</span>
                       </label>
-                      <select
+                      <PopoverSelect
+                        id="abrir-chamado-tipo"
                         value={tipo}
-                        onChange={(e) => setTipo(e.target.value)}
-                        className={`w-full rounded-xl border px-4 py-3 text-sm bg-[color:var(--surface-2)] text-[color:var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/35 ${
-                          submitAttempted && !tipo ? "border-rose-400" : ""
-                        }`}
-                        style={{ borderColor: submitAttempted && !tipo ? "rgba(244,63,94,0.55)" : "var(--border)" }}
-                        required
+                        onChange={(v) => setTipo(v)}
+                        options={tipoOptionsForSelect}
                         disabled={!projectId || tipoOptions.length === 0}
-                      >
-                        <option value="">
-                          {!projectId
-                            ? "Selecione o projeto"
-                            : tipoOptions.length === 0
-                              ? "Nenhuma atividade configurada para este projeto"
-                              : "Selecione"}
-                        </option>
-                        {tipoOptions.map((t) => (
-                          <option key={t.id} value={t.name}>
-                            {t.name}
-                          </option>
-                        ))}
-                      </select>
+                        placeholder={!projectId ? "Selecione o projeto" : "Selecione"}
+                        buttonClassName={submitAttempted && !tipo ? "ring-2 ring-rose-400/60" : ""}
+                      />
                       {submitAttempted && !tipo && <p className="mt-2 text-xs text-rose-600">Tipo é obrigatório.</p>}
                       {projectId && tipoOptions.length === 0 && (
                         <p className="mt-2 text-xs text-[color:var(--muted-foreground)]">
@@ -674,28 +706,16 @@ export function AbrirChamadoContent({ afterCreateHref }: AbrirChamadoContentProp
                           <span className="text-slate-400 font-normal"> (opcional)</span>
                         )}
                       </label>
-                      <select
+                      <PopoverSelect
+                        id="abrir-chamado-prioridade"
                         value={prioridade}
-                        onChange={(e) => setPrioridade(e.target.value)}
-                        className={`w-full rounded-xl border px-4 py-3 text-sm bg-[color:var(--surface-2)] text-[color:var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/35 ${
-                          submitAttempted && prioridadeObrigatoriaAms && !prioridade.trim()
-                            ? "border-rose-400"
-                            : ""
-                        }`}
-                        style={{
-                          borderColor:
-                            submitAttempted && prioridadeObrigatoriaAms && !prioridade.trim()
-                              ? "rgba(244,63,94,0.55)"
-                              : "var(--border)",
-                        }}
-                      >
-                        <option value="">Selecione</option>
-                        {PRIORIDADES.map((p) => (
-                          <option key={p} value={p}>
-                            {p}
-                          </option>
-                        ))}
-                      </select>
+                        onChange={(v) => setPrioridade(v)}
+                        options={prioridadeOptionsForSelect}
+                        placeholder="Selecione"
+                        buttonClassName={
+                          submitAttempted && prioridadeObrigatoriaAms && !prioridade.trim() ? "ring-2 ring-rose-400/60" : ""
+                        }
+                      />
                       {slaForPrioridade && (
                         <p className="mt-2 text-xs text-slate-600">
                           SLA do projeto (AMS) — Resposta:{" "}
@@ -710,26 +730,14 @@ export function AbrirChamadoContent({ afterCreateHref }: AbrirChamadoContentProp
                     </div>
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-[color:var(--muted-foreground)] mb-1.5">Tópico (opcional)</label>
-                      <select
+                      <PopoverSelect
+                        id="abrir-chamado-topico"
                         value={topicId}
-                        onChange={(e) => setTopicId(e.target.value)}
+                        onChange={(v) => setTopicId(v)}
+                        options={topicOptionsForSelect}
                         disabled={!projectId || topicsForSelect.length === 0}
-                        className="w-full rounded-xl border px-4 py-3 text-sm bg-[color:var(--surface-2)] text-[color:var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/35 disabled:opacity-70"
-                        style={{ borderColor: "var(--border)" }}
-                      >
-                        <option value="">
-                          {!projectId
-                            ? "Selecione o projeto"
-                            : topicsForSelect.length === 0
-                              ? "Nenhum tópico disponível (será criado automaticamente)"
-                              : "Selecione (ou deixe em branco para criar automaticamente)"}
-                        </option>
-                        {topicsForSelect.map((t) => (
-                          <option key={t.id} value={t.id}>
-                            {t.title}
-                          </option>
-                        ))}
-                      </select>
+                        placeholder={!projectId ? "Selecione o projeto" : "Selecione"}
+                      />
                     </div>
                   </div>
 
