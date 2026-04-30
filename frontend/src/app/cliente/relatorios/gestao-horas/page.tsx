@@ -10,8 +10,8 @@ import {
   ReportsPageShell,
   reportsInputClass,
   reportsPrimaryBtnClass,
-  reportsSelectClass,
 } from "@/components/reports/ReportsPrimitives";
+import { PopoverSelect } from "@/components/ui/PopoverSelect";
 
 type ProjectOption = { id: string; name: string; client?: { id: string; name: string } };
 type EntryRow = {
@@ -128,14 +128,17 @@ export default function ClienteRelatorioGestaoHorasPage() {
               ) : (
                 <div>
                   <label className="block text-xs font-semibold text-[color:var(--muted-foreground)] mb-1">Projeto</label>
-                  <select value={projectId} onChange={(e) => setProjectId(e.target.value)} className={reportsSelectClass}>
-                    <option value="">Todos os projetos</option>
-                    {projects.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
+                  <PopoverSelect
+                    id="cliente-gestao-horas-projeto"
+                    value={projectId}
+                    onChange={(v) => setProjectId(v)}
+                    placeholder="Todos os projetos"
+                    options={[
+                      { value: "", label: "Todos os projetos" },
+                      ...projects.map((p) => ({ value: p.id, label: p.name })),
+                    ]}
+                    buttonClassName="min-w-[220px]"
+                  />
                 </div>
               )}
 
