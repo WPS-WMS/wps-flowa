@@ -13,6 +13,11 @@ export function maxNumericTaskCode(codes: Iterable<string>): number {
   return max;
 }
 
+function nextNumericTaskCode(codes: Iterable<string>): number {
+  const max = maxNumericTaskCode(codes);
+  return (max >= 100000 ? max : 99999) + 1;
+}
+
 async function allocateTopicInternalCode(
   tenantId: string,
   ticket: PrismaClient["ticket"],
@@ -483,7 +488,7 @@ export async function importProjectTicketsFromCsv(params: {
     where: { ...tenantTicketScope, type: { not: "SUBPROJETO" } },
     select: { code: true },
   });
-  let nextCode = maxNumericTaskCode(taskRows.map((r) => r.code)) + 1;
+  let nextCode = nextNumericTaskCode(taskRows.map((r) => r.code));
 
   const projectSla = await prisma.project.findFirst({
     where: { id: projectId },
