@@ -1639,10 +1639,10 @@ function PortalItemImage({
                     itemId={employeeItems[0].id}
                     srcRaw={employeeItems[0].content}
                     alt={employeeItems[0].title}
-                    className="aspect-[4/3] w-full max-w-full object-cover"
+                    className="w-full max-w-full h-auto object-contain bg-black/20 max-h-[min(520px,60vh)]"
                   />
                 ) : (
-                  <div className="flex aspect-[4/3] w-full max-w-full flex-col items-center justify-center gap-2 text-center text-slate-500">
+                  <div className="flex min-h-[240px] w-full max-w-full flex-col items-center justify-center gap-2 text-center text-slate-500">
                     <p className="text-xs px-4">Arte do WPSer do mês (imagem).</p>
                   </div>
                 )}
