@@ -115,6 +115,36 @@ type InspirationSlotDraft = {
   imageUrl: string;
 };
 
+type EmployeeImageFit = "contain" | "cover";
+
+function parseEmployeeImageFit(metadata: unknown): EmployeeImageFit {
+  if (!metadata || typeof metadata !== "object") return "contain";
+  const raw = (metadata as Record<string, unknown>).fit;
+  return raw === "cover" || raw === "contain" ? raw : "contain";
+}
+
+function parseEmployeeFocal(metadata: unknown): { x: number; y: number } {
+  if (!metadata || typeof metadata !== "object") return { x: 50, y: 50 };
+  const o = metadata as Record<string, unknown>;
+  const x = Number(o.focalX ?? o.focal_x);
+  const y = Number(o.focalY ?? o.focal_y);
+  return {
+    x: Number.isFinite(x) ? Math.min(100, Math.max(0, x)) : 50,
+    y: Number.isFinite(y) ? Math.min(100, Math.max(0, y)) : 50,
+  };
+}
+
+function buildEmployeeImageMetadata(prev: unknown, patch: { fit?: EmployeeImageFit; focalX?: number; focalY?: number }): Record<string, unknown> {
+  const base =
+    prev && typeof prev === "object" && !Array.isArray(prev)
+      ? { ...(prev as Record<string, unknown>) }
+      : {};
+  if (patch.fit) base.fit = patch.fit;
+  if (patch.focalX !== undefined) base.focalX = patch.focalX;
+  if (patch.focalY !== undefined) base.focalY = patch.focalY;
+  return base;
+}
+
 function parseInspirationMeta(item: PortalItem): { rank: InspirationRank; points: number | null; cargo: string } | null {
   if (String(item.type || "").toLowerCase() !== "inspiration") return null;
   const meta = item.metadata;
@@ -327,6 +357,10 @@ export function PortalCollaborativeDashboard() {
 
   const [newsLightboxItem, setNewsLightboxItem] = useState<PortalItem | null>(null);
 
+  const [employeeImageFit, setEmployeeImageFit] = useState<EmployeeImageFit>("contain");
+  const [employeeFocalX, setEmployeeFocalX] = useState(50);
+  const [employeeFocalY, setEmployeeFocalY] = useState(50);
+
   const [evTitle, setEvTitle] = useState("");
   const [evDate, setEvDate] = useState("");
   const [evDesc, setEvDesc] = useState("");
@@ -349,6 +383,16 @@ export function PortalCollaborativeDashboard() {
     const imgs = (itemsBySlug[SLUG.employee] ?? []).filter(isImageItem);
     return imgs[0] ?? null;
   }, [manageSlug, itemsBySlug]);
+
+  useEffect(() => {
+    if (manageSlug !== SLUG.employee) return;
+    const it = currentManageImageItem;
+    const fit = it ? parseEmployeeImageFit(it.metadata) : "contain";
+    const focal = it ? parseEmployeeFocal(it.metadata) : { x: 50, y: 50 };
+    setEmployeeImageFit(fit);
+    setEmployeeFocalX(focal.x);
+    setEmployeeFocalY(focal.y);
+  }, [manageSlug, currentManageImageItem]);
 
   const newsCarousel = useMemo(() => newsItems.filter(isImageItem), [newsItems]);
 
@@ -519,6 +563,14 @@ export function PortalCollaborativeDashboard() {
       const title = PORTAL_IMAGE_DEFAULT_TITLE[slug] || "Imagem";
       const items = itemsBySlug[slug] ?? [];
       const imageItems = items.filter(isImageItem);
+      const metadata =
+        slug === SLUG.employee
+          ? buildEmployeeImageMetadata(imageItems[0]?.metadata, {
+              fit: employeeImageFit,
+              focalX: employeeFocalX,
+              focalY: employeeFocalY,
+            })
+          : null;
 
       if (imageItems.length > 0) {
         const first = imageItems[0];
@@ -529,7 +581,7 @@ export function PortalCollaborativeDashboard() {
             title,
             content,
             type: "image",
-            metadata: null,
+            metadata,
           }),
         });
         const errBody = await res.json().catch(() => ({}));
@@ -546,7 +598,7 @@ export function PortalCollaborativeDashboard() {
             title,
             content,
             type: "image",
-            metadata: null,
+            metadata,
             isActive: true,
           }),
         });
@@ -684,6 +736,32 @@ export function PortalCollaborativeDashboard() {
     } finally {
       setSavingItem(false);
       setNewsReplacePdfId(null);
+    }
+  }
+
+  async function saveEmployeeImageDisplaySettings() {
+    const it = currentManageImageItem;
+    if (!it) return;
+    setSavingItem(true);
+    setItemError(null);
+    try {
+      const metadata = buildEmployeeImageMetadata(it.metadata, {
+        fit: employeeImageFit,
+        focalX: employeeFocalX,
+        focalY: employeeFocalY,
+      });
+      const res = await apiFetch(`/api/portal/items/${it.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ metadata }),
+      });
+      const errBody = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(errBody?.error || "Erro ao salvar ajuste da imagem.");
+      await refreshAll();
+    } catch (e: unknown) {
+      setItemError(e instanceof Error ? e.message : "Erro ao salvar ajuste.");
+    } finally {
+      setSavingItem(false);
     }
   }
 
@@ -1635,12 +1713,22 @@ function PortalItemImage({
               </div>
               <div className="w-full overflow-hidden rounded-2xl border border-white/10 bg-slate-950/50">
                 {employeeItems[0] && isImageItem(employeeItems[0]) ? (
-                  <PortalItemImage
-                    itemId={employeeItems[0].id}
-                    srcRaw={employeeItems[0].content}
-                    alt={employeeItems[0].title}
-                    className="w-full max-w-full h-auto object-contain bg-black/20 max-h-[min(520px,60vh)]"
-                  />
+                  (() => {
+                    const it = employeeItems[0];
+                    const fit = parseEmployeeImageFit(it.metadata);
+                    const focal = parseEmployeeFocal(it.metadata);
+                    return (
+                      <PortalItemImage
+                        itemId={it.id}
+                        srcRaw={it.content}
+                        alt={it.title}
+                        className={`w-full max-w-full bg-black/20 max-h-[min(520px,60vh)] ${
+                          fit === "cover" ? "h-[min(520px,60vh)] object-cover" : "h-auto object-contain"
+                        }`}
+                        style={fit === "cover" ? { objectPosition: `${focal.x}% ${focal.y}%` } : undefined}
+                      />
+                    );
+                  })()
                 ) : (
                   <div className="flex min-h-[240px] w-full max-w-full flex-col items-center justify-center gap-2 text-center text-slate-500">
                     <p className="text-xs px-4">Arte do WPSer do mês (imagem).</p>
@@ -2042,6 +2130,69 @@ function PortalItemImage({
                     if (f) void replaceOrCreatePortalSectionImage(f);
                   }}
                 />
+
+                {manageSlug === SLUG.employee && (
+                  <div className="grid gap-3 rounded-2xl border border-white/10 bg-black/20 p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                      Ajuste de exibição (WPSer do mês)
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setEmployeeImageFit("contain")}
+                        className={`rounded-full px-3 py-1.5 text-[11px] font-semibold transition ${
+                          employeeImageFit === "contain"
+                            ? "bg-violet-600 text-white"
+                            : "border border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
+                        }`}
+                      >
+                        Sem corte
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEmployeeImageFit("cover")}
+                        className={`rounded-full px-3 py-1.5 text-[11px] font-semibold transition ${
+                          employeeImageFit === "cover"
+                            ? "bg-violet-600 text-white"
+                            : "border border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
+                        }`}
+                      >
+                        Preencher (pode cortar)
+                      </button>
+                    </div>
+
+                    {employeeImageFit === "cover" && (
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <label className="text-[11px] text-slate-300">
+                          Posição horizontal
+                          <input
+                            type="range"
+                            min={0}
+                            max={100}
+                            value={employeeFocalX}
+                            onChange={(e) => setEmployeeFocalX(Number(e.target.value))}
+                            className="mt-1 w-full"
+                          />
+                        </label>
+                        <label className="text-[11px] text-slate-300">
+                          Posição vertical
+                          <input
+                            type="range"
+                            min={0}
+                            max={100}
+                            value={employeeFocalY}
+                            onChange={(e) => setEmployeeFocalY(Number(e.target.value))}
+                            className="mt-1 w-full"
+                          />
+                        </label>
+                      </div>
+                    )}
+                    <p className="text-[10px] text-slate-500">
+                      Dica: “Sem corte” mostra a imagem inteira. “Preencher” ocupa todo o card, mas pode cortar — use as barras para ajustar.
+                    </p>
+                  </div>
+                )}
+
                 <button
                   type="button"
                   disabled={savingItem}
@@ -2053,13 +2204,39 @@ function PortalItemImage({
                 {itemError && <p className="text-xs text-red-400">{itemError}</p>}
                 {currentManageImageItem ? (
                   <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/40">
+                    {manageSlug === SLUG.employee ? (
+                      <PortalItemImage
+                        itemId={currentManageImageItem.id}
+                        srcRaw={currentManageImageItem.content}
+                        alt={currentManageImageItem.title}
+                        className={`w-full bg-black/20 ${
+                          employeeImageFit === "cover" ? "aspect-video object-cover" : "h-auto max-h-[min(520px,60vh)] object-contain"
+                        }`}
+                        style={
+                          employeeImageFit === "cover"
+                            ? { objectPosition: `${employeeFocalX}% ${employeeFocalY}%` }
+                            : undefined
+                        }
+                      />
+                    ) : (
                     <PortalItemImage
                       itemId={currentManageImageItem.id}
                       srcRaw={currentManageImageItem.content}
                       alt={currentManageImageItem.title}
                       className="aspect-video w-full object-cover"
                     />
+                    )}
                     <div className="flex justify-end border-t border-white/10 p-3">
+                      {manageSlug === SLUG.employee && (
+                        <button
+                          type="button"
+                          disabled={savingItem}
+                          onClick={() => void saveEmployeeImageDisplaySettings()}
+                          className="mr-auto inline-flex items-center gap-2 rounded-xl border border-violet-400/30 bg-violet-500/10 px-3 py-2 text-xs font-semibold text-violet-100 hover:bg-violet-500/20 disabled:opacity-50"
+                        >
+                          Salvar ajuste
+                        </button>
+                      )}
                       <button
                         type="button"
                         disabled={savingItem}
