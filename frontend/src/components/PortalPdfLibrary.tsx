@@ -145,6 +145,7 @@ export function PortalPdfLibrary({ title, description, sectionId, items, canEdit
   const [editPdfRowId, setEditPdfRowId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const replaceInputRef = useRef<HTMLInputElement>(null);
+  const overlayPointerDownRef = useRef(false);
 
   const pdfItems = useMemo(() => items.filter(isPdfLibraryRow), [items]);
 
@@ -441,8 +442,13 @@ export function PortalPdfLibrary({ title, description, sectionId, items, canEdit
           <div
             className="fixed inset-0 z-[200] flex items-end justify-center bg-black/70 p-4 sm:items-center"
             role="presentation"
+            onPointerDown={(e) => {
+              overlayPointerDownRef.current = e.target === e.currentTarget;
+            }}
             onClick={(e) => {
-              if (e.target === e.currentTarget) {
+              const shouldClose = overlayPointerDownRef.current && e.target === e.currentTarget;
+              overlayPointerDownRef.current = false;
+              if (shouldClose) {
                 setModalOpen(false);
                 setError(null);
               }

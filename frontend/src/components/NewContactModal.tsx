@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { apiFetch } from "@/lib/api";
 
 type NewContactModalProps = {
@@ -16,6 +16,7 @@ export function NewContactModal({ clientId, onClose, onSaved }: NewContactModalP
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, boolean>>({});
+  const overlayPointerDownRef = useRef(false);
 
   function formatarTelefone(value: string) {
     const numeros = value.replace(/\D/g, "");
@@ -86,7 +87,14 @@ export function NewContactModal({ clientId, onClose, onSaved }: NewContactModalP
   return (
     <div
       className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center z-50 px-4 py-6"
-      onClick={onClose}
+      onPointerDown={(e) => {
+        overlayPointerDownRef.current = e.target === e.currentTarget;
+      }}
+      onClick={(e) => {
+        const shouldClose = overlayPointerDownRef.current && e.target === e.currentTarget;
+        overlayPointerDownRef.current = false;
+        if (shouldClose) onClose();
+      }}
     >
       <div
         className="bg-white rounded-3xl border border-slate-200/70 w-full max-w-2xl shadow-[0_24px_80px_rgba(15,23,42,0.45)] overflow-hidden flex flex-col"

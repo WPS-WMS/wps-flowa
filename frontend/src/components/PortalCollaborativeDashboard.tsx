@@ -346,6 +346,7 @@ export function PortalCollaborativeDashboard() {
   const portalImageFileInputRef = useRef<HTMLInputElement>(null);
   const newsAddFileInputRef = useRef<HTMLInputElement>(null);
   const newsAddPdfInputRef = useRef<HTMLInputElement>(null);
+  const overlayPointerDownRef = useRef(false);
   const [newsNewTitle, setNewsNewTitle] = useState("");
   const [newsNewThumb, setNewsNewThumb] = useState<File | null>(null);
   const [newsNewPdf, setNewsNewPdf] = useState<File | null>(null);
@@ -1860,8 +1861,13 @@ function PortalItemImage({
         <div
           className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-4 sm:items-center"
           role="presentation"
+          onPointerDown={(e) => {
+            overlayPointerDownRef.current = e.target === e.currentTarget;
+          }}
           onClick={(e) => {
-            if (e.target === e.currentTarget) {
+            const shouldClose = overlayPointerDownRef.current && e.target === e.currentTarget;
+            overlayPointerDownRef.current = false;
+            if (shouldClose) {
               setManageSlug(null);
               setItemError(null);
               setConfirmDeleteItem(null);
@@ -2368,8 +2374,13 @@ function PortalItemImage({
         <div
           className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-4 sm:items-center"
           role="presentation"
+          onPointerDown={(e) => {
+            overlayPointerDownRef.current = e.target === e.currentTarget;
+          }}
           onClick={(e) => {
-            if (e.target === e.currentTarget) {
+            const shouldClose = overlayPointerDownRef.current && e.target === e.currentTarget;
+            overlayPointerDownRef.current = false;
+            if (shouldClose) {
               setManageEventsOpen(false);
               setEvError(null);
             }

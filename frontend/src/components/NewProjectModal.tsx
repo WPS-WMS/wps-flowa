@@ -102,6 +102,7 @@ function formatDateForInput(value?: string | null): string {
 
 export function NewProjectModal({ onClose, onSaved, mode = "create", projectId }: NewProjectModalProps) {
   const isEdit = mode === "edit" && !!projectId;
+  const overlayPointerDownRef = useRef(false);
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [users, setUsers] = useState<UserOption[]>([]);
   const [name, setName] = useState("");
@@ -510,7 +511,14 @@ export function NewProjectModal({ onClose, onSaved, mode = "create", projectId }
   return (
     <div
       className={formModalBackdropClass + " animate-in fade-in duration-200"}
-      onClick={onClose}
+      onPointerDown={(e) => {
+        overlayPointerDownRef.current = e.target === e.currentTarget;
+      }}
+      onClick={(e) => {
+        const shouldClose = overlayPointerDownRef.current && e.target === e.currentTarget;
+        overlayPointerDownRef.current = false;
+        if (shouldClose) onClose();
+      }}
     >
       <div
         className={panelClass + " animate-in zoom-in-95 duration-200"}

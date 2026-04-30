@@ -32,6 +32,7 @@ export function CreateColumnModal({ projectId, onClose, onSaved }: CreateColumnM
   const [label, setLabel] = useState("");
   const [selectedColor, setSelectedColor] = useState<ColumnColor>(COLUMN_COLORS[0]);
   const [error, setError] = useState("");
+  const overlayPointerDownRef = useRef(false);
   const labelInputRef = useRef<HTMLInputElement>(null);
 
   function handleSubmit(e: React.FormEvent) {
@@ -63,7 +64,14 @@ export function CreateColumnModal({ projectId, onClose, onSaved }: CreateColumnM
   return (
     <div
       className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-      onClick={onClose}
+      onPointerDown={(e) => {
+        overlayPointerDownRef.current = e.target === e.currentTarget;
+      }}
+      onClick={(e) => {
+        const shouldClose = overlayPointerDownRef.current && e.target === e.currentTarget;
+        overlayPointerDownRef.current = false;
+        if (shouldClose) onClose();
+      }}
     >
       <div
         className="bg-white rounded-2xl border border-slate-200 w-full max-w-lg shadow-xl"

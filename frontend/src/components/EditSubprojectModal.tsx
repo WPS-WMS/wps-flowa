@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { X, FileText, CheckCircle2 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { PackageTicket } from "./PackageCard";
@@ -27,6 +27,7 @@ export function EditSubprojectModal({
   onClose,
   onSaved,
 }: EditSubprojectModalProps) {
+  const overlayPointerDownRef = useRef(false);
   const [users, setUsers] = useState<TopicMemberUser[]>([]);
   const [name, setName] = useState(ticket.title || "");
   const [budget, setBudget] = useState(
@@ -171,7 +172,14 @@ export function EditSubprojectModal({
   return (
     <div
       className={formModalBackdropClass + " animate-in fade-in duration-200"}
-      onClick={onClose}
+      onPointerDown={(e) => {
+        overlayPointerDownRef.current = e.target === e.currentTarget;
+      }}
+      onClick={(e) => {
+        const shouldClose = overlayPointerDownRef.current && e.target === e.currentTarget;
+        overlayPointerDownRef.current = false;
+        if (shouldClose) onClose();
+      }}
     >
       <div
         className={formModalPanelNarrowClass + " animate-in zoom-in-95 duration-200"}

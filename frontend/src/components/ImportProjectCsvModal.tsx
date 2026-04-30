@@ -112,6 +112,7 @@ export function ImportProjectCsvModal({ projectId, projectName, onClose, onImpor
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [dragOver, setDragOver] = useState(false);
+  const overlayPointerDownRef = useRef(false);
 
   const onDownloadModelo = useCallback(() => {
     downloadModeloCsv();
@@ -206,7 +207,17 @@ export function ImportProjectCsvModal({ projectId, projectName, onClose, onImpor
   }
 
   return (
-    <div className={formModalBackdropClass + " animate-in fade-in duration-200"} onClick={onClose}>
+    <div
+      className={formModalBackdropClass + " animate-in fade-in duration-200"}
+      onPointerDown={(e) => {
+        overlayPointerDownRef.current = e.target === e.currentTarget;
+      }}
+      onClick={(e) => {
+        const shouldClose = overlayPointerDownRef.current && e.target === e.currentTarget;
+        overlayPointerDownRef.current = false;
+        if (shouldClose) onClose();
+      }}
+    >
       <div
         className={
           formModalPanelWideClass +

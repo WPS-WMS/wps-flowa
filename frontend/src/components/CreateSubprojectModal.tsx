@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { X, FileText, CheckCircle2 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { TopicMembersPicker, type TopicMemberUser } from "@/components/TopicMembersPicker";
@@ -25,6 +25,7 @@ export function CreateSubprojectModal({
   onClose,
   onSaved,
 }: CreateSubprojectModalProps) {
+  const overlayPointerDownRef = useRef(false);
   const [users, setUsers] = useState<TopicMemberUser[]>([]);
   const [name, setName] = useState("");
   const [budget, setBudget] = useState("");
@@ -102,7 +103,14 @@ export function CreateSubprojectModal({
   return (
     <div
       className={formModalBackdropClass + " animate-in fade-in duration-200"}
-      onClick={onClose}
+      onPointerDown={(e) => {
+        overlayPointerDownRef.current = e.target === e.currentTarget;
+      }}
+      onClick={(e) => {
+        const shouldClose = overlayPointerDownRef.current && e.target === e.currentTarget;
+        overlayPointerDownRef.current = false;
+        if (shouldClose) onClose();
+      }}
     >
       <div
         className={formModalPanelNarrowClass + " animate-in zoom-in-95 duration-200"}
