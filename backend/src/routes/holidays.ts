@@ -2,10 +2,10 @@ import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { authMiddleware } from "../lib/auth.js";
 import { requireFeature } from "../lib/authorizeFeature.js";
+import { isFeatureAllowed, type RoleId } from "../lib/permissions.js";
 
 export const holidaysRouter = Router();
 holidaysRouter.use(authMiddleware);
-holidaysRouter.use(requireFeature("configuracoes.feriados"));
 
 function parseYmd(raw: unknown): string | null {
   const s = String(raw ?? "").trim();
@@ -20,6 +20,15 @@ function ymdToDate(ymd: string): Date {
 
 holidaysRouter.get("/", async (req, res) => {
   const user = req.user;
+  const role = user.role as RoleId;
+  const canRead =
+    (await isFeatureAllowed({ tenantId: user.tenantId, role, featureId: "configuracoes.feriados" })) ||
+    (await isFeatureAllowed({ tenantId: user.tenantId, role, featureId: "apontamentos" }));
+  if (!canRead) {
+    res.status(403).json({ error: "Sem permissão para acessar esta funcionalidade." });
+    return;
+  }
+
   const yearRaw = req.query.year ? parseInt(String(req.query.year), 10) : NaN;
   const year = Number.isFinite(yearRaw) ? yearRaw : undefined;
 
@@ -47,7 +56,7 @@ holidaysRouter.get("/", async (req, res) => {
   );
 });
 
-holidaysRouter.post("/", async (req, res) => {
+holidaysRouter.post("/", requireFeature("configuracoes.feriados"), async (req, res) => {
   const user = req.user;
   const ymd = parseYmd(req.body?.date);
   const name = String(req.body?.name ?? "").trim();
@@ -78,7 +87,7 @@ holidaysRouter.post("/", async (req, res) => {
   });
 });
 
-holidaysRouter.delete("/:id", async (req, res) => {
+holidaysRouter.delete("/:id", requireFeature("configuracoes.feriados"), async (req, res) => {
   const user = req.user;
   const id = String(req.params.id || "").trim();
   if (!id) {
