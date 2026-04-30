@@ -168,6 +168,8 @@ timeEntriesRouter.get("/", async (req, res) => {
 
     const tenantFilter = { project: { client: { tenantId: user.tenantId } } };
     let where: Record<string, unknown> = {};
+    const viewStr = String(view ?? "").trim().toLowerCase();
+    const reportStr0 = String(report ?? "").trim().toLowerCase();
     
     // Se ticketId for fornecido, buscar todos os apontamentos desse ticket (sem filtrar por userId)
     if (ticketId) {
@@ -226,11 +228,22 @@ timeEntriesRouter.get("/", async (req, res) => {
       where = { ...tenantFilter, projectId: { in: projects.map((p) => p.id) } };
     } else {
       // Padrão:
-      // - SUPER_ADMIN / GESTOR_PROJETOS: se não houver userId, pode ver todos (tenant); se houver, filtra pelo usuário
+      // - SUPER_ADMIN / GESTOR_PROJETOS:
+      //   - na visão padrão (sem `view/report/userId/projectId/ticketId`) retorna APENAS os apontamentos do próprio usuário
+      //     (isso garante que a tela de Apontamentos mostre só o que o usuário logado lançou).
+      //   - em visões explicitamente agregadas/relatórios, mantém comportamento anterior.
+      //   - se houver userId explícito, filtra pelo usuário.
       // - Demais perfis: sempre filtra pelo próprio usuário
       const isAdminViewer = user.role === "SUPER_ADMIN" || user.role === "GESTOR_PROJETOS";
       if (isAdminViewer) {
-        where = { ...tenantFilter };
+        const isDefaultSelfView =
+          !ticketId &&
+          !projectId &&
+          !userId &&
+          !viewStr &&
+          !reportStr0 &&
+          !aggregateBy;
+        where = { ...tenantFilter, ...(isDefaultSelfView ? { userId: user.id } : {}) };
         if (userId) where.userId = String(userId);
       } else {
         where = { ...tenantFilter, userId: user.id };

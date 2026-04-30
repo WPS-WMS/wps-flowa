@@ -1701,10 +1701,12 @@ function PortalItemImage({
               ) : (
                 <ul className="grid gap-3">
                   {birthdays.map((b) => {
+                    // `birthDate` é uma data "pura". Se vier como ISO UTC (ex.: 2026-03-07T00:00:00.000Z),
+                    // `new Date()` + `getDate()` pode voltar 1 dia em fusos negativos. Por isso, exibimos em UTC.
                     const d = b.birthDate ? new Date(b.birthDate) : null;
-                    const day = d ? d.getDate() : "—";
+                    const day = d ? d.getUTCDate() : "—";
                     const monthShort = d
-                      ? d.toLocaleDateString("pt-BR", { month: "short" })
+                      ? d.toLocaleDateString("pt-BR", { month: "short", timeZone: "UTC" })
                       : "";
                     return (
                       <li
