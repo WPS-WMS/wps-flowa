@@ -151,7 +151,7 @@ export function EditTaskModalFull({
   const [prioridade, setPrioridade] = useState(ticket.criticidade ?? "");
   const [status, setStatus] = useState(ticket.status || "ABERTO");
   const [comment, setComment] = useState("");
-  const [commentVisibility, setCommentVisibility] = useState<"PUBLIC" | "INTERNAL">("PUBLIC");
+  const [commentVisibility, setCommentVisibility] = useState<"PUBLIC" | "INTERNAL" | "">("");
   const [comments, setComments] = useState<
     Array<{
       id: string;
@@ -446,9 +446,7 @@ export function EditTaskModalFull({
       setActiveTab("descricao");
     }
     // Cliente só pode comentar em modo público
-    if (isClienteProfile && commentVisibility !== "PUBLIC") {
-      setCommentVisibility("PUBLIC");
-    }
+    if (isClienteProfile) setCommentVisibility("PUBLIC");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isClienteProfile, activeTab]);
 
@@ -878,6 +876,10 @@ export function EditTaskModalFull({
       console.log("Comentário vazio ou já salvando:", { comment, hasText: hasTextContent(comment), savingComment });
       return;
     }
+    if (!isClienteProfile && !commentVisibility) {
+      setError("Selecione se o comentário é Público ou Interno.");
+      return;
+    }
     
     setSavingComment(true);
     try {
@@ -902,7 +904,7 @@ export function EditTaskModalFull({
       console.log("Comentário salvo com sucesso:", newComment);
       setComments((prev) => [...prev, newComment]);
       setComment("");
-      setCommentVisibility("PUBLIC");
+      setCommentVisibility(isClienteProfile ? "PUBLIC" : "");
     } catch (error) {
       console.error("Erro ao salvar comentário:", error);
       setError("Erro ao salvar comentário.");
@@ -2198,35 +2200,65 @@ export function EditTaskModalFull({
                   <div ref={newCommentSectionRef} className="mt-6 pt-6 border-t border-[color:var(--border)]">
                     <label className={labelClass}>Novo comentário</label>
                     {!isClienteProfile && (
-                      <div className="mb-3 flex items-center gap-2 text-xs">
+                      <div className="mb-3 flex flex-wrap items-center gap-3 text-xs">
                         <button
                           type="button"
                           onClick={() => setCommentVisibility("PUBLIC")}
-                          className={`px-3 py-1 rounded-full border transition ${
-                            commentVisibility === "PUBLIC"
-                              ? "text-[color:var(--primary-foreground)] border-transparent"
-                              : "bg-[color:var(--surface)] text-[color:var(--foreground)] border-[color:var(--border)] hover:bg-black/5"
-                          }`}
-                          style={commentVisibility === "PUBLIC" ? { background: "var(--primary)" } : undefined}
+                          className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 transition hover:bg-black/5"
+                          style={{
+                            borderColor: commentVisibility === "PUBLIC" ? "rgba(92, 0, 225, 0.55)" : "var(--border)",
+                            background: commentVisibility === "PUBLIC" ? "rgba(92, 0, 225, 0.12)" : "transparent",
+                            color: "var(--foreground)",
+                          }}
+                          aria-pressed={commentVisibility === "PUBLIC"}
                         >
+                          <span
+                            className="h-4 w-4 rounded-md border flex items-center justify-center"
+                            style={{
+                              borderColor:
+                                commentVisibility === "PUBLIC" ? "rgba(92, 0, 225, 0.65)" : "var(--border)",
+                              background: commentVisibility === "PUBLIC" ? "var(--primary)" : "transparent",
+                            }}
+                            aria-hidden
+                          >
+                            {commentVisibility === "PUBLIC" ? (
+                              <span className="h-2 w-2 rounded-sm bg-white" />
+                            ) : null}
+                          </span>
                           Público
                         </button>
                         <button
                           type="button"
                           onClick={() => setCommentVisibility("INTERNAL")}
-                          className={`px-3 py-1 rounded-full border transition ${
-                            commentVisibility === "INTERNAL"
-                              ? "text-white border-transparent"
-                              : "bg-[color:var(--surface)] text-[color:var(--foreground)] border-[color:var(--border)] hover:bg-black/5"
-                          }`}
-                          style={commentVisibility === "INTERNAL" ? { background: "#7c3aed" } : undefined}
+                          className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 transition hover:bg-black/5"
+                          style={{
+                            borderColor: commentVisibility === "INTERNAL" ? "rgba(124, 58, 237, 0.6)" : "var(--border)",
+                            background: commentVisibility === "INTERNAL" ? "rgba(124, 58, 237, 0.12)" : "transparent",
+                            color: "var(--foreground)",
+                          }}
+                          aria-pressed={commentVisibility === "INTERNAL"}
                         >
+                          <span
+                            className="h-4 w-4 rounded-md border flex items-center justify-center"
+                            style={{
+                              borderColor:
+                                commentVisibility === "INTERNAL" ? "rgba(124, 58, 237, 0.75)" : "var(--border)",
+                              background: commentVisibility === "INTERNAL" ? "#7c3aed" : "transparent",
+                            }}
+                            aria-hidden
+                          >
+                            {commentVisibility === "INTERNAL" ? (
+                              <span className="h-2 w-2 rounded-sm bg-white" />
+                            ) : null}
+                          </span>
                           Interno
                         </button>
                         <span className="text-[color:var(--muted-foreground)]">
                           {commentVisibility === "INTERNAL"
                             ? "Somente equipe interna (não aparece para cliente)."
-                            : "Visível para o cliente."}
+                            : commentVisibility === "PUBLIC"
+                              ? "Visível para o cliente."
+                              : "Selecione uma opção para enviar."}
                         </span>
                       </div>
                     )}
@@ -2240,7 +2272,7 @@ export function EditTaskModalFull({
                       <button
                         type="button"
                         onClick={handleSaveComment}
-                        disabled={!hasTextContent(comment) || savingComment}
+                        disabled={!hasTextContent(comment) || savingComment || (!isClienteProfile && !commentVisibility)}
                         className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[color:var(--primary-foreground)] text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md hover:opacity-95"
                         style={{ background: "var(--primary)" }}
                       >

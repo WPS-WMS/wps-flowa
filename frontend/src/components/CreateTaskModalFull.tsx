@@ -101,6 +101,7 @@ export function CreateTaskModalFull({
   const [prioridade, setPrioridade] = useState("");
   const [status, setStatus] = useState(initialStatus);
   const [comment, setComment] = useState("");
+  const [commentVisibility, setCommentVisibility] = useState<"PUBLIC" | "INTERNAL" | "">("");
   const [comments, setComments] = useState<Array<{ id: string; content: string; createdAt: string; user: { id: string; name: string; email?: string } }>>([]);
   const [savingComment, setSavingComment] = useState(false);
   const [currentTicketId, setCurrentTicketId] = useState<string | null>(null);
@@ -460,6 +461,10 @@ export function CreateTaskModalFull({
       console.log("Comentário vazio ou já salvando:", { comment, hasText: hasTextContent(comment), savingComment });
       return;
     }
+    if (!commentVisibility) {
+      setError("Selecione se o comentário é Público ou Interno.");
+      return;
+    }
     
     // Se ainda não há ticketId, não pode salvar comentário
     if (!currentTicketId) {
@@ -475,6 +480,7 @@ export function CreateTaskModalFull({
         body: JSON.stringify({
           ticketId: currentTicketId,
           content: stripApiBaseFromCommentHtml(comment),
+          visibility: commentVisibility,
         }),
       });
       
@@ -489,6 +495,7 @@ export function CreateTaskModalFull({
       console.log("Comentário salvo com sucesso:", newComment);
       setComments((prev) => [...prev, newComment]);
       setComment("");
+      setCommentVisibility("");
     } catch (error) {
       console.error("Erro ao salvar comentário:", error);
       setError("Erro ao salvar comentário.");
@@ -1186,6 +1193,63 @@ export function CreateTaskModalFull({
                   {/* Editor de novo comentário */}
                   <div>
                     <label className={labelClass}>Novo comentário</label>
+                    <div className="mb-3 flex flex-wrap items-center gap-3 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => setCommentVisibility("PUBLIC")}
+                        className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 transition hover:bg-black/5"
+                        style={{
+                          borderColor: commentVisibility === "PUBLIC" ? "rgba(92, 0, 225, 0.55)" : "var(--border)",
+                          background: commentVisibility === "PUBLIC" ? "rgba(92, 0, 225, 0.12)" : "transparent",
+                          color: "var(--foreground)",
+                        }}
+                        aria-pressed={commentVisibility === "PUBLIC"}
+                      >
+                        <span
+                          className="h-4 w-4 rounded-md border flex items-center justify-center"
+                          style={{
+                            borderColor:
+                              commentVisibility === "PUBLIC" ? "rgba(92, 0, 225, 0.65)" : "var(--border)",
+                            background: commentVisibility === "PUBLIC" ? "var(--primary)" : "transparent",
+                          }}
+                          aria-hidden
+                        >
+                          {commentVisibility === "PUBLIC" ? <span className="h-2 w-2 rounded-sm bg-white" /> : null}
+                        </span>
+                        Público
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCommentVisibility("INTERNAL")}
+                        className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 transition hover:bg-black/5"
+                        style={{
+                          borderColor: commentVisibility === "INTERNAL" ? "rgba(124, 58, 237, 0.6)" : "var(--border)",
+                          background: commentVisibility === "INTERNAL" ? "rgba(124, 58, 237, 0.12)" : "transparent",
+                          color: "var(--foreground)",
+                        }}
+                        aria-pressed={commentVisibility === "INTERNAL"}
+                      >
+                        <span
+                          className="h-4 w-4 rounded-md border flex items-center justify-center"
+                          style={{
+                            borderColor:
+                              commentVisibility === "INTERNAL" ? "rgba(124, 58, 237, 0.75)" : "var(--border)",
+                            background: commentVisibility === "INTERNAL" ? "#7c3aed" : "transparent",
+                          }}
+                          aria-hidden
+                        >
+                          {commentVisibility === "INTERNAL" ? <span className="h-2 w-2 rounded-sm bg-white" /> : null}
+                        </span>
+                        Interno
+                      </button>
+                      <span className="text-[color:var(--muted-foreground)]">
+                        {commentVisibility === "INTERNAL"
+                          ? "Somente equipe interna (não aparece para cliente)."
+                          : commentVisibility === "PUBLIC"
+                            ? "Visível para o cliente."
+                            : "Selecione uma opção para enviar."}
+                      </span>
+                    </div>
                     <RichTextEditor
                       value={comment}
                       onChange={setComment}
@@ -1197,7 +1261,7 @@ export function CreateTaskModalFull({
                       <button
                         type="button"
                         onClick={handleSaveComment}
-                        disabled={!hasTextContent(comment) || savingComment}
+                        disabled={!hasTextContent(comment) || savingComment || !commentVisibility}
                         className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-[color:var(--primary-foreground)] shadow-sm disabled:opacity-60 disabled:cursor-not-allowed transition-opacity hover:opacity-95"
                         style={{ background: "var(--primary)" }}
                       >
