@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, type Dispatch, type SetStateAction } from "react";
+import { useState, useEffect, useRef, type Dispatch, type SetStateAction } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -419,6 +419,7 @@ function InativarUsuarioModal({
   onSaved: () => void;
 }) {
   const { user: authUser } = useAuth();
+  const overlayPointerDownRef = useRef(false);
   const [motivo, setMotivo] = useState<"ROMPIMENTO" | "SOLICITACAO" | "OUTROS">("ROMPIMENTO");
   const [descricaoBreve, setDescricaoBreve] = useState("");
   const [saving, setSaving] = useState(false);
@@ -469,7 +470,17 @@ function InativarUsuarioModal({
   }
 
   return (
-    <div className={modalBackdropClass} onClick={onClose}>
+    <div
+      className={modalBackdropClass}
+      onPointerDown={(e) => {
+        overlayPointerDownRef.current = e.target === e.currentTarget;
+      }}
+      onClick={(e) => {
+        const shouldClose = overlayPointerDownRef.current && e.target === e.currentTarget;
+        overlayPointerDownRef.current = false;
+        if (shouldClose) onClose();
+      }}
+    >
       <div
         className="bg-[color:var(--surface)] rounded-2xl border border-[color:var(--border)] w-full max-w-md max-h-[90vh] overflow-y-auto shadow-lg"
         onClick={(e) => e.stopPropagation()}
@@ -583,6 +594,7 @@ function InativarUsuarioModal({
 }
 
 function NovoUsuarioModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const overlayPointerDownRef = useRef(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -718,7 +730,17 @@ function NovoUsuarioModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
   }
 
   return (
-    <div className={modalBackdropClass} onClick={onClose}>
+    <div
+      className={modalBackdropClass}
+      onPointerDown={(e) => {
+        overlayPointerDownRef.current = e.target === e.currentTarget;
+      }}
+      onClick={(e) => {
+        const shouldClose = overlayPointerDownRef.current && e.target === e.currentTarget;
+        overlayPointerDownRef.current = false;
+        if (shouldClose) onClose();
+      }}
+    >
       <div className={userModalPanelClass} onClick={(e) => e.stopPropagation()}>
         <header className="shrink-0 px-5 pt-5 pb-4 md:px-6 border-b border-[color:var(--border)]">
           <h3 className="text-lg md:text-xl font-semibold text-[color:var(--foreground)]">Novo usuário</h3>
@@ -982,6 +1004,7 @@ function EditarUsuarioModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const overlayPointerDownRef = useRef(false);
   const [name, setName] = useState(user.name);
   const [email, setEmail] = useState(user.email);
   const [password, setPassword] = useState("");
@@ -1135,7 +1158,17 @@ function EditarUsuarioModal({
   }
 
   return (
-    <div className={modalBackdropClass} onClick={onClose}>
+    <div
+      className={modalBackdropClass}
+      onPointerDown={(e) => {
+        overlayPointerDownRef.current = e.target === e.currentTarget;
+      }}
+      onClick={(e) => {
+        const shouldClose = overlayPointerDownRef.current && e.target === e.currentTarget;
+        overlayPointerDownRef.current = false;
+        if (shouldClose) onClose();
+      }}
+    >
       <div className={userModalPanelClass} onClick={(e) => e.stopPropagation()}>
         <header className="shrink-0 px-5 pt-5 pb-4 md:px-6 border-b border-[color:var(--border)]">
           <h3 className="text-lg md:text-xl font-semibold text-[color:var(--foreground)]">Editar usuário</h3>

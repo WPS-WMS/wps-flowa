@@ -33,6 +33,7 @@ export function TimeEntryPermissionModal({
   // Evita double-click rápido disparar múltiplos POSTs antes do React re-renderizar.
   const sendingRef = useRef(false);
   const [error, setError] = useState("");
+  const overlayPointerDownRef = useRef(false);
 
   async function handleSend() {
     if (sendingRef.current) return;
@@ -63,7 +64,14 @@ export function TimeEntryPermissionModal({
   return (
     <div
       className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4"
-      onClick={onClose}
+      onPointerDown={(e) => {
+        overlayPointerDownRef.current = e.target === e.currentTarget;
+      }}
+      onClick={(e) => {
+        const shouldClose = overlayPointerDownRef.current && e.target === e.currentTarget;
+        overlayPointerDownRef.current = false;
+        if (shouldClose) onClose();
+      }}
     >
       <div
         className="bg-white rounded-2xl border border-blue-100 w-full max-w-md shadow-2xl p-6"

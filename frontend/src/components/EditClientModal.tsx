@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Loader2 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import {
@@ -55,6 +55,7 @@ function formatarCnpj(value: string) {
 }
 
 export function EditClientModal({ client, onClose, onSaved }: EditClientModalProps) {
+  const overlayPointerDownRef = useRef(false);
   const [name, setName] = useState(client.name);
   const [email, setEmail] = useState(client.email || "");
   const [cnpj, setCnpj] = useState(() =>
@@ -186,7 +187,17 @@ export function EditClientModal({ client, onClose, onSaved }: EditClientModalPro
   }
 
   return (
-    <div className={formModalBackdropClass} onClick={onClose}>
+    <div
+      className={formModalBackdropClass}
+      onPointerDown={(e) => {
+        overlayPointerDownRef.current = e.target === e.currentTarget;
+      }}
+      onClick={(e) => {
+        const shouldClose = overlayPointerDownRef.current && e.target === e.currentTarget;
+        overlayPointerDownRef.current = false;
+        if (shouldClose) onClose();
+      }}
+    >
       <div
         className={formModalPanelWideClass}
         onClick={(e) => e.stopPropagation()}

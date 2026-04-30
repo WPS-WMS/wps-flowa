@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 type ConfirmarExclusaoModalProps = {
   userName: string;
@@ -14,6 +14,7 @@ export function ConfirmarExclusaoModal({
   onConfirm,
 }: ConfirmarExclusaoModalProps) {
   const [loading, setLoading] = useState(false);
+  const overlayPointerDownRef = useRef(false);
 
   async function handleConfirm() {
     setLoading(true);
@@ -27,7 +28,14 @@ export function ConfirmarExclusaoModal({
   return (
     <div
       className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 px-4 py-6"
-      onClick={onClose}
+      onPointerDown={(e) => {
+        overlayPointerDownRef.current = e.target === e.currentTarget;
+      }}
+      onClick={(e) => {
+        const shouldClose = overlayPointerDownRef.current && e.target === e.currentTarget;
+        overlayPointerDownRef.current = false;
+        if (shouldClose) onClose();
+      }}
     >
       <div
         className="bg-[color:var(--surface)] rounded-2xl border border-[color:var(--border)] w-full max-w-md shadow-lg overflow-hidden"

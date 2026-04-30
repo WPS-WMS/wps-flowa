@@ -89,6 +89,7 @@ export function CreateTaskModalFull({
   onSaved,
 }: CreateTaskModalFullProps) {
   const [activeTab, setActiveTab] = useState<Tab>("descricao");
+  const overlayPointerDownRef = useRef(false);
   const [users, setUsers] = useState<UserOption[]>([]);
   const [topics, setTopics] = useState<Array<{ id: string; code: string; title: string }>>([]);
   
@@ -716,7 +717,14 @@ export function CreateTaskModalFull({
   return (
     <div
       className="fixed inset-0 bg-black/55 backdrop-blur-sm flex items-center justify-center z-50 px-4 py-6"
-      onClick={onClose}
+      onPointerDown={(e) => {
+        overlayPointerDownRef.current = e.target === e.currentTarget;
+      }}
+      onClick={(e) => {
+        const shouldClose = overlayPointerDownRef.current && e.target === e.currentTarget;
+        overlayPointerDownRef.current = false;
+        if (shouldClose) onClose();
+      }}
     >
       <form
         onSubmit={handleSubmit}

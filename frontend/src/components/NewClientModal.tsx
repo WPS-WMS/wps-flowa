@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import {
@@ -17,6 +17,7 @@ type NewClientModalProps = {
 };
 
 export function NewClientModal({ onClose, onSaved }: NewClientModalProps) {
+  const overlayPointerDownRef = useRef(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [cnpj, setCnpj] = useState("");
@@ -143,7 +144,17 @@ export function NewClientModal({ onClose, onSaved }: NewClientModalProps) {
   }
 
   return (
-    <div className={formModalBackdropClass} onClick={onClose}>
+    <div
+      className={formModalBackdropClass}
+      onPointerDown={(e) => {
+        overlayPointerDownRef.current = e.target === e.currentTarget;
+      }}
+      onClick={(e) => {
+        const shouldClose = overlayPointerDownRef.current && e.target === e.currentTarget;
+        overlayPointerDownRef.current = false;
+        if (shouldClose) onClose();
+      }}
+    >
       <div
         className={formModalPanelWideClass}
         onClick={(e) => e.stopPropagation()}

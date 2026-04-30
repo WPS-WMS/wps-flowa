@@ -27,6 +27,7 @@ export function FinalizeTaskModal({
   const [error, setError] = useState<string>("");
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const overlayPointerDownRef = useRef(false);
 
   const motivos = useMemo(() => Array.from(MOTIVOS), []);
 
@@ -60,7 +61,14 @@ export function FinalizeTaskModal({
   return (
     <div
       className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[60] px-4 py-6"
-      onClick={onClose}
+      onPointerDown={(e) => {
+        overlayPointerDownRef.current = e.target === e.currentTarget;
+      }}
+      onClick={(e) => {
+        const shouldClose = overlayPointerDownRef.current && e.target === e.currentTarget;
+        overlayPointerDownRef.current = false;
+        if (shouldClose) onClose();
+      }}
     >
       <div
         className="bg-[color:var(--surface)] rounded-2xl border border-[color:var(--border)] w-full max-w-lg shadow-2xl"
