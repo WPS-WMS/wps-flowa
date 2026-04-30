@@ -50,6 +50,30 @@ portalRouter.get("/sections/:id/items", async (req, res) => {
 // GET /api/portal/events?month=&year=
 portalRouter.get("/events", async (req, res) => {
   const user = req.user;
+  const upcoming =
+    String(req.query.upcoming ?? "").trim() === "1" ||
+    String(req.query.upcoming ?? "").trim().toLowerCase() === "true";
+  const rawLimit = req.query.limit;
+  const limitParsed = rawLimit !== undefined && String(rawLimit).trim() !== "" ? Number(rawLimit) : NaN;
+  const limit = Number.isFinite(limitParsed) ? Math.min(10, Math.max(1, Math.floor(limitParsed))) : 3;
+
+  // Modo "próximos eventos": não depende de mês/ano selecionado.
+  // Retorna apenas os próximos eventos a partir de hoje (mantendo o mesmo shape { events, birthdays }).
+  if (upcoming) {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const events = await prisma.portalEvent.findMany({
+      where: {
+        tenantId: user.tenantId,
+        date: { gte: today },
+      },
+      orderBy: { date: "asc" },
+      take: limit,
+    });
+    res.json({ events, birthdays: [] });
+    return;
+  }
+
   const month = req.query.month ? Number(req.query.month) : undefined;
   const year = req.query.year ? Number(req.query.year) : undefined;
 
