@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { startOfSaoPauloCalendarDayUtc } from "@/lib/brasilCalendarMonthBounds";
+
+function storedDateFromApontamentoDateInput(dateInput: unknown): Date {
+  const s = String(dateInput ?? "");
+  const ymd = s.length >= 10 ? s.slice(0, 10) : "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(ymd)) {
+    const y = parseInt(ymd.slice(0, 4), 10);
+    const m = parseInt(ymd.slice(5, 7), 10);
+    const d = parseInt(ymd.slice(8, 10), 10);
+    return startOfSaoPauloCalendarDayUtc(y, m, d);
+  }
+  return new Date(String(dateInput));
+}
 
 function parseHours(h: string): number {
   const [hh, mm] = h.split(":").map(Number);
@@ -98,9 +111,11 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const storedEntryDate = storedDateFromApontamentoDateInput(date);
+
   const entry = await prisma.timeEntry.create({
     data: {
-      date: new Date(date),
+      date: storedEntryDate,
       horaInicio,
       horaFim,
       intervaloInicio: intervaloInicio || null,
