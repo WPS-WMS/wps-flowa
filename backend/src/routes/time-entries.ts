@@ -4,6 +4,7 @@ import { authMiddleware } from "../lib/auth.js";
 import { requireFeature } from "../lib/authorizeFeature.js";
 import { getDailyLimitFromUser, sumTimeEntryHoursForUserOnStoredUtcDay } from "../lib/timeEntryLimits.js";
 import { notifyGestoresIfApontamentoExcedeuLimiteDiario } from "../lib/timeEntryEmailNotifications.js";
+import { startOfSaoPauloCalendarDayUtc } from "../lib/brasilCalendarMonthBounds.js";
 
 export const timeEntriesRouter = Router();
 timeEntriesRouter.use(authMiddleware);
@@ -62,6 +63,23 @@ function getMaxPastDaysFromUser(user: {
     // ignore
   }
   return 0;
+}
+
+/**
+ * Data civil AAAA-MM-DD do formulário → instante UTC do início desse dia em America/Sao_Paulo.
+ * Evita `new Date("AAAA-MM-DD")` (meia-noite UTC), que em BR cai no dia anterior e quebra
+ * “horas utilizadas” mensais (AMS / Time & Material) e filtros por mês civil BR.
+ */
+function storedDateFromApontamentoDateInput(dateInput: unknown): Date {
+  const s = String(dateInput ?? "");
+  const ymd = s.length >= 10 ? s.slice(0, 10) : "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(ymd)) {
+    const y = parseInt(ymd.slice(0, 4), 10);
+    const m = parseInt(ymd.slice(5, 7), 10);
+    const d = parseInt(ymd.slice(8, 10), 10);
+    return startOfSaoPauloCalendarDayUtc(y, m, d);
+  }
+  return new Date(String(dateInput));
 }
 
 function parseHours(h: string): number {
@@ -639,9 +657,11 @@ timeEntriesRouter.post("/", async (req, res) => {
     return;
   }
 
+    const storedEntryDate = storedDateFromApontamentoDateInput(date);
+
     const entry = await prisma.timeEntry.create({
       data: {
-        date: new Date(date),
+        date: storedEntryDate,
         horaInicio,
         horaFim,
         intervaloInicio: intervaloInicio || null,
@@ -671,7 +691,7 @@ timeEntriesRouter.post("/", async (req, res) => {
           field: null,
           oldValue: null,
           newValue: String(total),
-          details: `Apontamento de ${total}h registrado para ${new Date(date).toLocaleDateString("pt-BR")}`,
+          details: `Apontamento de ${total}h registrado para ${storedEntryDate.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}`,
         },
       });
     }
@@ -739,7 +759,7 @@ timeEntriesRouter.patch("/:id", async (req, res) => {
   }
 
   // Regra global: ninguém pode deixar o apontamento em data futura (comparação por AAAA-MM-DD em horário local)
-  const effectiveDateForRules = date != null ? new Date(date) : existing.date;
+  const effectiveDateForRules = date != null ? storedDateFromApontamentoDateInput(date) : existing.date;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayYmd = formatYmdLocal(today);
@@ -801,7 +821,7 @@ timeEntriesRouter.patch("/:id", async (req, res) => {
   }
 
   const payload: Record<string, unknown> = {};
-  if (date != null) payload.date = new Date(date);
+  if (date != null) payload.date = storedDateFromApontamentoDateInput(date);
   if (horaInicio != null) payload.horaInicio = horaInicio;
   if (horaFim != null) payload.horaFim = horaFim;
   if (intervaloInicio !== undefined) payload.intervaloInicio = intervaloInicio || null;

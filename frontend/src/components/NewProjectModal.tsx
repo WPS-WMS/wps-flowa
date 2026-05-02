@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { apiFetch, publicFileUrl } from "@/lib/api";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { apiFetch } from "@/lib/api";
 import { X, Users, Calendar, FileText, Settings, CheckCircle2 } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import {
@@ -148,7 +148,37 @@ export function NewProjectModal({ onClose, onSaved, mode = "create", projectId }
   const userPickerRef = useRef<HTMLDivElement>(null);
   const [loadingProject, setLoadingProject] = useState(false);
   const [anexoRemoved, setAnexoRemoved] = useState(false);
-  const attachmentUrl = anexoUrl ? publicFileUrl(anexoUrl) : "";
+  const [openingProposal, setOpeningProposal] = useState(false);
+
+  const handleOpenProposalComercial = useCallback(async () => {
+    if (!projectId || !anexoUrl?.trim()) {
+      setError("É preciso ter um projeto salvo com anexo para visualizar.");
+      return;
+    }
+    setOpeningProposal(true);
+    setError("");
+    try {
+      const res = await apiFetch(`/api/projects/${projectId}/proposal`, { method: "GET" });
+      if (!res.ok) throw new Error("fetch");
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const w = window.open(objectUrl, "_blank", "noopener,noreferrer");
+      if (!w) {
+        const a = document.createElement("a");
+        a.href = objectUrl;
+        a.download = anexoNomeArquivo?.trim() || "proposta-comercial";
+        a.rel = "noopener";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+    } catch {
+      setError("Não foi possível abrir o arquivo. Verifique sua sessão e tente novamente.");
+    } finally {
+      setOpeningProposal(false);
+    }
+  }, [projectId, anexoUrl, anexoNomeArquivo]);
 
   useEffect(() => {
     apiFetch("/api/clients/for-project-select")
@@ -1159,15 +1189,15 @@ export function NewProjectModal({ onClose, onSaved, mode = "create", projectId }
                 {anexoUrl && !anexoArquivo && (
                   <div className="text-xs text-[color:var(--muted-foreground)]">
                     Arquivo atual:{" "}
-                    <a
-                      href={attachmentUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="font-semibold hover:underline"
+                    <button
+                      type="button"
+                      onClick={handleOpenProposalComercial}
+                      disabled={openingProposal || !projectId}
+                      className="font-semibold hover:underline disabled:opacity-60 disabled:cursor-not-allowed"
                       style={{ color: "var(--primary)" }}
                     >
-                      abrir
-                    </a>
+                      {openingProposal ? "Abrindo…" : "abrir"}
+                    </button>
                   </div>
                 )}
               </div>
